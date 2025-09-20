@@ -41,6 +41,11 @@ class CalorieTracker {
         this.loadFromStorage();
         this.checkAuthStatus();
         
+        // Show offline indicator if in development mode
+        if (CONFIG.DEVELOPMENT_MODE) {
+            document.getElementById('offlineIndicator').classList.add('show');
+        }
+        
         // Check online status
         window.addEventListener('online', () => {
             this.isOnline = true;
@@ -169,6 +174,19 @@ class CalorieTracker {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
+        // Always try offline mode first for demo credentials
+        if (username === 'demo' && password === 'demo123') {
+            this.currentUser = { id: 1, username: 'demo', dailyCalorieGoal: 2000 };
+            this.calorieGoal = 2000;
+            localStorage.setItem(CONFIG.USER_STORAGE_KEY, JSON.stringify(this.currentUser));
+            document.getElementById('welcomeUser').textContent = `Welcome, ${username}!`;
+            this.showSection('dashboard');
+            this.updateDashboard();
+            this.showMessage('Login successful!', 'success');
+            return;
+        }
+
+        // Try API login for non-demo users
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 const response = await this.apiCall('/auth/login', 'POST', {
@@ -192,18 +210,7 @@ class CalorieTracker {
                 this.showMessage(`Login failed: ${error.message}`, 'error');
             }
         } else {
-            // Offline/demo mode
-            if (username === 'demo' && password === 'demo123') {
-                this.currentUser = { id: 1, username: 'demo', dailyCalorieGoal: 2000 };
-                this.calorieGoal = 2000;
-                localStorage.setItem(CONFIG.USER_STORAGE_KEY, JSON.stringify(this.currentUser));
-                document.getElementById('welcomeUser').textContent = `Welcome, ${username}! (Offline Mode)`;
-                this.showSection('dashboard');
-                this.updateDashboard();
-                this.showMessage('Login successful! (Working offline)', 'success');
-            } else {
-                this.showMessage('Invalid credentials. Try demo/demo123 (Offline Mode)', 'error');
-            }
+            this.showMessage('Invalid credentials. Use demo/demo123 for offline access', 'error');
         }
     }
 
