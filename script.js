@@ -191,6 +191,10 @@ class CalorieTracker {
             this.currentUser = { id: 1, username: 'demo', dailyCalorieGoal: 2000 };
             this.calorieGoal = 2000;
             localStorage.setItem(CONFIG.USER_STORAGE_KEY, JSON.stringify(this.currentUser));
+            
+            // Load any existing data for today
+            this.loadFromStorage();
+            
             document.getElementById('welcomeUser').textContent = `Welcome, ${username}!`;
             this.showSection('dashboard');
             this.updateDashboard();
