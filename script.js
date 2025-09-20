@@ -93,11 +93,13 @@ class CalorieTracker {
             return;
         }
 
+        // Set the token before making API calls
+        this.authToken = token;
+
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 const response = await this.apiCall('/auth/verify', 'GET');
                 if (response.valid) {
-                    this.authToken = token;
                     this.currentUser = response.user;
                     this.calorieGoal = response.user.dailyCalorieGoal;
                     document.getElementById('welcomeUser').textContent = `Welcome, ${response.user.username}!`;
@@ -107,6 +109,9 @@ class CalorieTracker {
                 }
             } catch (error) {
                 console.error('Auth check failed:', error);
+                // Clear invalid token
+                localStorage.removeItem(CONFIG.TOKEN_STORAGE_KEY);
+                this.authToken = null;
             }
         }
         
@@ -138,6 +143,12 @@ class CalorieTracker {
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+            
+            // Don't log auth errors as they're expected when not logged in
+            if (response.status !== 401 || endpoint !== '/auth/verify') {
+                console.error(`API Error (${response.status}):`, errorData.error);
+            }
+            
             throw new Error(errorData.error || `HTTP ${response.status}`);
         }
 
