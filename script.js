@@ -9,6 +9,12 @@ class CalorieTracker {
         this.calorieGoal = CONFIG.DEFAULT_CALORIE_GOAL;
         this.isOnline = navigator.onLine;
         
+        // Hybrid storage properties
+        this.syncQueue = []; // Queue for pending sync operations
+        this.lastSyncTime = null;
+        this.syncInProgress = false;
+        this.syncStatus = 'pending'; // 'pending', 'syncing', 'synced', 'error'
+        
         // Sample food database (fallback for offline mode)
         this.offlineFoodDatabase = {
             'apple': { id: 1, calories: 95, unit: 'piece' },
@@ -50,13 +56,24 @@ class CalorieTracker {
         window.addEventListener('online', () => {
             this.isOnline = true;
             this.showMessage('Connection restored', 'success');
-            this.syncOfflineData();
+            // Try to process pending sync queue when back online
+            setTimeout(() => this.processSyncQueue(), 1000);
         });
         
         window.addEventListener('offline', () => {
             this.isOnline = false;
             this.showMessage('Working offline', 'warning');
         });
+        
+        // Initialize sync status
+        this.updateSyncStatus('pending');
+        
+        // Periodic sync attempt (every 30 seconds)
+        setInterval(() => {
+            if (this.isOnline && this.syncQueue.length > 0 && !this.syncInProgress) {
+                this.processSyncQueue();
+            }
+        }, 30000);
     }
 
     bindEvents() {
@@ -192,13 +209,19 @@ class CalorieTracker {
             this.calorieGoal = 2000;
             localStorage.setItem(CONFIG.USER_STORAGE_KEY, JSON.stringify(this.currentUser));
             
-            // Load any existing data for today
-            this.loadFromStorage();
+            // Load hybrid data (local + server if available)
+            await this.loadHybridData();
             
             document.getElementById('welcomeUser').textContent = `Welcome, ${username}!`;
             this.showSection('dashboard');
             this.updateDashboard();
             this.showMessage('Login successful!', 'success');
+            
+            // Start background sync if there's pending data
+            if (this.syncQueue.length > 0) {
+                setTimeout(() => this.processSyncQueue(), 1000);
+            }
+            
             return;
         }
 
@@ -328,6 +351,16 @@ class CalorieTracker {
         this.foodLog.push(foodEntry);
         this.dailyCalories += calories;
         
+        // Add to sync queue for background upload
+        this.addToSyncQueue('add_food', {
+            name: foodName,
+            quantity: quantity,
+            unit: unit,
+            calories: calories,
+            foodId: foodData.id,
+            localId: foodEntry.id
+        });
+        
         this.updateDashboard();
         this.updateFoodLog();
         this.saveToStorage();
@@ -335,7 +368,7 @@ class CalorieTracker {
         document.getElementById('foodForm').reset();
         document.getElementById('quantity').value = 1;
         
-        this.showMessage(`Added ${foodName}! +${calories} calories (Offline)`, 'success');
+        this.showMessage(`Added ${foodName}! +${calories} calories`, 'success');
     }
 
     async loadTodaysData() {
@@ -460,17 +493,17 @@ class CalorieTracker {
 
         const deletedFood = this.foodLog[foodIndex];
 
-        if (this.isOnline && !deletedFood.offline && !CONFIG.DEVELOPMENT_MODE) {
-            try {
-                await this.apiCall(`/logs/${foodId}`, 'DELETE');
-            } catch (error) {
-                this.showMessage(`Error deleting food: ${error.message}`, 'error');
-                return;
-            }
-        }
-
+        // Always delete locally first (instant feedback)
         this.dailyCalories -= deletedFood.calories;
         this.foodLog.splice(foodIndex, 1);
+        
+        // Add to sync queue for server deletion
+        if (deletedFood.serverId) {
+            this.addToSyncQueue('delete_food', {
+                serverId: deletedFood.serverId,
+                localId: deletedFood.id
+            });
+        }
         
         this.updateDashboard();
         this.updateFoodLog();
@@ -579,6 +612,212 @@ class CalorieTracker {
             totalCalories: this.dailyCalories,
             foodEntries: this.foodLog
         };
+    }
+
+    // =============================================================================
+    // HYBRID STORAGE: Local + Server Sync System
+    // =============================================================================
+
+    // Add operation to sync queue
+    addToSyncQueue(operation, data) {
+        const syncOperation = {
+            id: Date.now() + Math.random(),
+            type: operation, // 'add_food', 'delete_food', 'update_goal'
+            data: data,
+            timestamp: new Date().toISOString(),
+            attempts: 0,
+            maxAttempts: 3
+        };
+        
+        this.syncQueue.push(syncOperation);
+        this.updateSyncStatus('pending');
+        
+        // Try to sync immediately if online
+        if (this.isOnline && !this.syncInProgress) {
+            this.processSyncQueue();
+        }
+    }
+
+    // Process pending sync operations
+    async processSyncQueue() {
+        if (this.syncInProgress || this.syncQueue.length === 0 || !this.isOnline) {
+            return;
+        }
+
+        this.syncInProgress = true;
+        this.updateSyncStatus('syncing');
+
+        const operationsToProcess = [...this.syncQueue];
+        
+        for (let i = 0; i < operationsToProcess.length; i++) {
+            const operation = operationsToProcess[i];
+            
+            try {
+                await this.syncOperation(operation);
+                
+                // Remove successfully synced operation
+                const index = this.syncQueue.findIndex(op => op.id === operation.id);
+                if (index > -1) {
+                    this.syncQueue.splice(index, 1);
+                }
+                
+            } catch (error) {
+                console.error('Sync operation failed:', error);
+                operation.attempts++;
+                
+                // Remove if max attempts reached
+                if (operation.attempts >= operation.maxAttempts) {
+                    const index = this.syncQueue.findIndex(op => op.id === operation.id);
+                    if (index > -1) {
+                        this.syncQueue.splice(index, 1);
+                    }
+                    console.warn('Sync operation abandoned after max attempts:', operation);
+                }
+            }
+        }
+
+        this.syncInProgress = false;
+        this.lastSyncTime = new Date();
+        
+        // Update status based on remaining queue
+        if (this.syncQueue.length === 0) {
+            this.updateSyncStatus('synced');
+        } else {
+            this.updateSyncStatus('error');
+        }
+    }
+
+    // Execute individual sync operation
+    async syncOperation(operation) {
+        if (!this.authToken && !CONFIG.DEVELOPMENT_MODE) {
+            throw new Error('No auth token for sync');
+        }
+
+        switch (operation.type) {
+            case 'add_food':
+                await this.syncAddFood(operation.data);
+                break;
+            case 'delete_food':
+                await this.syncDeleteFood(operation.data);
+                break;
+            case 'update_goal':
+                await this.syncUpdateGoal(operation.data);
+                break;
+            default:
+                console.warn('Unknown sync operation type:', operation.type);
+        }
+    }
+
+    // Sync individual food addition to server
+    async syncAddFood(foodData) {
+        if (CONFIG.DEVELOPMENT_MODE) {
+            // In demo mode, simulate successful sync
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return;
+        }
+
+        await this.apiCall('/logs', 'POST', {
+            foodId: foodData.foodId || null,
+            name: foodData.name,
+            quantity: foodData.quantity,
+            unit: foodData.unit,
+            calories: foodData.calories,
+            logDate: new Date().toISOString().split('T')[0]
+        });
+    }
+
+    // Sync food deletion to server
+    async syncDeleteFood(foodData) {
+        if (CONFIG.DEVELOPMENT_MODE) {
+            // In demo mode, simulate successful sync
+            await new Promise(resolve => setTimeout(resolve, 300));
+            return;
+        }
+
+        if (foodData.serverId) {
+            await this.apiCall(`/logs/${foodData.serverId}`, 'DELETE');
+        }
+    }
+
+    // Sync goal update to server
+    async syncUpdateGoal(goalData) {
+        if (CONFIG.DEVELOPMENT_MODE) {
+            // In demo mode, simulate successful sync
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+
+        await this.apiCall('/user/goal', 'PUT', {
+            dailyCalorieGoal: goalData.goal
+        });
+    }
+
+    // Update sync status and UI
+    updateSyncStatus(status) {
+        this.syncStatus = status;
+        this.updateSyncIndicator();
+    }
+
+    // Update sync indicator in UI
+    updateSyncIndicator() {
+        const indicator = document.getElementById('syncIndicator');
+        if (!indicator) return;
+
+        const statusConfig = {
+            'synced': { icon: '✅', text: 'Synced', class: 'sync-success' },
+            'syncing': { icon: '🔄', text: 'Syncing...', class: 'sync-progress' },
+            'pending': { icon: '⏳', text: 'Pending sync', class: 'sync-pending' },
+            'error': { icon: '⚠️', text: 'Sync error', class: 'sync-error' }
+        };
+
+        const config = statusConfig[this.syncStatus] || statusConfig.pending;
+        indicator.innerHTML = `${config.icon} ${config.text}`;
+        indicator.className = `sync-indicator ${config.class}`;
+    }
+
+    // Load data from both local and server (hybrid approach)
+    async loadHybridData() {
+        // Always load local data first (instant)
+        this.loadFromStorage();
+        
+        // Try to load and merge server data if available
+        if (this.isOnline && this.authToken && !CONFIG.DEVELOPMENT_MODE) {
+            try {
+                await this.loadAndMergeServerData();
+            } catch (error) {
+                console.log('Server data unavailable, using local data:', error.message);
+            }
+        }
+    }
+
+    // Load server data and merge with local data
+    async loadAndMergeServerData() {
+        const today = new Date().toISOString().split('T')[0];
+        const serverData = await this.apiCall(`/logs?date=${today}`);
+        
+        // Simple merge strategy: server data takes precedence for conflicts
+        if (serverData.logs && serverData.logs.length > 0) {
+            // For demo purposes, we'll use a simple last-write-wins strategy
+            // In production, you might want more sophisticated conflict resolution
+            
+            const serverCalories = serverData.logs.reduce((total, log) => total + log.calories, 0);
+            const serverFoodLog = serverData.logs.map(log => ({
+                id: log.id,
+                name: log.food_name,
+                quantity: log.quantity,
+                unit: log.unit,
+                calories: log.calories,
+                timestamp: new Date(log.created_at).toLocaleTimeString(),
+                serverId: log.id // Track server ID for syncing
+            }));
+
+            // If server has more recent data, use it
+            if (serverFoodLog.length > this.foodLog.length) {
+                this.foodLog = serverFoodLog;
+                this.dailyCalories = serverCalories;
+                this.saveToStorage(); // Update local storage with server data
+            }
+        }
     }
 }
 
