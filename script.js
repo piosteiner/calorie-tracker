@@ -61,9 +61,12 @@ class CalorieTracker {
 
     bindEvents() {
         // Login form
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        const loginForm = document.getElementById('loginForm');
+        loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             this.handleLogin();
+            return false;
         });
 
         // Logout button
@@ -161,13 +164,22 @@ class CalorieTracker {
     }
 
     showSection(sectionName) {
-        // Hide all sections
-        document.querySelectorAll('.section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Show selected section
-        document.getElementById(sectionName + 'Section').classList.add('active');
+        try {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            const targetSection = document.getElementById(sectionName + 'Section');
+            if (targetSection) {
+                targetSection.classList.add('active');
+            } else {
+                console.error('Section not found:', sectionName + 'Section');
+            }
+        } catch (error) {
+            console.error('Error in showSection:', error);
+        }
     }
 
     async handleLogin() {
