@@ -30,7 +30,7 @@
                 </form>
                 
                 <div class="demo-credentials">
-                    <small>Demo credentials: username: <strong>demo</strong>, password: <strong>demo123</strong></small>
+                    <small>Demo credentials: <strong>demo</strong> / <strong>demo123</strong> (user) | <strong>admin</strong> / <strong>admin123</strong> (admin)</small>
                 </div>
             </div>
         </div>
@@ -115,6 +115,103 @@
                     <h3>Today's Food Log</h3>
                     <div id="foodLog" class="food-log">
                         <p class="empty-message">No food logged yet today. Start by adding your first meal!</p>
+                    </div>
+                </div>
+
+                <!-- Admin Panel -->
+                <div id="adminPanel" class="admin-panel" style="display: none;">
+                    <div class="admin-card">
+                        <h2>🛡️ Admin Panel</h2>
+                        <nav class="admin-nav">
+                            <button class="btn btn-admin" onclick="app.showAdminSection('Stats')">📊 Statistics</button>
+                            <button class="btn btn-admin" onclick="app.showAdminSection('Users')">👥 Users</button>
+                            <button class="btn btn-admin" onclick="app.showAdminSection('Foods')">🥗 Foods</button>
+                        </nav>
+
+                        <!-- Admin Statistics -->
+                        <div id="adminStats" class="admin-section active">
+                            <h3>System Statistics</h3>
+                            <div class="admin-stats-grid">
+                                <div class="admin-stat">
+                                    <div class="admin-stat-value" id="totalUsers">0</div>
+                                    <div class="admin-stat-label">Total Users</div>
+                                </div>
+                                <div class="admin-stat">
+                                    <div class="admin-stat-value" id="totalFoods">0</div>
+                                    <div class="admin-stat-label">Foods in Database</div>
+                                </div>
+                                <div class="admin-stat">
+                                    <div class="admin-stat-value" id="totalLogs">0</div>
+                                    <div class="admin-stat-label">Total Food Logs</div>
+                                </div>
+                                <div class="admin-stat">
+                                    <div class="admin-stat-value" id="todaysLogs">0</div>
+                                    <div class="admin-stat-label">Today's Logs</div>
+                                </div>
+                                <div class="admin-stat">
+                                    <div class="admin-stat-value" id="activeUsers">0</div>
+                                    <div class="admin-stat-label">Active Users</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Admin Users Management -->
+                        <div id="adminUsers" class="admin-section">
+                            <h3>User Management</h3>
+                            <div class="admin-table-container">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Total Logs</th>
+                                            <th>Last Login</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminUsersList">
+                                        <tr><td colspan="6" class="loading">Loading users...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Admin Foods Management -->
+                        <div id="adminFoods" class="admin-section">
+                            <h3>Food Database Management</h3>
+                            
+                            <!-- Add New Food Form -->
+                            <div class="admin-add-food">
+                                <h4>Add New Food</h4>
+                                <form id="adminAddFoodForm" class="admin-form">
+                                    <div class="admin-form-row">
+                                        <input type="text" id="adminFoodName" placeholder="Food name" required>
+                                        <input type="number" id="adminFoodCalories" placeholder="Calories" required>
+                                        <input type="text" id="adminFoodUnit" placeholder="Unit (e.g., piece, 100g)" required>
+                                        <button type="submit" class="btn btn-primary">Add Food</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Foods List -->
+                            <div class="admin-table-container">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Food Name</th>
+                                            <th>Calories</th>
+                                            <th>Unit</th>
+                                            <th>Usage Count</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminFoodsList">
+                                        <tr><td colspan="5" class="loading">Loading foods...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

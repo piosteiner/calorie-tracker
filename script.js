@@ -9,6 +9,14 @@ class CalorieTracker {
         this.calorieGoal = CONFIG.DEFAULT_CALORIE_GOAL;
         this.isOnline = navigator.onLine;
         
+        // Admin properties
+        this.isAdmin = false;
+        this.adminData = {
+            users: [],
+            foods: [],
+            stats: {}
+        };
+        
         // Hybrid storage properties
         this.syncQueue = []; // Queue for pending sync operations
         this.lastSyncTime = null;
@@ -171,13 +179,20 @@ class CalorieTracker {
             
             // Don't log auth errors as they're expected when not logged in
             if (response.status !== 401 || endpoint !== '/auth/verify') {
-                console.error(`API Error (${response.status}):`, errorData.error);
+                console.error(`API Error (${response.status}):`, errorData.error || errorData.message);
             }
             
-            throw new Error(errorData.error || `HTTP ${response.status}`);
+            throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
         }
 
-        return await response.json();
+        const result = await response.json();
+        
+        // Handle new backend response format
+        if (result.success === false) {
+            throw new Error(result.message || result.error || 'API request failed');
+        }
+        
+        return result;
     }
 
     showSection(sectionName) {
@@ -204,13 +219,21 @@ class CalorieTracker {
         const password = document.getElementById('password').value;
 
         // Always try offline mode first for demo credentials
-        if (username === 'demo' && password === 'demo123') {
-            this.currentUser = { id: 1, username: 'demo', dailyCalorieGoal: 2000 };
+        if ((username === 'demo' && password === 'demo123') || (username === 'admin' && password === 'admin123')) {
+            this.currentUser = { 
+                id: username === 'admin' ? 2 : 1, 
+                username: username, 
+                dailyCalorieGoal: 2000 
+            };
             this.calorieGoal = 2000;
             localStorage.setItem(CONFIG.USER_STORAGE_KEY, JSON.stringify(this.currentUser));
             
             // Load hybrid data (local + server if available)
             await this.loadHybridData();
+            
+            // Check admin status and show admin interface if applicable
+            await this.checkAdminStatus();
+            this.toggleAdminInterface();
             
             document.getElementById('welcomeUser').textContent = `Welcome, ${username}!`;
             this.showSection('dashboard');
@@ -281,24 +304,44 @@ class CalorieTracker {
             try {
                 // Search for food in backend
                 const searchResponse = await this.apiCall(`/foods/search?q=${encodeURIComponent(foodName)}`);
-                const foods = searchResponse.foods;
+                const foods = searchResponse.success ? searchResponse.foods : [];
                 
-                if (foods.length === 0) {
-                    this.showMessage(`Food "${foodName}" not found in database.`, 'error');
-                    return;
+                let logData, calories;
+                
+                if (foods.length > 0) {
+                    // Found in database - use foodId
+                    const food = foods[0]; // Use first match
+                    calories = this.calculateCalories(food.calories_per_unit, quantity, unit, food.default_unit);
+                    
+                    logData = {
+                        foodId: food.id,
+                        quantity,
+                        unit,
+                        calories,
+                        logDate: new Date().toISOString().split('T')[0]
+                    };
+                } else {
+                    // Not found in database - use custom food name
+                    // Prompt user for calories since we don't have food data
+                    const customCalories = prompt(`"${foodName}" not found in database. Enter calories per ${unit}:`);
+                    if (!customCalories || isNaN(customCalories)) {
+                        this.showMessage('Calories required for custom food.', 'error');
+                        return;
+                    }
+                    
+                    calories = parseInt(customCalories) * quantity;
+                    
+                    logData = {
+                        name: foodName,
+                        quantity,
+                        unit,
+                        calories,
+                        logDate: new Date().toISOString().split('T')[0]
+                    };
                 }
 
-                const food = foods[0]; // Use first match
-                const calories = this.calculateCalories(food.calories_per_unit, quantity, unit, food.default_unit);
-
                 // Add to backend
-                const logResponse = await this.apiCall('/logs', 'POST', {
-                    foodId: food.id,
-                    quantity,
-                    unit,
-                    calories,
-                    logDate: new Date().toISOString().split('T')[0]
-                });
+                const logResponse = await this.apiCall('/logs', 'POST', logData);
 
                 const foodEntry = {
                     id: logResponse.logId,
@@ -423,7 +466,8 @@ class CalorieTracker {
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 const response = await this.apiCall(`/foods/search?q=${encodeURIComponent(input)}`);
-                matches = response.foods.slice(0, CONFIG.MAX_SUGGESTIONS);
+                const foods = response.success ? response.foods : [];
+                matches = foods.slice(0, CONFIG.MAX_SUGGESTIONS);
             } catch (error) {
                 // Fallback to offline
                 matches = Object.keys(this.offlineFoodDatabase).filter(food => 
@@ -795,15 +839,14 @@ class CalorieTracker {
         const today = new Date().toISOString().split('T')[0];
         const serverData = await this.apiCall(`/logs?date=${today}`);
         
-        // Simple merge strategy: server data takes precedence for conflicts
-        if (serverData.logs && serverData.logs.length > 0) {
-            // For demo purposes, we'll use a simple last-write-wins strategy
-            // In production, you might want more sophisticated conflict resolution
+        // Handle new backend response format
+        if (serverData && serverData.success && serverData.logs) {
+            const logs = serverData.logs;
+            const totalCalories = serverData.totalCalories || logs.reduce((total, log) => total + log.calories, 0);
             
-            const serverCalories = serverData.logs.reduce((total, log) => total + log.calories, 0);
-            const serverFoodLog = serverData.logs.map(log => ({
+            const serverFoodLog = logs.map(log => ({
                 id: log.id,
-                name: log.food_name,
+                name: log.food_name || log.name,
                 quantity: log.quantity,
                 unit: log.unit,
                 calories: log.calories,
@@ -814,9 +857,299 @@ class CalorieTracker {
             // If server has more recent data, use it
             if (serverFoodLog.length > this.foodLog.length) {
                 this.foodLog = serverFoodLog;
-                this.dailyCalories = serverCalories;
+                this.dailyCalories = totalCalories;
                 this.saveToStorage(); // Update local storage with server data
             }
+        }
+    }
+
+    // =============================================================================
+    // ADMIN FUNCTIONALITY
+    // =============================================================================
+
+    // Check if current user has admin privileges
+    async checkAdminStatus() {
+        if (CONFIG.DEVELOPMENT_MODE) {
+            // For demo purposes, make 'admin' user an admin
+            this.isAdmin = this.currentUser && this.currentUser.username === 'admin';
+            return this.isAdmin;
+        }
+
+        if (!this.authToken) {
+            this.isAdmin = false;
+            return false;
+        }
+
+        try {
+            const response = await this.apiCall('/admin/stats');
+            this.isAdmin = response !== null;
+            return this.isAdmin;
+        } catch (error) {
+            this.isAdmin = false;
+            return false;
+        }
+    }
+
+    // Show/hide admin interface
+    toggleAdminInterface() {
+        const adminPanel = document.getElementById('adminPanel');
+        if (adminPanel) {
+            adminPanel.style.display = this.isAdmin ? 'block' : 'none';
+        }
+    }
+
+    // Load admin dashboard
+    async showAdminDashboard() {
+        if (!this.isAdmin) return;
+        
+        this.showSection('admin');
+        await this.loadAdminStats();
+    }
+
+    // Load system statistics
+    async loadAdminStats() {
+        if (CONFIG.DEVELOPMENT_MODE) {
+            // Demo data for admin stats
+            this.adminData.stats = {
+                totalUsers: 15,
+                totalFoods: 125,
+                totalLogs: 1247,
+                todaysLogs: 23,
+                activeUsers: 8
+            };
+            this.updateAdminStatsDisplay();
+            return;
+        }
+
+        try {
+            const response = await this.apiCall('/admin/stats');
+            this.adminData.stats = response;
+            this.updateAdminStatsDisplay();
+        } catch (error) {
+            this.showMessage('Failed to load admin statistics', 'error');
+        }
+    }
+
+    // Update admin stats display
+    updateAdminStatsDisplay() {
+        const stats = this.adminData.stats;
+        
+        document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
+        document.getElementById('totalFoods').textContent = stats.totalFoods || 0;
+        document.getElementById('totalLogs').textContent = stats.totalLogs || 0;
+        document.getElementById('todaysLogs').textContent = stats.todaysLogs || 0;
+        document.getElementById('activeUsers').textContent = stats.activeUsers || 0;
+    }
+
+    // Load users for management
+    async loadAdminUsers() {
+        if (CONFIG.DEVELOPMENT_MODE) {
+            // Demo users data
+            this.adminData.users = [
+                { id: 1, username: 'demo', email: 'demo@example.com', role: 'user', totalLogs: 15, lastLogin: '2025-09-20' },
+                { id: 2, username: 'admin', email: 'admin@example.com', role: 'admin', totalLogs: 5, lastLogin: '2025-09-20' },
+                { id: 3, username: 'testuser', email: 'test@example.com', role: 'user', totalLogs: 32, lastLogin: '2025-09-19' }
+            ];
+            this.updateAdminUsersDisplay();
+            return;
+        }
+
+        try {
+            const response = await this.apiCall('/admin/users');
+            this.adminData.users = response.users;
+            this.updateAdminUsersDisplay();
+        } catch (error) {
+            this.showMessage('Failed to load users', 'error');
+        }
+    }
+
+    // Update users display
+    updateAdminUsersDisplay() {
+        const usersList = document.getElementById('adminUsersList');
+        if (!usersList) return;
+
+        usersList.innerHTML = this.adminData.users.map(user => `
+            <tr>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td>${user.role}</td>
+                <td>${user.totalLogs}</td>
+                <td>${user.lastLogin}</td>
+                <td>
+                    <button class="btn btn-small" onclick="app.resetUserPassword(${user.id})">Reset Password</button>
+                    <button class="btn btn-small btn-danger" onclick="app.deleteUser(${user.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Load foods for management
+    async loadAdminFoods() {
+        if (CONFIG.DEVELOPMENT_MODE) {
+            // Demo foods data
+            this.adminData.foods = [
+                { id: 1, name: 'Apple', calories: 95, unit: 'piece', usage_count: 45 },
+                { id: 2, name: 'Banana', calories: 105, unit: 'piece', usage_count: 32 },
+                { id: 3, name: 'Chicken Breast', calories: 165, unit: '100g', usage_count: 28 }
+            ];
+            this.updateAdminFoodsDisplay();
+            return;
+        }
+
+        try {
+            const response = await this.apiCall('/admin/foods');
+            this.adminData.foods = response.foods;
+            this.updateAdminFoodsDisplay();
+        } catch (error) {
+            this.showMessage('Failed to load foods', 'error');
+        }
+    }
+
+    // Update foods display
+    updateAdminFoodsDisplay() {
+        const foodsList = document.getElementById('adminFoodsList');
+        if (!foodsList) return;
+
+        foodsList.innerHTML = this.adminData.foods.map(food => `
+            <tr>
+                <td>${food.name}</td>
+                <td>${food.calories}</td>
+                <td>${food.unit}</td>
+                <td>${food.usage_count || 0}</td>
+                <td>
+                    <button class="btn btn-small" onclick="app.editFood(${food.id})">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="app.deleteFood(${food.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Reset user password
+    async resetUserPassword(userId) {
+        if (!confirm('Reset password for this user?')) return;
+
+        if (CONFIG.DEVELOPMENT_MODE) {
+            this.showMessage('Password reset email sent (Demo mode)', 'success');
+            return;
+        }
+
+        try {
+            await this.apiCall(`/admin/users/${userId}/reset-password`, 'POST');
+            this.showMessage('Password reset email sent', 'success');
+        } catch (error) {
+            this.showMessage('Failed to reset password', 'error');
+        }
+    }
+
+    // Delete user
+    async deleteUser(userId) {
+        if (!confirm('Delete this user? This action cannot be undone.')) return;
+
+        if (CONFIG.DEVELOPMENT_MODE) {
+            this.adminData.users = this.adminData.users.filter(u => u.id !== userId);
+            this.updateAdminUsersDisplay();
+            this.showMessage('User deleted (Demo mode)', 'success');
+            return;
+        }
+
+        try {
+            await this.apiCall(`/admin/users/${userId}`, 'DELETE');
+            await this.loadAdminUsers(); // Refresh list
+            this.showMessage('User deleted successfully', 'success');
+        } catch (error) {
+            this.showMessage('Failed to delete user', 'error');
+        }
+    }
+
+    // Admin navigation
+    showAdminSection(section) {
+        // Hide all admin sections
+        document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+        
+        // Show selected section
+        document.getElementById(`admin${section}`).classList.add('active');
+        
+        // Load data for the section
+        switch(section) {
+            case 'Stats':
+                this.loadAdminStats();
+                break;
+            case 'Users':
+                this.loadAdminUsers();
+                break;
+            case 'Foods':
+                this.loadAdminFoods();
+                break;
+        }
+    }
+
+    // =============================================================================
+    // ENHANCED FOOD SEARCH INTEGRATION
+    // =============================================================================
+
+    // Search foods from backend database
+    async searchFoods(query) {
+        if (!query || query.length < CONFIG.MIN_SEARCH_LENGTH) {
+            return [];
+        }
+
+        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
+            // Fallback to offline database
+            return Object.keys(this.offlineFoodDatabase)
+                .filter(food => food.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, CONFIG.MAX_SUGGESTIONS)
+                .map(name => ({
+                    id: null,
+                    name: name,
+                    calories_per_unit: this.offlineFoodDatabase[name].calories,
+                    default_unit: this.offlineFoodDatabase[name].unit
+                }));
+        }
+
+        try {
+            const response = await this.apiCall(`/foods/search?q=${encodeURIComponent(query)}`);
+            return response.success ? response.foods : [];
+        } catch (error) {
+            console.error('Food search error:', error);
+            // Fallback to offline database
+            return Object.keys(this.offlineFoodDatabase)
+                .filter(food => food.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, CONFIG.MAX_SUGGESTIONS)
+                .map(name => ({
+                    id: null,
+                    name: name,
+                    calories_per_unit: this.offlineFoodDatabase[name].calories,
+                    default_unit: this.offlineFoodDatabase[name].unit
+                }));
+        }
+    }
+
+    // Get food details by ID or name
+    async getFoodDetails(foodId = null, foodName = null) {
+        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
+            if (foodName && this.offlineFoodDatabase[foodName.toLowerCase()]) {
+                return {
+                    id: null,
+                    name: foodName,
+                    calories_per_unit: this.offlineFoodDatabase[foodName.toLowerCase()].calories,
+                    default_unit: this.offlineFoodDatabase[foodName.toLowerCase()].unit
+                };
+            }
+            return null;
+        }
+
+        try {
+            if (foodId) {
+                const response = await this.apiCall(`/foods/${foodId}`);
+                return response.success ? response.food : null;
+            } else if (foodName) {
+                const searchResponse = await this.apiCall(`/foods/search?q=${encodeURIComponent(foodName)}`);
+                const foods = searchResponse.success ? searchResponse.foods : [];
+                return foods.find(food => food.name.toLowerCase() === foodName.toLowerCase()) || null;
+            }
+        } catch (error) {
+            console.error('Error getting food details:', error);
+            return null;
         }
     }
 }

@@ -24,7 +24,7 @@ const CONFIG = {
     USER_STORAGE_KEY: 'calorieTrackerUser',
     
     // Development mode
-    DEVELOPMENT_MODE: true, // Set to true for offline testing
+    DEVELOPMENT_MODE: false, // Set to true for offline testing
     
     // Offline mode settings (when backend is not available)
     ENABLE_OFFLINE_MODE: true,
