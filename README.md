@@ -65,11 +65,11 @@ npm start
 Update `config.js` to point to your backend API:
 
 ```javascript
+```javascript
 const CONFIG = {
-    API_BASE_URL: 'https://your-api-domain.com/api',
+    API_BASE_URL: 'https://api.calorie-tracker.piogino.ch/api',
     DEVELOPMENT_MODE: false // Set to true for offline testing
 };
-```
 
 ## Deployment
 

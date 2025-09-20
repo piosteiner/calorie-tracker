@@ -1,7 +1,7 @@
 // Configuration for the Calorie Tracker app
 const CONFIG = {
     // API Configuration
-    API_BASE_URL: 'https://your-api-domain.com/api', // Replace with your actual API URL
+    API_BASE_URL: 'https://api.calorie-tracker.piogino.ch/api', // Production API URL
     
     // Local development (uncomment for local testing)
     // API_BASE_URL: 'http://localhost:3000/api',
