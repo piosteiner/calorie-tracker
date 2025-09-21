@@ -196,9 +196,11 @@ class CalorieTracker {
 
     // Search backend foods (includes Open Food Facts integration)
     async searchBackendFoods(query, limit = 10) {
+        console.log('🔍 searchBackendFoods called with query:', query, 'authToken:', !!this.authToken);
         try {
             // Only use backend API if user is authenticated
             if (this.authToken) {
+                console.log('🔑 User is authenticated, calling backend API...');
                 const response = await this.apiCall(`/external-foods/search?q=${encodeURIComponent(query)}&limit=${limit}&source=openfoodfacts`);
                 
                 if (response.success && response.foods) {
@@ -997,6 +999,18 @@ class CalorieTracker {
                     const externalResults = await this.searchBackendFoods(input, 8);
                     matches.push(...externalResults);
                     console.log('🌍 Found external results:', externalResults.length);
+                    
+                    // If backend didn't return results (e.g., not authenticated), try Open Food Facts directly
+                    if (externalResults.length === 0) {
+                        console.log('🔄 No backend results, trying Open Food Facts directly...');
+                        try {
+                            const directResults = await this.searchOpenFoodFacts(input, 8);
+                            matches.push(...directResults);
+                            console.log('🍎 Found direct Open Food Facts results:', directResults.length);
+                        } catch (directError) {
+                            console.log('❌ Direct Open Food Facts search failed:', directError);
+                        }
+                    }
 
                 } catch (backendError) {
                     console.log('❌ Backend search failed, trying direct Open Food Facts:', backendError);
