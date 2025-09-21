@@ -160,24 +160,26 @@ class CalorieTracker {
     // Search backend foods (includes Open Food Facts integration)
     async searchBackendFoods(query, limit = 10) {
         try {
-            // Use the external foods search endpoint
-            const response = await this.apiCall(`/external-foods/search?q=${encodeURIComponent(query)}&limit=${limit}&source=openfoodfacts`);
-            
-            if (response.success && response.foods) {
-                return response.foods.map(food => ({
-                    id: food.external_id || `off_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                    name: food.name,
-                    calories: food.calories_per_100g || food.calories,
-                    unit: '100g',
-                    brand: food.brand || '',
-                    source: 'Open Food Facts',
-                    // Additional nutrition data from backend
-                    protein: food.protein_per_100g || 0,
-                    carbs: food.carbs_per_100g || 0,
-                    fat: food.fat_per_100g || 0,
-                    fiber: food.fiber_per_100g || 0,
-                    cached: !!response.cached
-                }));
+            // Only use backend API if user is authenticated
+            if (this.authToken) {
+                const response = await this.apiCall(`/external-foods/search?q=${encodeURIComponent(query)}&limit=${limit}&source=openfoodfacts`);
+                
+                if (response.success && response.foods) {
+                    return response.foods.map(food => ({
+                        id: food.external_id || `off_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                        name: food.name,
+                        calories: food.calories_per_100g || food.calories,
+                        unit: '100g',
+                        brand: food.brand || '',
+                        source: 'Open Food Facts',
+                        // Additional nutrition data from backend
+                        protein: food.protein_per_100g || 0,
+                        carbs: food.carbs_per_100g || 0,
+                        fat: food.fat_per_100g || 0,
+                        fiber: food.fiber_per_100g || 0,
+                        cached: !!response.cached
+                    }));
+                }
             }
             return [];
         } catch (error) {
