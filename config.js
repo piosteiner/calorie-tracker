@@ -16,7 +16,7 @@ const CONFIG = {
     AUTO_SAVE_INTERVAL: 30000, // 30 seconds
     
     // Food suggestions limit
-    MAX_SUGGESTIONS: 5,
+    MAX_SUGGESTIONS: 10,
     MIN_SEARCH_LENGTH: 2,
     
     // Session settings

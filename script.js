@@ -44,7 +44,17 @@ class CalorieTracker {
             'tomato': { id: 17, calories: 22, unit: 'medium' },
             'avocado': { id: 18, calories: 234, unit: 'piece' },
             'oatmeal': { id: 19, calories: 147, unit: 'cup' },
-            'peanut butter': { id: 20, calories: 188, unit: '2 tbsp' }
+            'peanut butter': { id: 20, calories: 188, unit: '2 tbsp' },
+            'lasagna': { id: 21, calories: 320, unit: 'serving' },
+            'lasagne': { id: 22, calories: 320, unit: 'serving' },
+            'meat lasagna': { id: 23, calories: 350, unit: 'serving' },
+            'vegetable lasagna': { id: 24, calories: 280, unit: 'serving' },
+            'beef lasagna': { id: 25, calories: 365, unit: 'serving' },
+            'cheese lasagna': { id: 26, calories: 300, unit: 'serving' },
+            'pizza': { id: 27, calories: 285, unit: 'slice' },
+            'hamburger': { id: 28, calories: 540, unit: 'piece' },
+            'french fries': { id: 29, calories: 365, unit: 'medium' },
+            'chocolate': { id: 30, calories: 546, unit: '100g' }
         };
         
         // Open Food Facts API integration
@@ -954,12 +964,17 @@ class CalorieTracker {
             } else {
                 // Development mode - still provide Open Food Facts access
                 try {
+                    console.log('Development mode: searching Open Food Facts for:', input);
                     const directResults = await this.searchOpenFoodFacts(input, 8);
+                    console.log('Open Food Facts results:', directResults);
                     matches.push(...directResults);
                 } catch (error) {
                     console.log('Open Food Facts search failed in development mode:', error);
                 }
             }
+
+            console.log('Total matches found:', matches.length);
+            console.log('All matches:', matches);
 
             // Remove duplicates based on name and normalize results
             const uniqueMatches = [];
