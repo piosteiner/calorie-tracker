@@ -78,20 +78,29 @@ class CalorieTracker {
     async searchOpenFoodFacts(query, limit = 10) {
         if (!query || query.length < 2) return [];
         
+        console.log('🔍 searchOpenFoodFacts called with:', query, 'limit:', limit);
+        
         // Check cache first
         const cacheKey = `search_${query.toLowerCase()}_${limit}`;
         if (this.openFoodFactsCache.has(cacheKey)) {
+            console.log('💾 Using cached Open Food Facts results for:', query);
             return this.openFoodFactsCache.get(cacheKey);
         }
         
         try {
             const url = `${this.openFoodFactsAPI.baseURL}${this.openFoodFactsAPI.searchURL}?search_terms=${encodeURIComponent(query)}&page_size=${limit}&json=1&fields=product_name,nutriments,quantity,brands,countries`;
+            console.log('🌐 Fetching from Open Food Facts URL:', url);
             
             const response = await fetch(url);
-            if (!response.ok) throw new Error('API request failed');
+            console.log('📡 Open Food Facts response status:', response.status, response.ok);
+            
+            if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
             
             const data = await response.json();
+            console.log('📊 Open Food Facts raw data:', data);
+            
             const foods = this.processOpenFoodFactsResults(data.products || []);
+            console.log('🍎 Processed Open Food Facts foods:', foods);
             
             // Cache results for 10 minutes
             this.openFoodFactsCache.set(cacheKey, foods);
@@ -99,7 +108,7 @@ class CalorieTracker {
             
             return foods;
         } catch (error) {
-            console.error('Open Food Facts search error:', error);
+            console.error('❌ Open Food Facts search error:', error);
             return [];
         }
     }
@@ -920,10 +929,12 @@ class CalorieTracker {
     }
 
     async showFoodSuggestions(input) {
+        console.log('🔍 showFoodSuggestions called with input:', input);
         const suggestionsDiv = document.getElementById('foodSuggestions');
         this.isSearching = true;
         
         if (input.length < CONFIG.MIN_SEARCH_LENGTH) {
+            console.log('❌ Input too short, hiding suggestions');
             this.hideFoodSuggestions();
             this.isSearching = false;
             return;
@@ -931,44 +942,51 @@ class CalorieTracker {
 
         try {
             let matches = [];
+            console.log('📊 Starting search with online status:', this.isOnline, 'development mode:', CONFIG.DEVELOPMENT_MODE);
 
             // 1. Always search favorites first (instant results)
             const favorites = this.getFavorites().filter(food => 
                 food.name.toLowerCase().includes(input.toLowerCase())
             );
             matches.push(...favorites.slice(0, 2).map(food => ({...food, source: `⭐ ${food.source}`})));
+            console.log('⭐ Found favorites:', favorites.length);
 
             // 2. Search offline database (instant results)
             const offlineResults = this.searchOfflineDatabase(input);
             matches.push(...offlineResults.slice(0, 2).map(food => ({...food, source: 'Offline Database'})));
+            console.log('💾 Found offline results:', offlineResults.length);
 
             // 3. Search backend for comprehensive results
-            if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+            if (false) { // Temporarily disabled to test Open Food Facts directly
+                console.log('🌐 Attempting backend search...');
                 try {
                     // Search local foods in backend database
                     const localResults = await this.searchLocalFoods(input, 3);
                     matches.push(...localResults);
+                    console.log('🏠 Found local results:', localResults.length);
 
                     // Search external foods (cached + Open Food Facts with Swiss priority)
                     const externalResults = await this.searchBackendFoods(input, 8);
                     matches.push(...externalResults);
+                    console.log('🌍 Found external results:', externalResults.length);
 
                 } catch (backendError) {
-                    console.log('Backend search failed, trying direct Open Food Facts:', backendError);
+                    console.log('❌ Backend search failed, trying direct Open Food Facts:', backendError);
                     // Fallback to direct Open Food Facts for comprehensive coverage
                     try {
                         const directResults = await this.searchOpenFoodFacts(input, 8);
                         matches.push(...directResults);
+                        console.log('🍎 Found direct Open Food Facts results:', directResults.length);
                     } catch (directError) {
-                        console.log('Direct Open Food Facts search failed:', directError);
+                        console.log('❌ Direct Open Food Facts search failed:', directError);
                     }
                 }
             } else {
-                // Development mode - still provide Open Food Facts access
+                // Force Open Food Facts search for testing
+                console.log('🔧 Testing direct Open Food Facts search for:', input);
                 try {
-                    console.log('Development mode: searching Open Food Facts for:', input);
                     const directResults = await this.searchOpenFoodFacts(input, 8);
-                    console.log('Open Food Facts results:', directResults);
+                    console.log('🍎 Open Food Facts results:', directResults);
                     matches.push(...directResults);
                 } catch (error) {
                     console.log('Open Food Facts search failed in development mode:', error);
