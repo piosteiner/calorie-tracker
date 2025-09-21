@@ -1247,3 +1247,55 @@ body {
 .data-sources-modal .attribution-note a {
     color: #667eea;
 }
+
+/* External Food Stats in Admin Panel */
+.external-food-stats-container {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.external-food-stats h4 {
+    margin: 0 0 20px 0;
+    color: #495057;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.external-food-stats h5 {
+    margin: 15px 0 10px 0;
+    color: #6c757d;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.external-food-stats .stats-section {
+    margin-bottom: 20px;
+}
+
+.external-food-stats .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 5px 0;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.external-food-stats .stat-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.external-food-stats .stat-value {
+    font-family: monospace;
+    font-size: 13px;
+    color: #667eea;
+    font-weight: 600;
+}

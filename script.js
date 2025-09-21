@@ -119,7 +119,7 @@ class CalorieTracker {
             .slice(0, 10); // Limit results
     }
 
-    // Combined search: offline + Open Food Facts
+    // Combined search: offline + backend (which includes Open Food Facts)
     async searchAllFoods(query) {
         const results = [];
         
@@ -127,17 +127,53 @@ class CalorieTracker {
         const offlineResults = this.searchOfflineDatabase(query);
         results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
         
-        // 2. Search Open Food Facts (if online)
-        if (this.isOnline && navigator.onLine) {
+        // 2. Search backend (which includes Open Food Facts) if online
+        if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
             try {
-                const onlineResults = await this.searchOpenFoodFacts(query, 8);
-                results.push(...onlineResults);
+                const backendResults = await this.searchBackendFoods(query, 8);
+                results.push(...backendResults);
             } catch (error) {
-                console.log('Online search failed, using offline only');
+                console.log('Backend search failed, trying direct Open Food Facts:', error);
+                // Fallback to direct Open Food Facts API if backend is unavailable
+                try {
+                    const directResults = await this.searchOpenFoodFacts(query, 6);
+                    results.push(...directResults);
+                } catch (directError) {
+                    console.log('Direct Open Food Facts search also failed, using offline only');
+                }
             }
         }
         
         return results;
+    }
+
+    // Search backend foods (includes Open Food Facts integration)
+    async searchBackendFoods(query, limit = 10) {
+        try {
+            // Use the external foods search endpoint
+            const response = await this.apiCall(`/external-foods/search?q=${encodeURIComponent(query)}&limit=${limit}&source=openfoodfacts`);
+            
+            if (response.success && response.foods) {
+                return response.foods.map(food => ({
+                    id: food.external_id || `off_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    name: food.name,
+                    calories: food.calories_per_100g || food.calories,
+                    unit: '100g',
+                    brand: food.brand || '',
+                    source: 'Open Food Facts',
+                    // Additional nutrition data from backend
+                    protein: food.protein_per_100g || 0,
+                    carbs: food.carbs_per_100g || 0,
+                    fat: food.fat_per_100g || 0,
+                    fiber: food.fiber_per_100g || 0,
+                    cached: !!response.cached
+                }));
+            }
+            return [];
+        } catch (error) {
+            console.error('Backend food search error:', error);
+            return [];
+        }
     }
 
     // Search offline database
@@ -594,6 +630,7 @@ class CalorieTracker {
             // Calculate calories based on food data
             const calories = this.calculateCalories(foodData.calories, quantity, unit, foodData.unit);
             
+            // Create food entry (hybrid approach - always store locally first)
             const foodEntry = {
                 id: Date.now(),
                 name: foodData.name,
@@ -603,39 +640,40 @@ class CalorieTracker {
                 timestamp: new Date().toLocaleTimeString(),
                 source: foodData.source,
                 brand: foodData.brand || '',
+                external_food_id: foodData.id || null, // Store Open Food Facts ID for sync
                 // Store additional nutrition data if available
                 protein: foodData.protein ? Math.round((foodData.protein / 100) * quantity) : 0,
                 carbs: foodData.carbs ? Math.round((foodData.carbs / 100) * quantity) : 0,
                 fat: foodData.fat ? Math.round((foodData.fat / 100) * quantity) : 0
             };
 
+            // Add to local storage immediately (hybrid approach)
             this.foodLog.push(foodEntry);
             this.dailyCalories += calories;
             
             // Add to favorites (automatically tracks usage)
             this.addToFavorites(foodData);
             
-            // Add to sync queue if it's from external source
-            if (foodData.source === 'Open Food Facts' && this.isOnline) {
-                this.addToSyncQueue('add_external_food', {
-                    name: foodData.name,
-                    quantity: quantity,
-                    unit: unit,
-                    calories: calories,
-                    source: foodData.source,
-                    brand: foodData.brand,
-                    localId: foodEntry.id
-                });
-            } else if (foodData.source === 'Offline Database') {
-                // Add to sync queue for offline food
-                this.addToSyncQueue('add_food', {
-                    name: foodData.name,
-                    quantity: quantity,
-                    unit: unit,
-                    calories: calories,
-                    localId: foodEntry.id
-                });
+            // Add to sync queue for ALL foods (maintaining hybrid approach)
+            const syncData = {
+                name: foodData.name,
+                quantity: quantity,
+                unit: unit,
+                calories: calories,
+                localId: foodEntry.id,
+                source: foodData.source
+            };
+
+            // Include Open Food Facts specific data for backend sync
+            if (foodData.source === 'Open Food Facts') {
+                syncData.external_food_id = foodData.id;
+                syncData.brand = foodData.brand || '';
+                syncData.protein = foodEntry.protein;
+                syncData.carbs = foodEntry.carbs;
+                syncData.fat = foodEntry.fat;
             }
+
+            this.addToSyncQueue('add_food', syncData);
             
             this.updateDashboard();
             this.updateFoodLog();
@@ -1147,14 +1185,32 @@ class CalorieTracker {
             return;
         }
 
-        await this.apiCall('/logs', 'POST', {
-            foodId: foodData.foodId || null,
-            name: foodData.name,
-            quantity: foodData.quantity,
-            unit: foodData.unit,
-            calories: foodData.calories,
-            logDate: new Date().toISOString().split('T')[0]
-        });
+        // Handle Open Food Facts items differently
+        if (foodData.source === 'Open Food Facts' && foodData.external_food_id) {
+            // Log to external foods endpoint with full nutrition data
+            await this.apiCall('/external-foods/log', 'POST', {
+                external_food_id: foodData.external_food_id,
+                name: foodData.name,
+                brand: foodData.brand || '',
+                quantity: foodData.quantity,
+                unit: foodData.unit,
+                calories: foodData.calories,
+                protein: foodData.protein || 0,
+                carbs: foodData.carbs || 0,
+                fat: foodData.fat || 0,
+                localId: foodData.localId
+            });
+        } else {
+            // Regular food sync to existing endpoint
+            await this.apiCall('/logs', 'POST', {
+                foodId: foodData.foodId || null,
+                name: foodData.name,
+                quantity: foodData.quantity,
+                unit: foodData.unit,
+                calories: foodData.calories,
+                logDate: new Date().toISOString().split('T')[0]
+            });
+        }
     }
 
     // Sync food deletion to server
@@ -1309,9 +1365,16 @@ class CalorieTracker {
                 totalFoods: 125,
                 totalLogs: 1247,
                 todaysLogs: 23,
-                activeUsers: 8
+                activeUsers: 8,
+                // External food stats (demo)
+                externalFoods: {
+                    openFoodFactsUsage: 89,
+                    cachedFoods: 156,
+                    uniqueExternalFoods: 45
+                }
             };
             this.updateAdminStatsDisplay();
+            await this.loadExternalFoodStats(); // Load external food stats
             return;
         }
 
@@ -1320,9 +1383,80 @@ class CalorieTracker {
             const response = await this.apiCall('/admin/stats');
             this.adminData.stats = response;
             this.updateAdminStatsDisplay();
+            await this.loadExternalFoodStats(); // Load external food stats
         } catch (error) {
             this.showMessage('Failed to load admin statistics', 'error');
         }
+    }
+
+    // Load external food statistics
+    async loadExternalFoodStats() {
+        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
+            // Demo data for external foods
+            this.adminData.externalFoodStats = {
+                usage_stats: [
+                    { source_name: 'Open Food Facts', unique_foods: 45, total_logs: 89, total_calories: 12450 }
+                ],
+                cache_stats: [
+                    { source_name: 'Open Food Facts', cached_foods: 156, total_usage: 234 }
+                ]
+            };
+            this.updateExternalFoodStatsDisplay();
+            return;
+        }
+
+        try {
+            const response = await this.apiCall('/admin/external-foods/stats');
+            if (response.success) {
+                this.adminData.externalFoodStats = response;
+                this.updateExternalFoodStatsDisplay();
+            }
+        } catch (error) {
+            console.log('External food stats not available:', error);
+            // This is okay - external food stats are optional
+        }
+    }
+
+    // Update external food stats display
+    updateExternalFoodStatsDisplay() {
+        const statsContainer = document.getElementById('externalFoodStats');
+        if (!statsContainer || !this.adminData.externalFoodStats) return;
+
+        const { usage_stats, cache_stats } = this.adminData.externalFoodStats;
+        
+        let html = '<div class="external-food-stats">';
+        html += '<h4>🌐 External Food Sources</h4>';
+        
+        if (usage_stats && usage_stats.length > 0) {
+            html += '<div class="stats-section">';
+            html += '<h5>Usage Statistics</h5>';
+            usage_stats.forEach(stat => {
+                html += `
+                    <div class="stat-item">
+                        <span class="stat-label">${stat.source_name}</span>
+                        <span class="stat-value">${stat.unique_foods} foods, ${stat.total_logs} logs</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        if (cache_stats && cache_stats.length > 0) {
+            html += '<div class="stats-section">';
+            html += '<h5>Cache Performance</h5>';
+            cache_stats.forEach(stat => {
+                html += `
+                    <div class="stat-item">
+                        <span class="stat-label">${stat.source_name} Cache</span>
+                        <span class="stat-value">${stat.cached_foods} cached, ${stat.total_usage} hits</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        statsContainer.innerHTML = html;
     }
 
     // Update admin stats display
