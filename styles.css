@@ -188,6 +188,7 @@ body {
 .input-group {
     margin-bottom: 20px;
     text-align: left;
+    position: relative; /* Required for absolute positioning of suggestions */
 }
 
 .input-group label {

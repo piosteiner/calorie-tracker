@@ -115,27 +115,55 @@ class CalorieTracker {
 
     // Process Open Food Facts API results
     processOpenFoodFactsResults(products) {
-        return products
-            .filter(product => 
-                product.product_name && 
-                product.nutriments && 
-                product.nutriments['energy-kcal_100g']
-            )
-            .map(product => ({
-                id: `off_${product._id || Math.random().toString(36).substr(2, 9)}`,
-                name: product.product_name,
-                calories: Math.round(product.nutriments['energy-kcal_100g'] || 0),
-                unit: '100g',
-                brand: product.brands ? product.brands.split(',')[0].trim() : '',
-                countries: product.countries || '',
-                source: 'Open Food Facts',
-                // Additional nutrition data
-                protein: product.nutriments.proteins_100g || 0,
-                carbs: product.nutriments.carbohydrates_100g || 0,
-                fat: product.nutriments.fat_100g || 0,
-                fiber: product.nutriments.fiber_100g || 0
-            }))
-            .slice(0, 10); // Limit results
+        console.log('🔍 Processing', products.length, 'Open Food Facts products');
+        const processed = products
+            .filter(product => {
+                const hasName = product.product_name;
+                const hasNutriments = product.nutriments;
+                const hasCalories = product.nutriments && (
+                    product.nutriments['energy-kcal_100g'] || 
+                    product.nutriments['energy_100g'] || 
+                    product.nutriments['energy-kcal'] ||
+                    product.nutriments.energy_100g ||
+                    product.nutriments.energy_kcal_100g
+                );
+                
+                console.log('🥗 Product:', product.product_name, {
+                    hasName,
+                    hasNutriments,
+                    hasCalories,
+                    nutriments: product.nutriments ? Object.keys(product.nutriments).filter(k => k.includes('energy') || k.includes('kcal')) : []
+                });
+                
+                return hasName && hasNutriments && hasCalories;
+            })
+            .map(product => {
+                // Try multiple calorie field names
+                const calories = product.nutriments['energy-kcal_100g'] || 
+                               product.nutriments['energy_100g'] || 
+                               product.nutriments['energy-kcal'] ||
+                               product.nutriments.energy_100g ||
+                               product.nutriments.energy_kcal_100g ||
+                               0;
+                
+                return {
+                    id: `off_${product._id || Math.random().toString(36).substr(2, 9)}`,
+                    name: product.product_name,
+                    calories: Math.round(calories),
+                    unit: '100g',
+                    brand: product.brands ? product.brands.split(',')[0].trim() : '',
+                    countries: product.countries || '',
+                    source: 'Open Food Facts',
+                    // Additional nutrition data
+                    protein: product.nutriments.proteins_100g || 0,
+                    carbs: product.nutriments.carbohydrates_100g || 0,
+                    fat: product.nutriments.fat_100g || 0,
+                    fiber: product.nutriments.fiber_100g || 0
+                };
+            });
+        
+        console.log('✅ Processed', processed.length, 'valid Open Food Facts products');
+        return processed.slice(0, 10); // Limit results
     }
 
     // Combined search: offline + backend (which includes Open Food Facts)
@@ -957,7 +985,7 @@ class CalorieTracker {
             console.log('💾 Found offline results:', offlineResults.length);
 
             // 3. Search backend for comprehensive results
-            if (false) { // Temporarily disabled to test Open Food Facts directly
+            if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
                 console.log('🌐 Attempting backend search...');
                 try {
                     // Search local foods in backend database
@@ -982,8 +1010,8 @@ class CalorieTracker {
                     }
                 }
             } else {
-                // Force Open Food Facts search for testing
-                console.log('🔧 Testing direct Open Food Facts search for:', input);
+                // Development mode or offline - still provide Open Food Facts access
+                console.log('🔧 Development/offline mode: searching Open Food Facts for:', input);
                 try {
                     const directResults = await this.searchOpenFoodFacts(input, 8);
                     console.log('🍎 Open Food Facts results:', directResults);
@@ -1021,10 +1049,13 @@ class CalorieTracker {
 
     // Display food suggestions with enhanced formatting
     displayFoodSuggestions(matches, input) {
+        console.log('🎨 displayFoodSuggestions called with', matches.length, 'matches');
         const suggestionsDiv = document.getElementById('foodSuggestions');
+        console.log('📦 suggestionsDiv element:', suggestionsDiv);
         this.selectedSuggestionIndex = -1; // Reset keyboard selection
 
         if (matches.length === 0) {
+            console.log('❌ No matches, showing no results message');
             suggestionsDiv.innerHTML = `
                 <div class="suggestion-item no-results">
                     No foods found for "${input}". 
@@ -1034,6 +1065,8 @@ class CalorieTracker {
             setTimeout(() => this.hideFoodSuggestions(), 4000);
             return;
         }
+
+        console.log('✅ Building suggestions HTML for', matches.length, 'matches');
 
         // Create enhanced suggestions with comprehensive info
         const suggestions = matches.slice(0, CONFIG.MAX_SUGGESTIONS || 10).map(food => {
@@ -1074,7 +1107,10 @@ class CalorieTracker {
         ` : '';
 
         suggestionsDiv.innerHTML = suggestions + resultInfo + attribution;
+        console.log('🖼️ Setting innerHTML and making suggestions visible');
+        console.log('📝 Final HTML length:', (suggestions + resultInfo + attribution).length);
         suggestionsDiv.style.display = 'block';
+        console.log('👁️ Set suggestionsDiv display to block');
     }
 
     // Helper methods for food suggestions display
@@ -1116,6 +1152,8 @@ class CalorieTracker {
     }
 
     hideFoodSuggestions() {
+        console.log('🚫 hideFoodSuggestions called - hiding suggestions');
+        console.trace('📍 Called from:');
         document.getElementById('foodSuggestions').style.display = 'none';
         this.selectedSuggestionIndex = -1; // Reset keyboard selection
     }
