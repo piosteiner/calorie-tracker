@@ -128,4 +128,37 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// Update daily calorie goal (specific endpoint for frontend)
+router.put('/goal', [
+    body('dailyCalorieGoal').isInt({ min: 1000, max: 5000 }).withMessage('Daily calorie goal must be between 1000-5000')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: errors.array()
+            });
+        }
+
+        const { dailyCalorieGoal } = req.body;
+
+        await db.query(
+            'UPDATE users SET daily_calorie_goal = ? WHERE id = ?',
+            [dailyCalorieGoal, req.user.id]
+        );
+
+        res.json({
+            success: true,
+            message: 'Daily calorie goal updated',
+            dailyCalorieGoal
+        });
+    } catch (error) {
+        console.error('Update calorie goal error:', error);
+        res.status(500).json({
+            error: 'Failed to update daily calorie goal'
+        });
+    }
+});
+
 module.exports = router;

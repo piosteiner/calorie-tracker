@@ -22,11 +22,31 @@ router.get('/', [
         }
 
         const date = req.query.date || new Date().toISOString().split('T')[0];
-        const logs = await db.getFoodLogsByDate(req.user.id, date);
+        
+        // Enhanced query to support hybrid storage
+        const logs = await db.query(`
+            SELECT 
+                fl.id,
+                COALESCE(fl.food_name, f.name) as food_name,
+                fl.quantity,
+                fl.unit,
+                fl.calories,
+                fl.logged_at as created_at,
+                fl.logged_at as updated_at,
+                fl.log_date
+            FROM food_logs fl
+            LEFT JOIN foods f ON fl.food_id = f.id
+            WHERE fl.user_id = ? AND fl.log_date = ?
+            ORDER BY fl.logged_at DESC
+        `, [req.user.id, date]);
+
+        // Calculate total calories for the day
+        const totalCalories = logs.reduce((sum, log) => sum + parseFloat(log.calories), 0);
         
         res.json({
             success: true,
             logs,
+            totalCalories,
             date
         });
     } catch (error) {
@@ -39,7 +59,8 @@ router.get('/', [
 
 // Add food log entry
 router.post('/', [
-    body('foodId').isInt({ min: 1 }).withMessage('Valid food ID is required'),
+    body('foodId').optional().isInt({ min: 1 }).withMessage('Food ID must be a positive integer'),
+    body('name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Food name must be 1-100 characters'),
     body('quantity').isFloat({ min: 0.1 }).withMessage('Quantity must be at least 0.1'),
     body('unit').trim().isLength({ min: 1, max: 20 }).withMessage('Unit is required (1-20 characters)'),
     body('calories').isFloat({ min: 0 }).withMessage('Calories must be a positive number'),
@@ -54,18 +75,44 @@ router.post('/', [
             });
         }
 
-        const { foodId, quantity, unit, calories } = req.body;
+        const { foodId, name, quantity, unit, calories } = req.body;
         const logDate = req.body.logDate || new Date().toISOString().split('T')[0];
 
-        // Verify food exists
-        const food = await db.getFoodById(foodId);
-        if (!food) {
-            return res.status(404).json({
-                error: 'Food not found'
+        // Validate that either foodId or name is provided
+        if (!foodId && !name) {
+            return res.status(400).json({
+                error: 'Either foodId or name must be provided'
             });
         }
 
-        const result = await db.createFoodLog(req.user.id, foodId, quantity, unit, calories, logDate);
+        let finalFoodId = foodId;
+        let foodName = name;
+
+        // If foodId is provided, verify it exists and get the name
+        if (foodId) {
+            const food = await db.getFoodById(foodId);
+            if (!food) {
+                return res.status(404).json({
+                    error: 'Food not found'
+                });
+            }
+            foodName = food.name;
+        } else {
+            // If only name is provided, try to find existing food or create a custom entry
+            const existingFood = await db.query('SELECT * FROM foods WHERE name = ? LIMIT 1', [name]);
+            if (existingFood.length > 0) {
+                finalFoodId = existingFood[0].id;
+            } else {
+                // For hybrid storage, we'll use a null foodId and store the name directly
+                finalFoodId = null;
+            }
+        }
+
+        // Create the food log entry with enhanced data
+        const result = await db.query(`
+            INSERT INTO food_logs (user_id, food_id, food_name, quantity, unit, calories, log_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate]);
         
         res.status(201).json({
             success: true,
@@ -132,14 +179,8 @@ router.get('/summary', [
         
         res.json({
             success: true,
-            summary: {
-                date,
-                totalCalories: summary.total_calories || 0,
-                mealsCount: summary.meals_count || 0,
-                dailyGoal: req.user.dailyCalorieGoal,
-                percentageOfGoal: summary.total_calories ? 
-                    Math.round((summary.total_calories / req.user.dailyCalorieGoal) * 100) : 0
-            }
+            summary,
+            date
         });
     } catch (error) {
         console.error('Get daily summary error:', error);

@@ -92,7 +92,6 @@ router.post('/', [
         }
 
         const { name, caloriesPerUnit, defaultUnit, category, brand } = req.body;
-
         const result = await db.createFood(name, caloriesPerUnit, defaultUnit, category, brand);
         
         res.status(201).json({
