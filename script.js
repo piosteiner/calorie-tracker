@@ -668,9 +668,11 @@ class CalorieTracker {
             if (foodData.source === 'Open Food Facts') {
                 syncData.external_food_id = foodData.id;
                 syncData.brand = foodData.brand || '';
-                syncData.protein = foodEntry.protein;
-                syncData.carbs = foodEntry.carbs;
-                syncData.fat = foodEntry.fat;
+                // Send raw per-100g values (not calculated for quantity)
+                syncData.protein_per_100g = foodData.protein || 0;
+                syncData.carbs_per_100g = foodData.carbs || 0;
+                syncData.fat_per_100g = foodData.fat || 0;
+                syncData.fiber_per_100g = foodData.fiber || 0;
             }
 
             this.addToSyncQueue('add_food', syncData);
@@ -1195,9 +1197,11 @@ class CalorieTracker {
                 quantity: foodData.quantity,
                 unit: foodData.unit,
                 calories: foodData.calories,
-                protein: foodData.protein || 0,
-                carbs: foodData.carbs || 0,
-                fat: foodData.fat || 0,
+                protein_per_100g: foodData.protein_per_100g || 0,
+                carbs_per_100g: foodData.carbs_per_100g || 0,
+                fat_per_100g: foodData.fat_per_100g || 0,
+                fiber_per_100g: foodData.fiber_per_100g || 0,
+                source: foodData.source,
                 localId: foodData.localId
             });
         } else {

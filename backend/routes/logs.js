@@ -27,7 +27,7 @@ router.get('/', [
         const logs = await db.query(`
             SELECT 
                 fl.id,
-                COALESCE(fl.food_name, f.name) as food_name,
+                COALESCE(fl.name, f.name) as food_name,
                 fl.quantity,
                 fl.unit,
                 fl.calories,
@@ -110,7 +110,7 @@ router.post('/', [
 
         // Create the food log entry with enhanced data
         const result = await db.query(`
-            INSERT INTO food_logs (user_id, food_id, food_name, quantity, unit, calories, log_date) 
+            INSERT INTO food_logs (user_id, food_id, name, quantity, unit, calories, log_date) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate]);
         
