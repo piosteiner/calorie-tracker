@@ -82,7 +82,13 @@
 
                 <!-- Add Food Section -->
                 <div class="add-food-card">
-                    <h3>Log Food</h3>
+                    <div class="card-header-with-info">
+                        <h3>Log Food</h3>
+                        <button type="button" class="info-button" onclick="app.showDataSourcesInfo()" title="Learn about our food databases">
+                            <span class="info-icon">ℹ️</span>
+                            <span class="info-text">Data Sources</span>
+                        </button>
+                    </div>
                     <form id="foodForm">
                         <div class="form-row">
                             <div class="input-group">
@@ -218,6 +224,34 @@
                 </div>
             </div>
         </main>
+        
+        <!-- Footer with Data Attribution -->
+        <footer class="app-footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="data-sources">
+                        <h4>🌐 Data Sources</h4>
+                        <p>
+                            Nutrition data powered by 
+                            <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">
+                                <strong>Open Food Facts</strong>
+                            </a> - 
+                            A collaborative, free and open database of food products from around the world.
+                        </p>
+                        <p class="swiss-note">
+                            🇨🇭 Including Swiss products from Migros, Coop, and other local brands.
+                        </p>
+                    </div>
+                    <div class="footer-links">
+                        <a href="https://world.openfoodfacts.org/discover" target="_blank" rel="noopener">About Open Food Facts</a>
+                        <span>•</span>
+                        <a href="javascript:void(0)" onclick="app.showDataSourcesInfo()">Data Sources Info</a>
+                        <span>•</span>
+                        <span class="footer-version">v1.2.0</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script src="config.js"></script>

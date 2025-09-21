@@ -47,7 +47,214 @@ class CalorieTracker {
             'peanut butter': { id: 20, calories: 188, unit: '2 tbsp' }
         };
         
+        // Open Food Facts API integration
+        this.openFoodFactsCache = new Map();
+        this.setupOpenFoodFacts();
+        this.loadCachedFoods();
+        
         this.init();
+    }
+
+    // Open Food Facts API methods
+    setupOpenFoodFacts() {
+        this.openFoodFactsAPI = {
+            baseURL: 'https://world.openfoodfacts.org',
+            searchURL: '/cgi/search.pl',
+            productURL: '/api/v0/product'
+        };
+    }
+
+    // Search foods from Open Food Facts
+    async searchOpenFoodFacts(query, limit = 10) {
+        if (!query || query.length < 2) return [];
+        
+        // Check cache first
+        const cacheKey = `search_${query.toLowerCase()}_${limit}`;
+        if (this.openFoodFactsCache.has(cacheKey)) {
+            return this.openFoodFactsCache.get(cacheKey);
+        }
+        
+        try {
+            const url = `${this.openFoodFactsAPI.baseURL}${this.openFoodFactsAPI.searchURL}?search_terms=${encodeURIComponent(query)}&page_size=${limit}&json=1&fields=product_name,nutriments,quantity,brands,countries`;
+            
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('API request failed');
+            
+            const data = await response.json();
+            const foods = this.processOpenFoodFactsResults(data.products || []);
+            
+            // Cache results for 10 minutes
+            this.openFoodFactsCache.set(cacheKey, foods);
+            setTimeout(() => this.openFoodFactsCache.delete(cacheKey), 10 * 60 * 1000);
+            
+            return foods;
+        } catch (error) {
+            console.error('Open Food Facts search error:', error);
+            return [];
+        }
+    }
+
+    // Process Open Food Facts API results
+    processOpenFoodFactsResults(products) {
+        return products
+            .filter(product => 
+                product.product_name && 
+                product.nutriments && 
+                product.nutriments['energy-kcal_100g']
+            )
+            .map(product => ({
+                id: `off_${product._id || Math.random().toString(36).substr(2, 9)}`,
+                name: product.product_name,
+                calories: Math.round(product.nutriments['energy-kcal_100g'] || 0),
+                unit: '100g',
+                brand: product.brands ? product.brands.split(',')[0].trim() : '',
+                countries: product.countries || '',
+                source: 'Open Food Facts',
+                // Additional nutrition data
+                protein: product.nutriments.proteins_100g || 0,
+                carbs: product.nutriments.carbohydrates_100g || 0,
+                fat: product.nutriments.fat_100g || 0,
+                fiber: product.nutriments.fiber_100g || 0
+            }))
+            .slice(0, 10); // Limit results
+    }
+
+    // Combined search: offline + Open Food Facts
+    async searchAllFoods(query) {
+        const results = [];
+        
+        // 1. Search offline database first (fast)
+        const offlineResults = this.searchOfflineDatabase(query);
+        results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
+        
+        // 2. Search Open Food Facts (if online)
+        if (this.isOnline && navigator.onLine) {
+            try {
+                const onlineResults = await this.searchOpenFoodFacts(query, 8);
+                results.push(...onlineResults);
+            } catch (error) {
+                console.log('Online search failed, using offline only');
+            }
+        }
+        
+        return results;
+    }
+
+    // Search offline database
+    searchOfflineDatabase(query) {
+        const searchTerm = query.toLowerCase();
+        return Object.entries(this.offlineFoodDatabase)
+            .filter(([name]) => name.toLowerCase().includes(searchTerm))
+            .map(([name, data]) => ({
+                id: `offline_${data.id}`,
+                name: name,
+                calories: data.calories,
+                unit: data.unit
+            }));
+    }
+
+    // Enhanced caching system for food searches
+    loadCachedFoods() {
+        try {
+            const cached = localStorage.getItem('foodSearchCache');
+            if (cached) {
+                const cacheData = JSON.parse(cached);
+                // Only load cache if it's less than 24 hours old
+                if (Date.now() - cacheData.timestamp < 24 * 60 * 60 * 1000) {
+                    cacheData.searches.forEach(search => {
+                        this.openFoodFactsCache.set(search.key, search.results);
+                    });
+                    console.log(`Loaded ${cacheData.searches.length} cached food searches`);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading cached foods:', error);
+        }
+    }
+
+    saveCacheToStorage() {
+        try {
+            const cacheData = {
+                timestamp: Date.now(),
+                searches: Array.from(this.openFoodFactsCache.entries()).map(([key, results]) => ({
+                    key,
+                    results
+                }))
+            };
+            localStorage.setItem('foodSearchCache', JSON.stringify(cacheData));
+        } catch (error) {
+            console.error('Error saving food cache:', error);
+        }
+    }
+
+    // Add frequently used foods to persistent cache
+    addToFavorites(foodData) {
+        try {
+            const favorites = this.getFavorites();
+            const existing = favorites.find(f => f.name === foodData.name && f.source === foodData.source);
+            
+            if (!existing) {
+                favorites.push({
+                    ...foodData,
+                    addedAt: Date.now(),
+                    usageCount: 1
+                });
+            } else {
+                existing.usageCount++;
+                existing.lastUsed = Date.now();
+            }
+            
+            // Keep only top 50 favorites
+            favorites.sort((a, b) => b.usageCount - a.usageCount);
+            const topFavorites = favorites.slice(0, 50);
+            
+            localStorage.setItem('favoritesFoods', JSON.stringify(topFavorites));
+        } catch (error) {
+            console.error('Error adding to favorites:', error);
+        }
+    }
+
+    getFavorites() {
+        try {
+            const favorites = localStorage.getItem('favoritesFoods');
+            return favorites ? JSON.parse(favorites) : [];
+        } catch (error) {
+            console.error('Error getting favorites:', error);
+            return [];
+        }
+    }
+
+    // Enhanced search with favorites priority
+    async searchAllFoodsWithFavorites(query) {
+        const results = [];
+        const searchTerm = query.toLowerCase();
+        
+        // 1. Search favorites first (instant)
+        const favorites = this.getFavorites().filter(food => 
+            food.name.toLowerCase().includes(searchTerm)
+        );
+        results.push(...favorites.slice(0, 3).map(food => ({...food, source: `⭐ ${food.source}`})));
+        
+        // 2. Search offline database
+        const offlineResults = this.searchOfflineDatabase(query);
+        results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
+        
+        // 3. Search Open Food Facts (if online and not enough results)
+        if (this.isOnline && navigator.onLine && results.length < 8) {
+            try {
+                const onlineResults = await this.searchOpenFoodFacts(query, 8 - results.length);
+                results.push(...onlineResults);
+                
+                // Save cache periodically
+                if (onlineResults.length > 0) {
+                    setTimeout(() => this.saveCacheToStorage(), 1000);
+                }
+            } catch (error) {
+                console.log('Online search failed, using offline only');
+            }
+        }
+        
+        return results;
     }
 
     init() {
@@ -296,9 +503,18 @@ class CalorieTracker {
     }
 
     async handleAddFood() {
-        const foodName = document.getElementById('foodName').value.toLowerCase().trim();
+        const foodInput = document.getElementById('foodName').value.trim();
         const quantity = parseInt(document.getElementById('quantity').value);
         const unit = document.getElementById('unit').value;
+
+        // Check if we have enhanced food data from selection
+        if (this.selectedFoodData) {
+            await this.handleAddEnhancedFood(this.selectedFoodData, quantity, unit);
+            return;
+        }
+
+        // Original logic for manual input
+        const foodName = foodInput.toLowerCase();
 
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
@@ -369,6 +585,78 @@ class CalorieTracker {
         } else {
             // Offline mode
             this.handleAddFoodOffline(foodName, quantity, unit);
+        }
+    }
+
+    // Handle adding enhanced food from Open Food Facts or offline database
+    async handleAddEnhancedFood(foodData, quantity, unit) {
+        try {
+            // Calculate calories based on food data
+            const calories = this.calculateCalories(foodData.calories, quantity, unit, foodData.unit);
+            
+            const foodEntry = {
+                id: Date.now(),
+                name: foodData.name,
+                quantity: quantity,
+                unit: unit,
+                calories: calories,
+                timestamp: new Date().toLocaleTimeString(),
+                source: foodData.source,
+                brand: foodData.brand || '',
+                // Store additional nutrition data if available
+                protein: foodData.protein ? Math.round((foodData.protein / 100) * quantity) : 0,
+                carbs: foodData.carbs ? Math.round((foodData.carbs / 100) * quantity) : 0,
+                fat: foodData.fat ? Math.round((foodData.fat / 100) * quantity) : 0
+            };
+
+            this.foodLog.push(foodEntry);
+            this.dailyCalories += calories;
+            
+            // Add to favorites (automatically tracks usage)
+            this.addToFavorites(foodData);
+            
+            // Add to sync queue if it's from external source
+            if (foodData.source === 'Open Food Facts' && this.isOnline) {
+                this.addToSyncQueue('add_external_food', {
+                    name: foodData.name,
+                    quantity: quantity,
+                    unit: unit,
+                    calories: calories,
+                    source: foodData.source,
+                    brand: foodData.brand,
+                    localId: foodEntry.id
+                });
+            } else if (foodData.source === 'Offline Database') {
+                // Add to sync queue for offline food
+                this.addToSyncQueue('add_food', {
+                    name: foodData.name,
+                    quantity: quantity,
+                    unit: unit,
+                    calories: calories,
+                    localId: foodEntry.id
+                });
+            }
+            
+            this.updateDashboard();
+            this.updateFoodLog();
+            
+            // Reset form and clear selected food data
+            document.getElementById('foodForm').reset();
+            document.getElementById('quantity').value = 1;
+            this.selectedFoodData = null;
+            
+            // Hide nutrition preview if shown
+            const previewDiv = document.getElementById('nutritionPreview');
+            if (previewDiv) previewDiv.style.display = 'none';
+            
+            // Show enhanced success message
+            const sourceText = foodData.source === 'Open Food Facts' ? '🌐' : '💾';
+            const brandText = foodData.brand ? ` by ${foodData.brand}` : '';
+            this.showMessage(`Added ${foodData.name}${brandText}! +${calories} calories ${sourceText}`, 'success');
+
+        } catch (error) {
+            console.error('Error adding enhanced food:', error);
+            this.showMessage(`Error adding food: ${error.message}`, 'error');
         }
     }
 
@@ -461,33 +749,57 @@ class CalorieTracker {
             return;
         }
 
+        // Show loading indicator
+        suggestionsDiv.innerHTML = '<div class="suggestion-item loading">🔍 Searching foods...</div>';
+        suggestionsDiv.style.display = 'block';
+
         let matches = [];
 
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
-                const response = await this.apiCall(`/foods/search?q=${encodeURIComponent(input)}`);
-                const foods = response.success ? response.foods : [];
-                matches = foods.slice(0, CONFIG.MAX_SUGGESTIONS);
+                // Use our enhanced search that combines offline + Open Food Facts + favorites
+                matches = await this.searchAllFoodsWithFavorites(input);
             } catch (error) {
-                // Fallback to offline
-                matches = Object.keys(this.offlineFoodDatabase).filter(food => 
-                    food.includes(input.toLowerCase())
-                ).slice(0, CONFIG.MAX_SUGGESTIONS);
+                console.error('Enhanced search failed:', error);
+                // Fallback to offline only
+                matches = this.searchOfflineDatabase(input);
             }
         } else {
-            matches = Object.keys(this.offlineFoodDatabase).filter(food => 
-                food.includes(input.toLowerCase())
-            ).slice(0, CONFIG.MAX_SUGGESTIONS);
+            // Offline mode - search local database + Open Food Facts + favorites
+            matches = await this.searchAllFoodsWithFavorites(input);
         }
 
         if (matches.length === 0) {
-            this.hideFoodSuggestions();
+            suggestionsDiv.innerHTML = '<div class="suggestion-item no-results">No foods found. Try a different search term.</div>';
+            setTimeout(() => this.hideFoodSuggestions(), 3000);
             return;
         }
 
-        const suggestions = matches.map(food => {
-            const foodName = typeof food === 'string' ? food : food.name;
-            return `<div class="suggestion-item" onclick="app.selectFood('${foodName}')">${foodName}</div>`;
+        // Create enhanced suggestions with nutrition info and source
+        const suggestions = matches.slice(0, CONFIG.MAX_SUGGESTIONS || 8).map(food => {
+            const sourceIcon = food.source === 'Open Food Facts' ? '🌐' : 
+                              food.source && food.source.includes('⭐') ? '⭐' : '💾';
+            const brandText = food.brand ? ` by ${food.brand}` : '';
+            const nutritionText = food.protein ? 
+                ` • P:${Math.round(food.protein)}g C:${Math.round(food.carbs)}g F:${Math.round(food.fat)}g` : '';
+            
+            // Special attribution for Open Food Facts
+            const sourceText = food.source === 'Open Food Facts' ? 
+                '🌐 Open Food Facts' : 
+                food.source || 'Local Database';
+            
+            return `
+                <div class="suggestion-item enhanced" onclick="app.selectEnhancedFood('${encodeURIComponent(JSON.stringify(food))}')">
+                    <div class="food-main">
+                        <span class="food-name">${food.name}${brandText}</span>
+                        <span class="food-source" title="${food.source === 'Open Food Facts' ? 'Data from Open Food Facts - world.openfoodfacts.org' : food.source}">${sourceText}</span>
+                    </div>
+                    <div class="food-details">
+                        <span class="food-calories">${food.calories} cal/${food.unit}</span>
+                        <span class="food-nutrition">${nutritionText}</span>
+                    </div>
+                </div>
+            `;
         }).join('');
 
         suggestionsDiv.innerHTML = suggestions;
@@ -501,6 +813,81 @@ class CalorieTracker {
     selectFood(foodName) {
         document.getElementById('foodName').value = foodName;
         this.hideFoodSuggestions();
+    }
+
+    // Enhanced food selection with nutrition data
+    selectEnhancedFood(encodedFoodData) {
+        try {
+            const food = JSON.parse(decodeURIComponent(encodedFoodData));
+            
+            // Store selected food data for use when adding
+            this.selectedFoodData = food;
+            
+            // Update the input field
+            document.getElementById('foodName').value = food.name;
+            
+            // Auto-fill calories if it's a simple conversion (like 100g foods)
+            if (food.unit === '100g' || food.unit === 'piece') {
+                // Show quick calorie preview
+                this.showQuickNutritionPreview(food);
+            }
+            
+            this.hideFoodSuggestions();
+        } catch (error) {
+            console.error('Error selecting enhanced food:', error);
+            // Fallback to simple selection
+            this.selectFood(foodName);
+        }
+    }
+
+    // Show quick nutrition preview
+    showQuickNutritionPreview(food) {
+        const previewDiv = document.getElementById('nutritionPreview') || this.createNutritionPreview();
+        
+        let nutritionHTML = `
+            <div class="nutrition-preview">
+                <strong>${food.name}</strong> (${food.calories} cal/${food.unit})
+        `;
+        
+        if (food.protein || food.carbs || food.fat) {
+            nutritionHTML += `
+                <div class="macros">
+                    Protein: ${Math.round(food.protein || 0)}g | 
+                    Carbs: ${Math.round(food.carbs || 0)}g | 
+                    Fat: ${Math.round(food.fat || 0)}g
+                </div>
+            `;
+        }
+        
+        if (food.source) {
+            nutritionHTML += `<div class="source">Source: ${food.source}</div>`;
+        }
+        
+        nutritionHTML += '</div>';
+        previewDiv.innerHTML = nutritionHTML;
+        previewDiv.style.display = 'block';
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            previewDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    // Create nutrition preview element if it doesn't exist
+    createNutritionPreview() {
+        const existing = document.getElementById('nutritionPreview');
+        if (existing) return existing;
+        
+        const previewDiv = document.createElement('div');
+        previewDiv.id = 'nutritionPreview';
+        previewDiv.className = 'nutrition-preview-container';
+        previewDiv.style.display = 'none';
+        
+        // Insert after the food input
+        const foodInput = document.getElementById('foodName');
+        foodInput.parentNode.insertBefore(previewDiv, foodInput.nextSibling);
+        
+        return previewDiv;
     }
 
     updateDashboard() {
@@ -869,25 +1256,26 @@ class CalorieTracker {
 
     // Check if current user has admin privileges
     async checkAdminStatus() {
-        if (CONFIG.DEVELOPMENT_MODE) {
-            // For demo purposes, make 'admin' user an admin
-            this.isAdmin = this.currentUser && this.currentUser.username === 'admin';
+        // Check for demo admin credentials first
+        if (this.currentUser && this.currentUser.username === 'admin') {
+            this.isAdmin = true;
             return this.isAdmin;
         }
 
-        if (!this.authToken) {
-            this.isAdmin = false;
-            return false;
+        // For non-demo users in production mode, check with backend
+        if (!CONFIG.DEVELOPMENT_MODE && this.authToken) {
+            try {
+                const response = await this.apiCall('/admin/stats');
+                this.isAdmin = response !== null;
+                return this.isAdmin;
+            } catch (error) {
+                this.isAdmin = false;
+                return false;
+            }
         }
 
-        try {
-            const response = await this.apiCall('/admin/stats');
-            this.isAdmin = response !== null;
-            return this.isAdmin;
-        } catch (error) {
-            this.isAdmin = false;
-            return false;
-        }
+        this.isAdmin = false;
+        return false;
     }
 
     // Show/hide admin interface
@@ -895,6 +1283,11 @@ class CalorieTracker {
         const adminPanel = document.getElementById('adminPanel');
         if (adminPanel) {
             adminPanel.style.display = this.isAdmin ? 'block' : 'none';
+            
+            // Load admin stats when admin panel is shown
+            if (this.isAdmin) {
+                this.loadAdminStats();
+            }
         }
     }
 
@@ -908,7 +1301,8 @@ class CalorieTracker {
 
     // Load system statistics
     async loadAdminStats() {
-        if (CONFIG.DEVELOPMENT_MODE) {
+        // Use demo data for demo admin user
+        if (this.currentUser && this.currentUser.username === 'admin') {
             // Demo data for admin stats
             this.adminData.stats = {
                 totalUsers: 15,
@@ -921,6 +1315,7 @@ class CalorieTracker {
             return;
         }
 
+        // For real admin users in production
         try {
             const response = await this.apiCall('/admin/stats');
             this.adminData.stats = response;
@@ -943,7 +1338,8 @@ class CalorieTracker {
 
     // Load users for management
     async loadAdminUsers() {
-        if (CONFIG.DEVELOPMENT_MODE) {
+        // Use demo data for demo admin user
+        if (this.currentUser && this.currentUser.username === 'admin') {
             // Demo users data
             this.adminData.users = [
                 { id: 1, username: 'demo', email: 'demo@example.com', role: 'user', totalLogs: 15, lastLogin: '2025-09-20' },
@@ -985,13 +1381,23 @@ class CalorieTracker {
 
     // Load foods for management
     async loadAdminFoods() {
-        if (CONFIG.DEVELOPMENT_MODE) {
-            // Demo foods data
-            this.adminData.foods = [
-                { id: 1, name: 'Apple', calories: 95, unit: 'piece', usage_count: 45 },
-                { id: 2, name: 'Banana', calories: 105, unit: 'piece', usage_count: 32 },
-                { id: 3, name: 'Chicken Breast', calories: 165, unit: '100g', usage_count: 28 }
-            ];
+        console.log('loadAdminFoods called');
+        console.log('Current user:', this.currentUser);
+        console.log('Offline food database:', this.offlineFoodDatabase);
+        
+        // Use demo data for demo admin user
+        if (this.currentUser && this.currentUser.username === 'admin') {
+            // Convert offline food database object to array format for admin display
+            const foodsArray = Object.entries(this.offlineFoodDatabase).map(([name, data], index) => ({
+                id: index + 1,
+                name: name,
+                calories: data.calories,
+                unit: data.unit,
+                usage_count: Math.floor(Math.random() * 50) // Random usage count for demo
+            }));
+            
+            this.adminData.foods = foodsArray;
+            console.log('Admin foods data:', this.adminData.foods);
             this.updateAdminFoodsDisplay();
             return;
         }
@@ -1002,13 +1408,21 @@ class CalorieTracker {
             this.updateAdminFoodsDisplay();
         } catch (error) {
             this.showMessage('Failed to load foods', 'error');
+            console.error('Error loading foods:', error);
         }
     }
 
     // Update foods display
     updateAdminFoodsDisplay() {
+        console.log('updateAdminFoodsDisplay called');
         const foodsList = document.getElementById('adminFoodsList');
-        if (!foodsList) return;
+        console.log('Foods list element:', foodsList);
+        console.log('Foods data to display:', this.adminData.foods);
+        
+        if (!foodsList) {
+            console.error('adminFoodsList element not found!');
+            return;
+        }
 
         foodsList.innerHTML = this.adminData.foods.map(food => `
             <tr>
@@ -1022,6 +1436,8 @@ class CalorieTracker {
                 </td>
             </tr>
         `).join('');
+        
+        console.log('Foods table updated with', this.adminData.foods.length, 'items');
     }
 
     // Reset user password
@@ -1063,11 +1479,17 @@ class CalorieTracker {
 
     // Admin navigation
     showAdminSection(section) {
+        console.log('showAdminSection called with section:', section);
+        
         // Hide all admin sections
         document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
         
         // Show selected section
-        document.getElementById(`admin${section}`).classList.add('active');
+        const targetSection = document.getElementById(`admin${section}`);
+        console.log(`Target section admin${section}:`, targetSection);
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
         
         // Load data for the section
         switch(section) {
@@ -1078,6 +1500,7 @@ class CalorieTracker {
                 this.loadAdminUsers();
                 break;
             case 'Foods':
+                console.log('Loading Foods section...');
                 this.loadAdminFoods();
                 break;
         }
@@ -1151,6 +1574,82 @@ class CalorieTracker {
             console.error('Error getting food details:', error);
             return null;
         }
+    }
+    // Show data sources information modal
+    showDataSourcesInfo() {
+        const modal = document.createElement('div');
+        modal.className = 'data-sources-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🌐 Data Sources & Attribution</h3>
+                    <button class="modal-close" onclick="this.closest('.data-sources-modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="data-source">
+                        <h4>🌍 Open Food Facts</h4>
+                        <p><strong>Primary nutrition database</strong> - A collaborative, free and open database of food products from around the world.</p>
+                        <ul>
+                            <li>🇨🇭 <strong>Swiss products</strong>: Migros, Coop, Denner brands</li>
+                            <li>🇪🇺 <strong>European coverage</strong>: Germany, France, Italy, Austria</li>
+                            <li>📊 <strong>Rich data</strong>: Calories, macros, ingredients, allergens</li>
+                            <li>🆓 <strong>Open source</strong>: Community-driven, transparent</li>
+                        </ul>
+                        <a href="https://world.openfoodfacts.org" target="_blank" class="external-link">
+                            Visit Open Food Facts →
+                        </a>
+                    </div>
+                    
+                    <div class="data-source">
+                        <h4>💾 Offline Database</h4>
+                        <p><strong>Local nutrition database</strong> - Curated common foods for offline functionality.</p>
+                        <ul>
+                            <li>⚡ <strong>Instant access</strong>: Works without internet</li>
+                            <li>🥗 <strong>Common foods</strong>: Fruits, vegetables, proteins, grains</li>
+                            <li>🎯 <strong>Reliable data</strong>: Manually verified nutrition facts</li>
+                            <li>🔄 <strong>Fallback</strong>: Used when online sources are unavailable</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="data-source">
+                        <h4>⭐ Smart Favorites</h4>
+                        <p><strong>Personalized suggestions</strong> - Your frequently used foods for faster logging.</p>
+                        <ul>
+                            <li>🧠 <strong>Learning system</strong>: Remembers your food preferences</li>
+                            <li>📈 <strong>Usage tracking</strong>: Prioritizes your most-used foods</li>
+                            <li>💨 <strong>Quick access</strong>: Instant suggestions for favorites</li>
+                            <li>🔒 <strong>Local storage</strong>: Data stays on your device</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="attribution-note">
+                        <h4>🙏 Attribution & Thanks</h4>
+                        <p>
+                            This app is made possible by the incredible work of the Open Food Facts community. 
+                            Their commitment to open data and transparency helps millions of people make informed food choices.
+                        </p>
+                        <p>
+                            <strong>License</strong>: Open Food Facts data is available under the 
+                            <a href="https://opendatacommons.org/licenses/odbl/" target="_blank">Open Database License</a>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+        
+        // Restore body scroll when modal is closed
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.classList.contains('modal-overlay') || e.target.classList.contains('modal-close')) {
+                document.body.style.overflow = '';
+                modal.remove();
+            }
+        });
     }
 }
 
