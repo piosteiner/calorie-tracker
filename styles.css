@@ -1,3 +1,130 @@
+/* =============================================================================
+   CSS CUSTOM PROPERTIES - THEME SYSTEM
+   ============================================================================= */
+
+:root {
+    /* Light Theme (Default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --bg-hover: #f8f9fa;
+    
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --text-muted: #555555;
+    --text-light: #999999;
+    
+    --border-primary: #e1e5e9;
+    --border-secondary: #e9ecef;
+    --border-focus: #667eea;
+    
+    --accent-primary: #667eea;
+    --accent-primary-hover: #5a6fd8;
+    --accent-secondary: #764ba2;
+    --accent-danger: #dc3545;
+    --accent-success: #28a745;
+    --accent-warning: #ffc107;
+    --accent-info: #17a2b8;
+    
+    --shadow-light: rgba(0, 0, 0, 0.1);
+    --shadow-medium: rgba(0, 0, 0, 0.2);
+    --shadow-heavy: rgba(0, 0, 0, 0.3);
+    
+    /* Message colors */
+    --msg-success-bg: #d4edda;
+    --msg-success-text: #155724;
+    --msg-success-border: #c3e6cb;
+    --msg-warning-bg: #fff3cd;
+    --msg-warning-text: #856404;
+    --msg-warning-border: #ffeaa7;
+    --msg-error-bg: #f8d7da;
+    --msg-error-text: #721c24;
+    --msg-error-border: #f5c6cb;
+    --msg-info-bg: #d1ecf1;
+    --msg-info-text: #0c5460;
+    --msg-info-border: #bee5eb;
+    
+    /* Food suggestion colors */
+    --suggestion-bg: #ffffff;
+    --suggestion-hover: #f8f9fa;
+    --suggestion-selected: #e3f2fd;
+    --suggestion-border: #e9ecef;
+    
+    /* Modal colors */
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+    --modal-bg: #ffffff;
+    --modal-header-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --modal-calorie-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-gradient: linear-gradient(135deg, #2c1810 0%, #1a1a2e 100%);
+    --bg-card: #2d2d2d;
+    --bg-input: #3a3a3a;
+    --bg-hover: #3a3a3a;
+    
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #888888;
+    --text-light: #666666;
+    
+    --border-primary: #404040;
+    --border-secondary: #505050;
+    --border-focus: #667eea;
+    
+    --accent-primary: #7c8bf0;
+    --accent-primary-hover: #6c7ce6;
+    --accent-secondary: #8b5ba6;
+    --accent-danger: #e85d75;
+    --accent-success: #4caf50;
+    --accent-warning: #ffb74d;
+    --accent-info: #29b6f6;
+    
+    --shadow-light: rgba(0, 0, 0, 0.3);
+    --shadow-medium: rgba(0, 0, 0, 0.5);
+    --shadow-heavy: rgba(0, 0, 0, 0.7);
+    
+    /* Message colors - Dark theme */
+    --msg-success-bg: #1b5e20;
+    --msg-success-text: #c8e6c9;
+    --msg-success-border: #2e7d32;
+    --msg-warning-bg: #e65100;
+    --msg-warning-text: #ffe0b2;
+    --msg-warning-border: #f57c00;
+    --msg-error-bg: #c62828;
+    --msg-error-text: #ffcdd2;
+    --msg-error-border: #d32f2f;
+    --msg-info-bg: #01579b;
+    --msg-info-text: #b3e5fc;
+    --msg-info-border: #0277bd;
+    
+    /* Food suggestion colors - Dark theme */
+    --suggestion-bg: #3a3a3a;
+    --suggestion-hover: #4a4a4a;
+    --suggestion-selected: #2c5aa0;
+    --suggestion-border: #505050;
+    
+    /* Modal colors - Dark theme */
+    --modal-overlay: rgba(0, 0, 0, 0.8);
+    --modal-bg: #2d2d2d;
+    --modal-header-gradient: linear-gradient(135deg, #5a6fd8 0%, #6a4c93 100%);
+    --modal-calorie-gradient: linear-gradient(135deg, #e91e63 0%, #f44336 100%);
+}
+
+/* Smooth theme transitions */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* =============================================================================
+   MAIN STYLES - NOW USING CSS VARIABLES
+   ============================================================================= */
+
 /* Reset and base styles */
 * {
     margin: 0;
@@ -8,8 +135,8 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--text-primary);
+    background: var(--bg-gradient);
     min-height: 100vh;
 }
 
@@ -38,10 +165,10 @@ body {
 }
 
 .login-card {
-    background: white;
+    background: var(--bg-card);
     padding: 40px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 30px var(--shadow-medium);
     text-align: center;
     max-width: 400px;
     width: 100%;
@@ -50,11 +177,11 @@ body {
 .login-card h1 {
     font-size: 2.5rem;
     margin-bottom: 10px;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .login-card p {
-    color: #666;
+    color: var(--text-secondary);
     margin-bottom: 30px;
 }
 
@@ -67,23 +194,25 @@ body {
     display: block;
     margin-bottom: 5px;
     font-weight: 500;
-    color: #555;
+    color: var(--text-muted);
 }
 
 .input-group input,
 .input-group select {
     width: 100%;
     padding: 12px;
-    border: 2px solid #e1e5e9;
+    border: 2px solid var(--border-primary);
     border-radius: 8px;
     font-size: 16px;
     transition: border-color 0.3s ease;
+    background: var(--bg-input);
+    color: var(--text-primary);
 }
 
 .input-group input:focus,
 .input-group select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--border-focus);
 }
 
 .btn {
@@ -99,42 +228,42 @@ body {
 }
 
 .btn-primary {
-    background: #667eea;
+    background: var(--accent-primary);
     color: white;
     width: 100%;
 }
 
 .btn-primary:hover {
-    background: #5a6fd8;
+    background: var(--accent-primary-hover);
     transform: translateY(-2px);
 }
 
 .btn-secondary {
-    background: #6c757d;
+    background: var(--text-secondary);
     color: white;
 }
 
 .btn-secondary:hover {
-    background: #5a6268;
+    background: var(--text-muted);
 }
 
 .demo-credentials {
     margin-top: 20px;
     padding: 15px;
-    background: #f8f9fa;
+    background: var(--bg-secondary);
     border-radius: 8px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--accent-primary);
 }
 
 /* Dashboard Section */
 #dashboardSection {
-    background: #f8f9fa;
+    background: var(--bg-secondary);
     min-height: 100vh;
 }
 
 .header {
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background: var(--bg-card);
+    box-shadow: 0 2px 10px var(--shadow-light);
     padding: 15px 0;
 }
 
@@ -145,7 +274,7 @@ body {
 }
 
 .header h1 {
-    color: #333;
+    color: var(--text-primary);
     font-size: 1.8rem;
 }
 
@@ -157,7 +286,51 @@ body {
 
 .user-info span {
     font-weight: 500;
-    color: #555;
+    color: var(--text-muted);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: none;
+    border: 2px solid var(--border-secondary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--bg-card);
+}
+
+.theme-toggle:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    transform: scale(1.1);
+}
+
+.theme-toggle:active {
+    transform: scale(0.95);
+}
+
+/* Login page theme toggle positioning */
+.login-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.login-header h1 {
+    margin: 0;
+    flex: 1;
+}
+
+.login-header .theme-toggle {
+    margin-left: 20px;
 }
 
 /* Sync Status Indicator */
@@ -170,28 +343,28 @@ body {
 }
 
 .sync-indicator.sync-success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background: var(--msg-success-bg);
+    color: var(--msg-success-text);
+    border: 1px solid var(--msg-success-border);
 }
 
 .sync-indicator.sync-progress {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
+    background: var(--msg-warning-bg);
+    color: var(--msg-warning-text);
+    border: 1px solid var(--msg-warning-border);
     animation: pulse 1.5s infinite;
 }
 
 .sync-indicator.sync-pending {
-    background: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
+    background: var(--msg-info-bg);
+    color: var(--msg-info-text);
+    border: 1px solid var(--msg-info-border);
 }
 
 .sync-indicator.sync-error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background: var(--msg-error-bg);
+    color: var(--msg-error-text);
+    border: 1px solid var(--msg-error-border);
 }
 
 @keyframes pulse {
@@ -279,26 +452,29 @@ body {
     top: 100%;
     left: 0;
     right: 0;
-    background: white;
-    border: 1px solid #e1e5e9;
+    background: var(--suggestion-bg);
+    border: 1px solid var(--suggestion-border);
     border-top: none;
     border-radius: 0 0 8px 8px;
-    max-height: 200px;
+    max-height: 400px; /* Increased for more food results */
     overflow-y: auto;
     z-index: 1000;
     display: none;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px var(--shadow-medium);
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
 }
 
 .suggestion-item {
     padding: 12px;
     cursor: pointer;
-    border-bottom: 1px solid #f1f3f4;
+    border-bottom: 1px solid var(--suggestion-border);
     transition: background-color 0.2s ease;
+    color: var(--text-primary);
 }
 
 .suggestion-item:hover {
-    background: #f8f9fa;
+    background: var(--suggestion-hover);
 }
 
 .suggestion-item:last-child {
@@ -473,27 +649,27 @@ body {
 }
 
 .message.success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background: var(--msg-success-bg);
+    color: var(--msg-success-text);
+    border: 1px solid var(--msg-success-border);
 }
 
 .message.error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background: var(--msg-error-bg);
+    color: var(--msg-error-text);
+    border: 1px solid var(--msg-error-border);
 }
 
 .message.warning {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
+    background: var(--msg-warning-bg);
+    color: var(--msg-warning-text);
+    border: 1px solid var(--msg-warning-border);
 }
 
 .message.info {
-    background: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
+    background: var(--msg-info-bg);
+    color: var(--msg-info-text);
+    border: 1px solid var(--msg-info-border);
 }
 
 /* Loading States */
@@ -932,11 +1108,21 @@ body {
     padding: 16px 12px;
     border-left: 3px solid transparent;
     transition: all 0.2s ease;
+    position: relative;
+    cursor: pointer;
 }
 
 .suggestion-item.enhanced:hover {
     border-left-color: #667eea;
     background: #f8f9ff;
+    transform: translateX(2px);
+}
+
+.suggestion-item.enhanced.keyboard-selected {
+    border-left-color: #667eea;
+    background: #f0f8ff;
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
 }
 
 .food-main {
@@ -950,6 +1136,16 @@ body {
     font-weight: 600;
     color: #495057;
     font-size: 14px;
+    flex: 1;
+    margin-right: 8px;
+}
+
+.food-name mark {
+    background: #fff3cd;
+    color: #856404;
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-weight: 700;
 }
 
 .food-source {
@@ -959,6 +1155,17 @@ body {
     padding: 2px 8px;
     border-radius: 12px;
     font-weight: 500;
+    white-space: nowrap;
+}
+
+.food-source[title*="Open Food Facts"] {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.food-source[title*="Favorite"] {
+    background: #fff9c4;
+    color: #f57f17;
 }
 
 .food-details {
@@ -977,18 +1184,61 @@ body {
 .food-nutrition {
     font-family: monospace;
     font-size: 11px;
+    color: #6c757d;
 }
 
 .suggestion-item.loading {
     text-align: center;
     color: #667eea;
     font-style: italic;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .suggestion-item.no-results {
     text-align: center;
     color: #6c757d;
     font-style: italic;
+    padding: 20px;
+}
+
+.suggestion-item.error {
+    text-align: center;
+    color: #dc3545;
+    background: #f8d7da;
+    border-left-color: #dc3545;
+    padding: 16px;
+}
+
+.suggestions-attribution {
+    padding: 12px;
+    text-align: center;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    margin-top: 8px;
+}
+
+.suggestions-info {
+    padding: 8px 12px;
+    text-align: center;
+    background: #f1f3f4;
+    color: #6c757d;
+    font-size: 11px;
+    border-top: 1px solid #e9ecef;
+}
+
+.suggestions-attribution a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.suggestions-attribution a:hover {
+    text-decoration: underline;
 }
 
 /* Nutrition Preview Styles */
@@ -1298,4 +1548,182 @@ body {
     font-size: 13px;
     color: #667eea;
     font-weight: 600;
+}
+
+/* Calorie Input Modal Styles */
+.calorie-input-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.calorie-input-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.calorie-input-modal .modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.calorie-input-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e9ecef;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 12px 12px 0 0;
+    color: white;
+}
+
+.calorie-input-modal .modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.calorie-input-modal .modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+}
+
+.calorie-input-modal .modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.calorie-input-modal .modal-body {
+    padding: 25px;
+}
+
+.calorie-input-modal .food-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #f5576c;
+}
+
+.calorie-input-modal .food-info .food-name {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+}
+
+.calorie-input-modal .food-info .food-unit {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.calorie-input-modal .input-group {
+    margin-bottom: 20px;
+}
+
+.calorie-input-modal .input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.calorie-input-modal .input-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.calorie-input-modal .input-group input:focus {
+    outline: none;
+    border-color: #f5576c;
+    box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+}
+
+.calorie-input-modal .input-group input.error {
+    border-color: #dc3545;
+}
+
+.calorie-input-modal .error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: none;
+}
+
+.calorie-input-modal .error-message.show {
+    display: block;
+}
+
+.calorie-input-modal .modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.calorie-input-modal .btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.calorie-input-modal .btn-cancel {
+    background: #6c757d;
+    color: white;
+}
+
+.calorie-input-modal .btn-cancel:hover {
+    background: #5a6268;
+}
+
+.calorie-input-modal .btn-confirm {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.calorie-input-modal .btn-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+}
+
+.calorie-input-modal .btn-confirm:disabled {
+    background: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }

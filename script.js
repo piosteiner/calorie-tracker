@@ -189,6 +189,29 @@ class CalorieTracker {
             }));
     }
 
+    // Search local foods in backend database
+    async searchLocalFoods(query, limit = 10) {
+        try {
+            const response = await this.apiCall(`/foods/search?q=${encodeURIComponent(query)}`);
+            
+            if (response.success && response.foods) {
+                return response.foods.map(food => ({
+                    id: food.id,
+                    name: food.name,
+                    calories: food.calories_per_unit,
+                    unit: food.default_unit,
+                    brand: food.brand || '',
+                    category: food.category || '',
+                    source: 'Local Database'
+                })).slice(0, limit);
+            }
+            return [];
+        } catch (error) {
+            console.error('Local foods search error:', error);
+            return [];
+        }
+    }
+
     // Enhanced caching system for food searches
     loadCachedFoods() {
         try {
@@ -275,18 +298,30 @@ class CalorieTracker {
         const offlineResults = this.searchOfflineDatabase(query);
         results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
         
-        // 3. Search Open Food Facts (if online and not enough results)
+        // 3. Search backend (includes local foods + cached external foods + Open Food Facts)
         if (this.isOnline && navigator.onLine && results.length < 8) {
             try {
-                const onlineResults = await this.searchOpenFoodFacts(query, 8 - results.length);
-                results.push(...onlineResults);
+                // Search local foods first
+                const localResults = await this.searchLocalFoods(query, 3);
+                results.push(...localResults);
+                
+                // Then search external foods (cached + Open Food Facts)
+                const externalResults = await this.searchBackendFoods(query, 8 - results.length);
+                results.push(...externalResults);
                 
                 // Save cache periodically
-                if (onlineResults.length > 0) {
+                if (externalResults.length > 0) {
                     setTimeout(() => this.saveCacheToStorage(), 1000);
                 }
             } catch (error) {
-                console.log('Online search failed, using offline only');
+                console.log('Backend search failed, falling back to direct Open Food Facts');
+                // Fallback to direct Open Food Facts API if backend is unavailable
+                try {
+                    const directResults = await this.searchOpenFoodFacts(query, 8 - results.length);
+                    results.push(...directResults);
+                } catch (directError) {
+                    console.log('Direct Open Food Facts search also failed, using offline only');
+                }
             }
         }
         
@@ -350,15 +385,105 @@ class CalorieTracker {
 
         // Food name input for suggestions
         document.getElementById('foodName').addEventListener('input', (e) => {
-            this.showFoodSuggestions(e.target.value);
+            this.debouncedFoodSearch(e.target.value);
+        });
+
+        // Add keyboard navigation for food suggestions
+        document.getElementById('foodName').addEventListener('keydown', (e) => {
+            this.handleSuggestionKeyboard(e);
         });
 
         // Hide suggestions when clicking outside
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('#foodName')) {
+            if (!e.target.closest('#foodName') && !e.target.closest('#foodSuggestions')) {
                 this.hideFoodSuggestions();
             }
         });
+
+        // Initialize debounced search
+        this.initDebouncing();
+    }
+
+    // Initialize debouncing for food search
+    initDebouncing() {
+        this.searchTimeout = null;
+        this.isSearching = false;
+        this.selectedSuggestionIndex = -1;
+    }
+
+    // Handle keyboard navigation in food suggestions
+    handleSuggestionKeyboard(e) {
+        const suggestionsDiv = document.getElementById('foodSuggestions');
+        const suggestions = suggestionsDiv.querySelectorAll('.suggestion-item.enhanced');
+        
+        if (suggestions.length === 0) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                this.selectedSuggestionIndex = Math.min(this.selectedSuggestionIndex + 1, suggestions.length - 1);
+                this.highlightSuggestion(suggestions);
+                break;
+                
+            case 'ArrowUp':
+                e.preventDefault();
+                this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, -1);
+                this.highlightSuggestion(suggestions);
+                break;
+                
+            case 'Enter':
+                e.preventDefault();
+                if (this.selectedSuggestionIndex >= 0 && suggestions[this.selectedSuggestionIndex]) {
+                    suggestions[this.selectedSuggestionIndex].click();
+                }
+                break;
+                
+            case 'Escape':
+                e.preventDefault();
+                this.hideFoodSuggestions();
+                break;
+        }
+    }
+
+    // Highlight selected suggestion
+    highlightSuggestion(suggestions) {
+        suggestions.forEach((suggestion, index) => {
+            suggestion.classList.toggle('keyboard-selected', index === this.selectedSuggestionIndex);
+        });
+        
+        // Scroll selected item into view
+        if (this.selectedSuggestionIndex >= 0 && suggestions[this.selectedSuggestionIndex]) {
+            suggestions[this.selectedSuggestionIndex].scrollIntoView({
+                block: 'nearest',
+                behavior: 'smooth'
+            });
+        }
+    }
+
+    // Debounced search to prevent too many API calls
+    debouncedFoodSearch(input) {
+        // Clear existing timeout
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+
+        // If input is too short, hide suggestions immediately
+        if (input.length < CONFIG.MIN_SEARCH_LENGTH) {
+            this.hideFoodSuggestions();
+            return;
+        }
+
+        // Show loading indicator immediately for responsiveness
+        const suggestionsDiv = document.getElementById('foodSuggestions');
+        if (!this.isSearching) {
+            suggestionsDiv.innerHTML = '<div class="suggestion-item loading">🔍 Searching foods...</div>';
+            suggestionsDiv.style.display = 'block';
+        }
+
+        // Debounce the actual search
+        this.searchTimeout = setTimeout(() => {
+            this.showFoodSuggestions(input);
+        }, 300); // 300ms delay
     }
 
     async checkAuthStatus() {
@@ -574,22 +699,23 @@ class CalorieTracker {
                     };
                 } else {
                     // Not found in database - use custom food name
-                    // Prompt user for calories since we don't have food data
-                    const customCalories = prompt(`"${foodName}" not found in database. Enter calories per ${unit}:`);
-                    if (!customCalories || isNaN(customCalories)) {
-                        this.showMessage('Calories required for custom food.', 'error');
+                    // Show custom modal for calories since we don't have food data
+                    try {
+                        const customCalories = await this.showCalorieInputModal(foodName, unit);
+                        calories = customCalories * quantity;
+                        
+                        logData = {
+                            name: foodName,
+                            quantity,
+                            unit,
+                            calories,
+                            logDate: new Date().toISOString().split('T')[0]
+                        };
+                    } catch (error) {
+                        // User cancelled calorie input
+                        this.showMessage('Food entry cancelled.', 'info');
                         return;
                     }
-                    
-                    calories = parseInt(customCalories) * quantity;
-                    
-                    logData = {
-                        name: foodName,
-                        quantity,
-                        unit,
-                        calories,
-                        logDate: new Date().toISOString().split('T')[0]
-                    };
                 }
 
                 // Add to backend
@@ -783,71 +909,180 @@ class CalorieTracker {
 
     async showFoodSuggestions(input) {
         const suggestionsDiv = document.getElementById('foodSuggestions');
+        this.isSearching = true;
         
         if (input.length < CONFIG.MIN_SEARCH_LENGTH) {
             this.hideFoodSuggestions();
+            this.isSearching = false;
             return;
         }
 
-        // Show loading indicator
-        suggestionsDiv.innerHTML = '<div class="suggestion-item loading">🔍 Searching foods...</div>';
-        suggestionsDiv.style.display = 'block';
+        try {
+            let matches = [];
 
-        let matches = [];
+            // 1. Always search favorites first (instant results)
+            const favorites = this.getFavorites().filter(food => 
+                food.name.toLowerCase().includes(input.toLowerCase())
+            );
+            matches.push(...favorites.slice(0, 2).map(food => ({...food, source: `⭐ ${food.source}`})));
 
-        if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
-            try {
-                // Use our enhanced search that combines offline + Open Food Facts + favorites
-                matches = await this.searchAllFoodsWithFavorites(input);
-            } catch (error) {
-                console.error('Enhanced search failed:', error);
-                // Fallback to offline only
-                matches = this.searchOfflineDatabase(input);
+            // 2. Search offline database (instant results)
+            const offlineResults = this.searchOfflineDatabase(input);
+            matches.push(...offlineResults.slice(0, 2).map(food => ({...food, source: 'Offline Database'})));
+
+            // 3. Search backend for comprehensive results
+            if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+                try {
+                    // Search local foods in backend database
+                    const localResults = await this.searchLocalFoods(input, 3);
+                    matches.push(...localResults);
+
+                    // Search external foods (cached + Open Food Facts with Swiss priority)
+                    const externalResults = await this.searchBackendFoods(input, 8);
+                    matches.push(...externalResults);
+
+                } catch (backendError) {
+                    console.log('Backend search failed, trying direct Open Food Facts:', backendError);
+                    // Fallback to direct Open Food Facts for comprehensive coverage
+                    try {
+                        const directResults = await this.searchOpenFoodFacts(input, 8);
+                        matches.push(...directResults);
+                    } catch (directError) {
+                        console.log('Direct Open Food Facts search failed:', directError);
+                    }
+                }
+            } else {
+                // Development mode - still provide Open Food Facts access
+                try {
+                    const directResults = await this.searchOpenFoodFacts(input, 8);
+                    matches.push(...directResults);
+                } catch (error) {
+                    console.log('Open Food Facts search failed in development mode:', error);
+                }
             }
-        } else {
-            // Offline mode - search local database + Open Food Facts + favorites
-            matches = await this.searchAllFoodsWithFavorites(input);
+
+            // Remove duplicates based on name and normalize results
+            const uniqueMatches = [];
+            const seenNames = new Set();
+            
+            for (const match of matches) {
+                const normalizedName = match.name.toLowerCase().trim();
+                if (!seenNames.has(normalizedName)) {
+                    seenNames.add(normalizedName);
+                    uniqueMatches.push(match);
+                }
+            }
+
+            // Update suggestions display
+            this.displayFoodSuggestions(uniqueMatches, input);
+
+        } catch (error) {
+            console.error('Food suggestions error:', error);
+            suggestionsDiv.innerHTML = '<div class="suggestion-item error">⚠️ Search temporarily unavailable</div>';
+        } finally {
+            this.isSearching = false;
         }
+    }
+
+    // Display food suggestions with enhanced formatting
+    displayFoodSuggestions(matches, input) {
+        const suggestionsDiv = document.getElementById('foodSuggestions');
+        this.selectedSuggestionIndex = -1; // Reset keyboard selection
 
         if (matches.length === 0) {
-            suggestionsDiv.innerHTML = '<div class="suggestion-item no-results">No foods found. Try a different search term.</div>';
-            setTimeout(() => this.hideFoodSuggestions(), 3000);
+            suggestionsDiv.innerHTML = `
+                <div class="suggestion-item no-results">
+                    No foods found for "${input}". 
+                    <br><small>Try a different search term or check spelling.</small>
+                </div>
+            `;
+            setTimeout(() => this.hideFoodSuggestions(), 4000);
             return;
         }
 
-        // Create enhanced suggestions with nutrition info and source
-        const suggestions = matches.slice(0, CONFIG.MAX_SUGGESTIONS || 8).map(food => {
-            const sourceIcon = food.source === 'Open Food Facts' ? '🌐' : 
-                              food.source && food.source.includes('⭐') ? '⭐' : '💾';
+        // Create enhanced suggestions with comprehensive info
+        const suggestions = matches.slice(0, CONFIG.MAX_SUGGESTIONS || 10).map(food => {
+            const sourceIcon = this.getSourceIcon(food.source);
             const brandText = food.brand ? ` by ${food.brand}` : '';
-            const nutritionText = food.protein ? 
-                ` • P:${Math.round(food.protein)}g C:${Math.round(food.carbs)}g F:${Math.round(food.fat)}g` : '';
-            
-            // Special attribution for Open Food Facts
-            const sourceText = food.source === 'Open Food Facts' ? 
-                '🌐 Open Food Facts' : 
-                food.source || 'Local Database';
+            const nutritionText = this.getNutritionText(food);
+            const sourceText = this.getSourceText(food.source);
             
             return `
                 <div class="suggestion-item enhanced" onclick="app.selectEnhancedFood('${encodeURIComponent(JSON.stringify(food))}')">
                     <div class="food-main">
-                        <span class="food-name">${food.name}${brandText}</span>
-                        <span class="food-source" title="${food.source === 'Open Food Facts' ? 'Data from Open Food Facts - world.openfoodfacts.org' : food.source}">${sourceText}</span>
+                        <span class="food-name">${this.highlightMatch(food.name, input)}${brandText}</span>
+                        <span class="food-source" title="${this.getSourceTooltip(food.source)}">${sourceIcon} ${sourceText}</span>
                     </div>
                     <div class="food-details">
-                        <span class="food-calories">${food.calories} cal/${food.unit}</span>
-                        <span class="food-nutrition">${nutritionText}</span>
+                        <span class="food-calories">${food.calories} cal/${food.unit || '100g'}</span>
+                        ${nutritionText ? `<span class="food-nutrition">${nutritionText}</span>` : ''}
                     </div>
                 </div>
             `;
         }).join('');
 
-        suggestionsDiv.innerHTML = suggestions;
+        // Add attribution footer for Open Food Facts
+        const hasOpenFoodFacts = matches.some(food => food.source === 'Open Food Facts');
+        const totalShown = Math.min(matches.length, CONFIG.MAX_SUGGESTIONS || 10);
+        const totalFound = matches.length;
+        
+        const attribution = hasOpenFoodFacts ? `
+            <div class="suggestions-attribution">
+                <small>🌐 Food data from <a href="https://world.openfoodfacts.org" target="_blank">Open Food Facts</a></small>
+            </div>
+        ` : '';
+
+        const resultInfo = totalFound > totalShown ? `
+            <div class="suggestions-info">
+                <small>Showing ${totalShown} of ${totalFound} results</small>
+            </div>
+        ` : '';
+
+        suggestionsDiv.innerHTML = suggestions + resultInfo + attribution;
         suggestionsDiv.style.display = 'block';
+    }
+
+    // Helper methods for food suggestions display
+    getSourceIcon(source) {
+        if (source === 'Open Food Facts') return '🌐';
+        if (source && source.includes('⭐')) return '⭐';
+        if (source === 'Local Database') return '🏪';
+        return '💾';
+    }
+
+    getNutritionText(food) {
+        if (food.protein || food.carbs || food.fat) {
+            const p = food.protein ? Math.round(food.protein) : 0;
+            const c = food.carbs ? Math.round(food.carbs) : 0;
+            const f = food.fat ? Math.round(food.fat) : 0;
+            return `P:${p}g C:${c}g F:${f}g`;
+        }
+        return '';
+    }
+
+    getSourceText(source) {
+        if (source === 'Open Food Facts') return 'Open Food Facts';
+        if (source && source.includes('⭐')) return source.replace('⭐ ', '');
+        if (source === 'Local Database') return 'Local Database';
+        return source || 'Database';
+    }
+
+    getSourceTooltip(source) {
+        if (source === 'Open Food Facts') return 'Data from Open Food Facts - world.openfoodfacts.org';
+        if (source && source.includes('⭐')) return 'Favorite food from your history';
+        if (source === 'Local Database') return 'Local food database';
+        return source || 'Food database';
+    }
+
+    highlightMatch(text, search) {
+        if (!search || search.length < 2) return text;
+        const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark>$1</mark>');
     }
 
     hideFoodSuggestions() {
         document.getElementById('foodSuggestions').style.display = 'none';
+        this.selectedSuggestionIndex = -1; // Reset keyboard selection
     }
 
     selectFood(foodName) {
@@ -1788,6 +2023,120 @@ class CalorieTracker {
                 modal.remove();
             }
         });
+    }
+
+    // Show calorie input modal for manual food entry
+    showCalorieInputModal(foodName, unit) {
+        return new Promise((resolve, reject) => {
+            const modal = document.createElement('div');
+            modal.className = 'calorie-input-modal';
+            modal.innerHTML = `
+                <div class="modal-overlay"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📝 Manual Food Entry</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="food-info">
+                            <div class="food-name">${foodName}</div>
+                            <div class="food-unit">Not found in database - requires manual entry</div>
+                        </div>
+                        <div class="input-group">
+                            <label for="calorie-input">Calories per ${unit}:</label>
+                            <input 
+                                type="number" 
+                                id="calorie-input" 
+                                placeholder="Enter calories..." 
+                                min="0" 
+                                max="9999"
+                                step="0.1"
+                                autocomplete="off"
+                            >
+                            <div class="error-message" id="calorie-error">
+                                Please enter a valid calorie value (0-9999)
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-cancel">Cancel</button>
+                            <button class="btn btn-confirm" disabled>Add Food</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add modal to page
+            document.body.appendChild(modal);
+            document.body.style.overflow = 'hidden';
+
+            // Get elements
+            const input = modal.querySelector('#calorie-input');
+            const errorMsg = modal.querySelector('#calorie-error');
+            const confirmBtn = modal.querySelector('.btn-confirm');
+            const cancelBtn = modal.querySelector('.btn-cancel');
+            const closeBtn = modal.querySelector('.modal-close');
+
+            // Focus input
+            setTimeout(() => input.focus(), 100);
+
+            // Input validation
+            const validateInput = () => {
+                const value = parseFloat(input.value);
+                const isValid = !isNaN(value) && value >= 0 && value <= 9999;
+                
+                if (input.value && !isValid) {
+                    input.classList.add('error');
+                    errorMsg.classList.add('show');
+                    confirmBtn.disabled = true;
+                } else {
+                    input.classList.remove('error');
+                    errorMsg.classList.remove('show');
+                    confirmBtn.disabled = !input.value || !isValid;
+                }
+                
+                return isValid;
+            };
+
+            // Input event listeners
+            input.addEventListener('input', validateInput);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !confirmBtn.disabled) {
+                    confirmBtn.click();
+                } else if (e.key === 'Escape') {
+                    cancelBtn.click();
+                }
+            });
+
+            // Button event listeners
+            confirmBtn.addEventListener('click', () => {
+                if (validateInput() && input.value) {
+                    const calories = parseFloat(input.value);
+                    this.hideCalorieInputModal(modal);
+                    resolve(calories);
+                }
+            });
+
+            const cancelHandler = () => {
+                this.hideCalorieInputModal(modal);
+                reject(new Error('User cancelled calorie input'));
+            };
+
+            cancelBtn.addEventListener('click', cancelHandler);
+            closeBtn.addEventListener('click', cancelHandler);
+
+            // Click outside to close
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal || e.target.classList.contains('modal-overlay')) {
+                    cancelHandler();
+                }
+            });
+        });
+    }
+
+    // Hide calorie input modal
+    hideCalorieInputModal(modal) {
+        document.body.style.overflow = '';
+        modal.remove();
     }
 }
 

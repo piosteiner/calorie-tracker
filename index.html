@@ -14,7 +14,10 @@
     <div id="loginSection" class="section active">
         <div class="container">
             <div class="login-card">
-                <h1>🍎 Calorie Tracker</h1>
+                <div class="login-header">
+                    <h1>🍎 Calorie Tracker</h1>
+                    <button id="themeToggleLogin" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
+                </div>
                 <p>Track your daily nutrition intake</p>
                 
                 <form id="loginForm">
@@ -51,6 +54,7 @@
                 <div class="user-info">
                     <span id="welcomeUser">Welcome!</span>
                     <div id="syncIndicator" class="sync-indicator">⏳ Pending sync</div>
+                    <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
                     <button id="logoutBtn" class="btn btn-secondary">Logout</button>
                 </div>
             </div>
@@ -260,6 +264,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="themeToggle.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
