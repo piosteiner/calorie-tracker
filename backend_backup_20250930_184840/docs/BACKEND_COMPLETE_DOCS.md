@@ -577,8 +577,12 @@ backend/
 │   └── standardize_to_grams.sql  # Convert units to grams
 │
 ├── 📚 Documentation/
-│   ├── BACKEND_COMPLETE_DOCS.md  # This comprehensive documentation (MAIN)
-│   └── FRONTEND_INTEGRATION_PROMPT.md # Complete frontend integration guide
+│   ├── API.md                    # API endpoint documentation
+│   ├── FOOD_DATABASE_MANAGEMENT.md # Food management guide
+│   ├── FRONTEND_GRAMS_UPDATE.md  # Frontend update instructions
+│   ├── FRONTEND_INTEGRATION_PROMPT.md # Complete integration guide
+│   ├── OPEN_FOOD_FACTS_INTEGRATION.md # External API setup
+│   └── BACKEND_COMPLETE_DOCS.md  # This comprehensive documentation
 │
 ├── 📋 Templates/
 │   └── foods_import_template.csv # CSV import template with examples
@@ -656,18 +660,11 @@ Categories = {
 
 ### Import System
 **Professional bulk import capabilities:**
-- **CSV/JSON support** with validation and Google Sheets export compatibility
-- **Template provided** for easy data preparation (`/templates/foods_import_template.csv`)
-- **Google Sheets Integration**: Export from Google Sheets → Download as CSV → Import to system
+- **CSV/JSON support** with validation
+- **Template provided** for easy data preparation
 - **Duplicate detection** and handling
 - **Import history** tracking and logging
 - **Error reporting** with detailed feedback
-
-#### Google Sheets Import Workflow
-1. **Prepare Google Sheet** with columns: name, calories_per_unit, default_unit, category, brand, nutrition data
-2. **Export to CSV**: File → Download → Comma Separated Values (.csv)
-3. **Import via Database**: Manual MySQL import (bulk API import coming soon)
-4. **Verify Import**: Use admin APIs to confirm successful import
 
 ### Unit Standardization
 **Simplified from 5+ units to grams only:**
@@ -860,33 +857,11 @@ tail -f logs/combined.log
 cp templates/foods_import_template.csv /tmp/test_foods.csv
 # Edit with your test data
 
-# Manual import via MySQL (current method)
-mysql -u username -p calorie_tracker
-mysql> LOAD DATA INFILE '/tmp/test_foods.csv' INTO TABLE foods 
-       FIELDS TERMINATED BY ',' 
-       ENCLOSED BY '"' 
-       LINES TERMINATED BY '\n' 
-       IGNORE 1 ROWS;
-
-# Bulk import API (coming soon)
+# Import via admin API (requires authentication)
 curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      -F "file=@/tmp/test_foods.csv" \
      "http://localhost:3000/api/admin/foods/import"
 ```
-
-#### CSV Import Template Structure
-Required columns for Google Sheets/CSV import:
-- **name** (required): Food name
-- **calories_per_unit** (required): Calories per serving
-- **default_unit** (required): Unit (recommend "g" for grams)
-- **category** (optional): Food category
-- **brand** (optional): Brand name  
-- **protein_per_100g** (optional): Protein grams per 100g
-- **carbs_per_100g** (optional): Carbs grams per 100g
-- **fat_per_100g** (optional): Fat grams per 100g
-- **fiber_per_100g** (optional): Fiber grams per 100g
-- **sodium_per_100g** (optional): Sodium mg per 100g
-- **sugar_per_100g** (optional): Sugar grams per 100g
 
 ---
 
