@@ -141,56 +141,23 @@ router.post('/users/:userId/reset-password', async (req, res) => {
   }
 });
 
-// Get all foods (admin only) - includes both local and external foods
+// Get all foods (admin only)
 router.get('/foods', async (req, res) => {
   try {
-    // Get local foods with usage statistics
-    const localFoods = await db.query(`
+    const foods = await db.query(`
       SELECT 
-        f.id,
-        f.name,
-        f.calories_per_unit as calories,
-        f.default_unit as unit,
-        f.category,
-        f.brand,
-        'local' as source,
+        f.*,
         COUNT(fl.id) as usage_count,
-        SUM(fl.quantity) as total_quantity_logged,
-        f.created_at
+        SUM(fl.quantity) as total_quantity_logged
       FROM foods f
       LEFT JOIN food_logs fl ON f.id = fl.food_id
       GROUP BY f.id
+      ORDER BY usage_count DESC, f.name ASC
     `);
-
-    // Get external foods from cached searches (available foods, not just logged ones)
-    const externalFoods = await db.query(`
-      SELECT 
-        cef.external_id as id,
-        cef.name,
-        cef.calories_per_100g as calories,
-        'per 100g' as unit,
-        'External' as category,
-        cef.brand,
-        COALESCE(efs.name, 'External') as source,
-        cef.usage_count,
-        NULL as total_quantity_logged,
-        cef.cached_at as created_at
-      FROM cached_external_foods cef
-      LEFT JOIN external_food_sources efs ON cef.external_source_id = efs.id
-      ORDER BY cef.usage_count DESC, cef.cached_at DESC
-    `);
-
-    // Combine and sort by usage count
-    const allFoods = [...localFoods, ...externalFoods].sort((a, b) => b.usage_count - a.usage_count);
     
     res.json({
       success: true,
-      foods: allFoods,
-      summary: {
-        total_foods: allFoods.length,
-        local_foods: localFoods.length,
-        external_foods: externalFoods.length
-      }
+      foods
     });
   } catch (error) {
     console.error('Admin get foods error:', error);
@@ -312,10 +279,8 @@ router.get('/stats', async (req, res) => {
       SELECT 
         (SELECT COUNT(*) FROM users WHERE is_active = TRUE) as total_users,
         (SELECT COUNT(*) FROM users WHERE role = 'admin') as total_admins,
-        (SELECT COUNT(*) FROM foods) as total_local_foods,
-        (SELECT COUNT(*) FROM cached_external_foods) as total_external_foods,
+        (SELECT COUNT(*) FROM foods) as total_foods,
         (SELECT COUNT(*) FROM food_logs) as total_logs,
-        (SELECT COUNT(*) FROM food_logs WHERE external_food_id IS NOT NULL) as external_food_logs,
         (SELECT COUNT(*) FROM sessions WHERE is_active = TRUE AND expires_at > NOW()) as active_sessions,
         (SELECT AVG(daily_calorie_goal) FROM users WHERE is_active = TRUE) as avg_calorie_goal
     `);
@@ -330,11 +295,11 @@ router.get('/stats', async (req, res) => {
       UNION ALL
       SELECT 
         'food_log' as activity_type,
-        CONCAT(u.username, ' logged ', COALESCE(fl.name, f.name)) as description,
+        CONCAT(u.username, ' logged ', f.name) as description,
         fl.logged_at as activity_time
       FROM food_logs fl
       JOIN users u ON fl.user_id = u.id
-      LEFT JOIN foods f ON fl.food_id = f.id
+      JOIN foods f ON fl.food_id = f.id
       WHERE fl.logged_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
       ORDER BY activity_time DESC
       LIMIT 20
@@ -395,100 +360,6 @@ router.get('/cache/status', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get cache status'
-    });
-  }
-});
-
-// =============================================================================
-// FOOD MANAGEMENT ROUTES
-// =============================================================================
-
-// Get enhanced foods with filtering and pagination
-router.get('/foods-enhanced', async (req, res) => {
-  try {
-    const { limit = 50, source, search } = req.query;
-
-    let sql = `
-      SELECT 
-        f.id,
-        f.name,
-        f.calories_per_unit,
-        f.default_unit,
-        f.category,
-        f.brand,
-        f.source,
-        f.protein_per_100g,
-        f.carbs_per_100g,
-        f.fat_per_100g,
-        f.fiber_per_100g,
-        f.is_verified,
-        f.created_at,
-        f.updated_at,
-        (SELECT COUNT(*) FROM food_logs fl WHERE fl.food_id = f.id) as usage_count
-      FROM foods f
-    `;
-
-    const conditions = [];
-    const params = [];
-
-    if (source) {
-      conditions.push('f.source = ?');
-      params.push(source);
-    }
-
-    if (search) {
-      conditions.push('(f.name LIKE ? OR f.brand LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`);
-    }
-
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    sql += ' ORDER BY f.created_at DESC LIMIT ?';
-    params.push(parseInt(limit));
-
-    const foods = await db.query(sql, params);
-
-    res.json({
-      success: true,
-      foods,
-      total: foods.length
-    });
-
-  } catch (error) {
-    console.error('Get enhanced foods error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve foods',
-      error: error.message
-    });
-  }
-});
-
-// Get food categories
-router.get('/food-categories', async (req, res) => {
-  try {
-    const categories = await db.query(`
-      SELECT 
-        fc.*,
-        COUNT(f.id) as food_count
-      FROM food_categories fc
-      LEFT JOIN foods f ON fc.id = f.category_id
-      GROUP BY fc.id
-      ORDER BY fc.name
-    `);
-
-    res.json({
-      success: true,
-      categories
-    });
-
-  } catch (error) {
-    console.error('Get categories error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve categories'
     });
   }
 });

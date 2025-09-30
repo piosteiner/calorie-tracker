@@ -137,16 +137,15 @@ class ExternalFoodsController {
                 FROM cached_external_foods cef
                 JOIN external_food_sources efs ON cef.external_source_id = efs.id
                 WHERE LOWER(cef.name) LIKE ? 
-                   OR LOWER(COALESCE(cef.brand, '')) LIKE ?
+                   OR LOWER(cef.brand) LIKE ?
                 ORDER BY cef.usage_count DESC, cef.cached_at DESC
                 LIMIT ?
-            `, [searchQuery, searchQuery, parseInt(limit)]);
+            `, [searchQuery, searchQuery, limit]);
 
             return rows.map(row => ({
                 external_id: row.external_id,
                 name: row.name,
                 calories_per_100g: row.calories_per_100g,
-                unit: 'g', // Standard unit is grams
                 protein_per_100g: row.protein_per_100g,
                 carbs_per_100g: row.carbs_per_100g,
                 fat_per_100g: row.fat_per_100g,
