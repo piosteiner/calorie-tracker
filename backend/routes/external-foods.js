@@ -1,12 +1,12 @@
 const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const externalFoodsController = require('../controllers/externalFoodsController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
 
 const router = express.Router();
 
-// Search external foods
+// Search external foods (public endpoint for food search)
 router.get('/search', [
     query('q')
         .trim()
@@ -20,7 +20,7 @@ router.get('/search', [
         .optional()
         .isIn(['openfoodfacts'])
         .withMessage('Invalid source')
-], authenticateToken, async (req, res) => {
+], optionalAuth, async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -120,7 +120,7 @@ router.post('/log', [
         .isISO8601()
         .toDate()
         .withMessage('Log date must be a valid date')
-], authenticateToken, async (req, res) => {
+], optionalAuth, async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

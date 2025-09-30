@@ -63,6 +63,16 @@ class ExternalFoodsController {
     // Log external food consumption
     async logExternalFood(req, res) {
         try {
+            // Check if user is authenticated
+            if (!req.user || !req.user.id) {
+                // For non-authenticated users, return success but indicate local storage only
+                return res.status(200).json({
+                    success: true,
+                    message: 'Food logged locally only (authentication required for backend storage)',
+                    localOnly: true
+                });
+            }
+
             const userId = req.user.id;
             const {
                 external_food_id,
