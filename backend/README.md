@@ -1,108 +1,87 @@
-# Open Food Facts Integration
+# Enhanced Calorie Tracker Backend
 
-This backend implements a hybrid approach to food data, combining local database foods with Open Food Facts API integration.
+Professional Node.js backend with comprehensive food database management, nutrition tracking, and admin APIs.
 
-## Features
+## 🆕 New Features (Enhanced Version)
 
-### Swiss Food Prioritization
-- Searches Swiss foods first
-- Falls back to European foods
-- Finally searches global foods
-- Prioritizes local and regional food data
+### 📊 Professional Food Database
+- **Complete Nutrition Data**: Protein, carbs, fat, fiber, sodium, sugar per 100g
+- **Food Categories**: 8 organized categories (Fruits, Vegetables, Proteins, etc.)
+- **20+ Local Foods**: Swiss/European foods with accurate nutrition data
+- **26+ Cached External Foods**: From Open Food Facts with smart caching
 
-### API Endpoints
+### 🔍 Hybrid Search System
+- **Local Database Search**: Instant search through curated local foods
+- **External API Integration**: Open Food Facts with Swiss/European prioritization
+- **Smart Caching**: External foods cached for improved performance
+- **Unified Results**: Combines multiple sources into single search
 
-#### Search External Foods
-```
-GET /api/external-foods/search?q=chocolate&limit=20
-```
-- Searches Open Food Facts with Swiss prioritization
-- Returns standardized nutrition data
-- Includes caching for performance
+### ⚖️ Unit Standardization
+- **Grams Only**: Simplified from 5+ units to standardized grams
+- **Per-100g Nutrition**: All nutrition data normalized to 100g basis
+- **Precise Portions**: Accurate calorie calculations for any gram amount
+- **International Standard**: Compatible with global nutrition standards
 
-#### Log External Food
-```
-POST /api/external-foods/log
-Content-Type: application/json
-Authorization: Bearer <jwt_token>
+### 🔧 Admin Management System
+- **Full CRUD Operations**: Create, read, update, delete foods
+- **Category Management**: Organize foods into logical categories  
+- **Import System**: CSV/JSON bulk import with validation
+- **System Statistics**: Database health and usage metrics
 
-{
-  "external_food_id": "3046920029759",
-  "name": "Lindt Excellence 90%",
-  "quantity": 30,
-  "unit": "g",
-  "calories": 178,
-  "calories_per_100g": 592,
-  "protein_per_100g": 10,
-  "carbs_per_100g": 14,
-  "fat_per_100g": 55,
-  "fiber_per_100g": 5,
-  "brand": "Lindt&Sprüngli",
-  "source": "Open Food Facts"
-}
-```
+### 📱 Enhanced APIs
+- `GET /api/foods/search` - Search local food database
+- `GET /api/external-foods/search` - Hybrid external food search
+- `POST /api/external-foods/log` - Log external food consumption
+- `GET /api/admin/foods` - Admin: List all foods with pagination
+- `GET /api/admin/food-categories` - Admin: Food categories
+- `GET /api/admin/stats` - Admin: System statistics
 
-#### Health Check
-```
-GET /api/external-foods/health
-```
-- Checks Open Food Facts API connectivity
-- Returns service status
-
-### Database Schema
-
-The integration adds three new tables:
-
-1. **external_food_sources** - Tracks external API sources
-2. **cached_external_foods** - Caches search results for performance
-3. Enhanced **food_logs** - Includes nutrition data columns
-
-### Caching System
-
-- Intelligent caching of search results
-- Usage count tracking for popular foods
-- Daily cleanup job removes old cache entries
-- Configurable cache duration
-
-### Configuration
-
-Environment variables:
-- `OPEN_FOOD_FACTS_USER_AGENT` - User agent for API requests
-- `OPEN_FOOD_FACTS_TIMEOUT` - Request timeout (default: 10000ms)
-- `CACHE_CLEANUP_HOUR` - Hour for daily cache cleanup (default: 2)
-- `CACHE_CLEANUP_MINUTE` - Minute for cache cleanup (default: 0)
-
-## Database Migration
-
-Run the migration to add external food support:
+## 🚀 Quick Start
 
 ```bash
-mysql -u your_user -p your_database < migrations/add_external_foods_support.sql
-```
-
-## Development
-
-Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-Start development server:
-```bash
-npm run dev
-```
+# Set up environment
+cp .env.example .env
+# Edit .env with your database credentials
 
-Start production server:
-```bash
+# Run database migrations
+mysql -u username -p database_name < migrations/enhance_foods_table.sql
+mysql -u username -p database_name < migrations/complete_foods_enhancement.sql
+mysql -u username -p database_name < migrations/standardize_to_grams.sql
+
+# Start server
 npm start
+
+# OR with PM2 (production)
+pm2 start ecosystem.config.js
 ```
 
-## Production Deployment
+## 📖 Documentation
 
-The backend is designed to run with PM2 for process management:
+- `/docs/API.md` - Complete API documentation
+- `/docs/FOOD_DATABASE_MANAGEMENT.md` - Food management guide
+- `/docs/FRONTEND_INTEGRATION_PROMPT.md` - Frontend integration
+- `/migrations/` - Database migration scripts
+- `/templates/` - Import templates and examples
 
-```bash
-pm2 start server.js --name calorie-tracker-api
-```
+## 🔄 Migration from Basic Backend
 
-Ensure proper environment configuration and database access.
+This enhanced version includes:
+- ✅ **Enhanced MySQL Schema**: New nutrition columns and categories
+- ✅ **Professional Services**: Business logic separation
+- ✅ **Admin Controllers**: Complete food management system
+- ✅ **Database Migrations**: Automated schema updates
+- ✅ **Comprehensive Documentation**: API guides and examples
+
+## 🎯 Production Ready
+
+- Environment-based configuration
+- Professional error handling
+- Input validation and sanitization
+- Request rate limiting
+- Comprehensive logging
+- PM2 process management
+
+**Upgrade from basic food logging → Professional nutrition management! 🥗**

@@ -11,7 +11,6 @@ const logRoutes = require('./routes/logs');
 const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
 const externalFoodsRoutes = require('./routes/external-foods');
-const adminFoodsRoutes = require('./routes/adminFoods');
 
 // Start cache cleanup job
 const cacheCleanupJob = require('./jobs/cacheCleanup');
