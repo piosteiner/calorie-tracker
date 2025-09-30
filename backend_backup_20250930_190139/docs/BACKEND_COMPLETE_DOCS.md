@@ -891,6 +891,101 @@ Required columns for Google Sheets/CSV import:
 
 ---
 
+## 🔄 Repository Synchronization
+
+### GitHub Integration System
+The backend includes an automated system for syncing changes to your live GitHub repository.
+
+#### Sync Script: `push-to-live-repo.sh`
+**Location**: `/var/www/calorie-tracker-api/push-to-live-repo.sh`
+
+**Purpose**: Automatically pushes enhanced backend changes to your GitHub repository while preserving existing frontend code.
+
+#### Usage
+```bash
+# Basic sync with automatic commit message
+./push-to-live-repo.sh
+
+# Sync with custom commit message
+./push-to-live-repo.sh "Add new food categories and admin features"
+
+# Example: After adding new features
+./push-to-live-repo.sh "Enhanced nutrition tracking and Swiss food prioritization"
+```
+
+#### What the Sync Script Does
+1. **Clones Live Repository**: Downloads current state of your GitHub repository
+2. **Cleans Old Backups**: Removes previous backup folders and legacy "Backend" folder
+3. **Creates New Backup**: Preserves current backend in `backend_backup_YYYYMMDD_HHMMSS/`
+4. **Copies Enhanced Backend**: Replaces backend folder with enhanced version
+5. **Preserves Frontend**: Keeps existing frontend code untouched
+6. **Commits Changes**: Creates descriptive commit with changes summary
+7. **Pushes to GitHub**: Updates your live repository automatically
+
+#### Sync Script Features
+- **Safe Operation**: Always creates backups before changes
+- **Clean Repository**: Removes old backups, keeps only the latest
+- **Legacy Cleanup**: Removes old "Backend" folder if present
+- **Selective Sync**: Only updates backend, preserves frontend
+- **Comprehensive Copy**: Includes all enhanced features (controllers, services, migrations, docs)
+- **Change Tracking**: Detailed commit messages with feature summaries
+- **Error Handling**: Validates operations before pushing
+
+#### Repository Structure After Sync
+```
+your-github-repo/
+├── frontend/ (preserved - your existing code)
+│   ├── index.html
+│   ├── script.js
+│   └── style.css
+├── backend/ (enhanced version)
+│   ├── controllers/
+│   ├── services/
+│   ├── migrations/
+│   ├── docs/
+│   └── [all enhanced backend files]
+└── backend_backup_YYYYMMDD_HHMMSS/ (latest backup only)
+    └── [previous backend version]
+```
+
+#### Repository Cleanup Strategy
+- **Old Backups**: Automatically removed to prevent repository bloat
+- **Legacy Folders**: Removes old "Backend" folder (capital B) if present
+- **Single Backup**: Maintains only the most recent backup for safety
+- **Clean History**: Repository stays organized with minimal backup clutter
+
+#### Integration with Development Workflow
+```bash
+# 1. Develop new features locally
+cd /var/www/calorie-tracker-api
+# ... make changes ...
+
+# 2. Test locally
+npm test
+curl "http://localhost:3000/api/foods/search?q=test"
+
+# 3. Sync to GitHub repository
+./push-to-live-repo.sh "Add external food caching system"
+
+# 4. Verify on GitHub
+# Visit: https://github.com/piosteiner/calorie-tracker/tree/main/backend
+```
+
+#### Automatic Deployment Benefits
+- **Version Control**: All changes tracked in GitHub with proper commit history
+- **Backup Safety**: Previous versions preserved in backup folders
+- **Team Collaboration**: Easy sharing of backend enhancements
+- **Production Deployment**: GitHub repository ready for production deployment
+- **Frontend Preservation**: Existing frontend code never overwritten
+
+#### Security Considerations
+- **Authentication**: Uses your existing GitHub credentials/SSH keys
+- **Selective Push**: Only pushes intended backend changes
+- **Backup Creation**: Always creates safety backups
+- **Clean Operation**: No sensitive data (`.env`, logs) included in sync
+
+---
+
 ## 🔄 Migration from Basic Backend
 
 ### What Changed
@@ -900,6 +995,7 @@ Required columns for Google Sheets/CSV import:
 - **External Integration**: Open Food Facts with smart caching
 - **Security**: Comprehensive .gitignore and environment protection
 - **Documentation**: Complete API and system documentation
+- **Repository Sync**: Automated GitHub integration system
 
 ### Upgrade Steps
 1. **Backup existing data** before migration
