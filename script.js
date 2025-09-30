@@ -25,36 +25,36 @@ class CalorieTracker {
         
         // Sample food database (fallback for offline mode)
         this.offlineFoodDatabase = {
-            'apple': { id: 1, calories: 95, unit: 'piece' },
-            'banana': { id: 2, calories: 105, unit: 'piece' },
-            'chicken breast': { id: 3, calories: 165, unit: '100g' },
-            'rice': { id: 4, calories: 130, unit: 'cup' },
-            'bread': { id: 5, calories: 80, unit: 'slice' },
-            'egg': { id: 6, calories: 70, unit: 'piece' },
-            'milk': { id: 7, calories: 150, unit: 'cup' },
-            'cheese': { id: 8, calories: 113, unit: '100g' },
-            'salmon': { id: 9, calories: 208, unit: '100g' },
-            'broccoli': { id: 10, calories: 55, unit: 'cup' },
-            'pasta': { id: 11, calories: 220, unit: 'cup' },
-            'yogurt': { id: 12, calories: 150, unit: 'cup' },
-            'almonds': { id: 13, calories: 164, unit: '28g' },
-            'orange': { id: 14, calories: 62, unit: 'piece' },
-            'spinach': { id: 15, calories: 7, unit: 'cup' },
-            'potato': { id: 16, calories: 161, unit: 'medium' },
-            'tomato': { id: 17, calories: 22, unit: 'medium' },
-            'avocado': { id: 18, calories: 234, unit: 'piece' },
-            'oatmeal': { id: 19, calories: 147, unit: 'cup' },
-            'peanut butter': { id: 20, calories: 188, unit: '2 tbsp' },
-            'lasagna': { id: 21, calories: 320, unit: 'serving' },
-            'lasagne': { id: 22, calories: 320, unit: 'serving' },
-            'meat lasagna': { id: 23, calories: 350, unit: 'serving' },
-            'vegetable lasagna': { id: 24, calories: 280, unit: 'serving' },
-            'beef lasagna': { id: 25, calories: 365, unit: 'serving' },
-            'cheese lasagna': { id: 26, calories: 300, unit: 'serving' },
-            'pizza': { id: 27, calories: 285, unit: 'slice' },
-            'hamburger': { id: 28, calories: 540, unit: 'piece' },
-            'french fries': { id: 29, calories: 365, unit: 'medium' },
-            'chocolate': { id: 30, calories: 546, unit: '100g' }
+            'apple': { id: 1, calories: 52, unit: 'g' },  // per 100g
+            'banana': { id: 2, calories: 89, unit: 'g' },  // per 100g
+            'chicken breast': { id: 3, calories: 165, unit: 'g' },  // per 100g
+            'rice': { id: 4, calories: 130, unit: 'g' },  // per 100g cooked
+            'bread': { id: 5, calories: 265, unit: 'g' },  // per 100g
+            'egg': { id: 6, calories: 155, unit: 'g' },  // per 100g
+            'milk': { id: 7, calories: 42, unit: 'g' },  // per 100g whole milk
+            'cheese': { id: 8, calories: 113, unit: 'g' },  // per 100g
+            'salmon': { id: 9, calories: 208, unit: 'g' },  // per 100g
+            'broccoli': { id: 10, calories: 34, unit: 'g' },  // per 100g
+            'pasta': { id: 11, calories: 131, unit: 'g' },  // per 100g cooked
+            'yogurt': { id: 12, calories: 59, unit: 'g' },  // per 100g plain
+            'almonds': { id: 13, calories: 579, unit: 'g' },  // per 100g
+            'orange': { id: 14, calories: 47, unit: 'g' },  // per 100g
+            'spinach': { id: 15, calories: 23, unit: 'g' },  // per 100g
+            'potato': { id: 16, calories: 77, unit: 'g' },  // per 100g
+            'tomato': { id: 17, calories: 18, unit: 'g' },  // per 100g
+            'avocado': { id: 18, calories: 160, unit: 'g' },  // per 100g
+            'oatmeal': { id: 19, calories: 68, unit: 'g' },  // per 100g cooked
+            'peanut butter': { id: 20, calories: 588, unit: 'g' },  // per 100g
+            'lasagna': { id: 21, calories: 135, unit: 'g' },  // per 100g
+            'lasagne': { id: 22, calories: 135, unit: 'g' },  // per 100g
+            'meat lasagna': { id: 23, calories: 150, unit: 'g' },  // per 100g
+            'vegetable lasagna': { id: 24, calories: 120, unit: 'g' },  // per 100g
+            'beef lasagna': { id: 25, calories: 155, unit: 'g' },  // per 100g
+            'cheese lasagna': { id: 26, calories: 140, unit: 'g' },  // per 100g
+            'pizza': { id: 27, calories: 266, unit: 'g' },  // per 100g
+            'hamburger': { id: 28, calories: 295, unit: 'g' },  // per 100g
+            'french fries': { id: 29, calories: 365, unit: 'g' },  // per 100g
+            'chocolate': { id: 30, calories: 546, unit: 'g' }  // per 100g
         };
         
         // Open Food Facts API integration
@@ -196,29 +196,24 @@ class CalorieTracker {
 
     // Search backend foods (includes Open Food Facts integration)
     async searchBackendFoods(query, limit = 10) {
-        console.log('🔍 searchBackendFoods called with query:', query, 'authToken:', !!this.authToken);
         try {
-            // Only use backend API if user is authenticated
-            if (this.authToken) {
-                console.log('🔑 User is authenticated, calling backend API...');
-                const response = await this.apiCall(`/external-foods/search?q=${encodeURIComponent(query)}&limit=${limit}&source=openfoodfacts`);
-                
-                if (response.success && response.foods) {
-                    return response.foods.map(food => ({
-                        id: food.external_id || `off_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                        name: food.name,
-                        calories: food.calories_per_100g || food.calories,
-                        unit: '100g',
-                        brand: food.brand || '',
-                        source: 'Open Food Facts',
-                        // Additional nutrition data from backend
-                        protein: food.protein_per_100g || 0,
-                        carbs: food.carbs_per_100g || 0,
-                        fat: food.fat_per_100g || 0,
-                        fiber: food.fiber_per_100g || 0,
-                        cached: !!response.cached
-                    }));
-                }
+            const response = await this.apiCall(`/external-foods/search?q=${encodeURIComponent(query)}&limit=${limit}&source=openfoodfacts`);
+            
+            if (response.success && response.foods) {
+                return response.foods.map(food => ({
+                    id: food.external_id || `off_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    external_id: food.external_id, // Store for logging
+                    name: food.name,
+                    calories: food.calories_per_100g || food.calories,
+                    unit: 'g', // Standard unit is grams
+                    brand: food.brand || '',
+                    source: 'Open Food Facts',
+                    protein: food.protein_per_100g || 0,
+                    carbs: food.carbs_per_100g || 0,
+                    fat: food.fat_per_100g || 0,
+                    fiber: food.fiber_per_100g || 0,
+                    cached: !!response.cached
+                }));
             }
             return [];
         } catch (error) {
@@ -244,21 +239,23 @@ class CalorieTracker {
     async searchLocalFoods(query, limit = 10) {
         try {
             const response = await this.apiCall(`/foods/search?q=${encodeURIComponent(query)}`);
-            
             if (response.success && response.foods) {
                 return response.foods.map(food => ({
                     id: food.id,
                     name: food.name,
-                    calories: food.calories_per_unit,
-                    unit: food.default_unit,
+                    calories: food.calories_per_unit || food.calories,
+                    unit: 'g', // All foods now use grams
                     brand: food.brand || '',
-                    category: food.category || '',
-                    source: 'Local Database'
+                    source: 'Local Database',
+                    protein: food.protein_per_100g || 0,
+                    carbs: food.carbs_per_100g || 0,
+                    fat: food.fat_per_100g || 0,
+                    fiber: food.fiber_per_100g || 0
                 })).slice(0, limit);
             }
             return [];
         } catch (error) {
-            console.error('Local foods search error:', error);
+            console.error('Local food search error:', error);
             return [];
         }
     }
@@ -345,38 +342,36 @@ class CalorieTracker {
         );
         results.push(...favorites.slice(0, 3).map(food => ({...food, source: `⭐ ${food.source}`})));
         
-        // 2. Search offline database
+        // 2. Search offline database (instant fallback)
         const offlineResults = this.searchOfflineDatabase(query);
         results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
         
-        // 3. Search backend (includes local foods + cached external foods + Open Food Facts)
-        if (this.isOnline && navigator.onLine && results.length < 8) {
+        // 3. Search backend (hybrid: local + external foods) if online
+        if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 // Search local foods first
-                const localResults = await this.searchLocalFoods(query, 3);
+                const localResults = await this.searchLocalFoods(query, 5);
                 results.push(...localResults);
                 
-                // Then search external foods (cached + Open Food Facts)
+                // Search external foods (Open Food Facts via backend)
                 const externalResults = await this.searchBackendFoods(query, 8 - results.length);
                 results.push(...externalResults);
                 
-                // Save cache periodically
-                if (externalResults.length > 0) {
-                    setTimeout(() => this.saveCacheToStorage(), 1000);
-                }
             } catch (error) {
-                console.log('Backend search failed, falling back to direct Open Food Facts');
-                // Fallback to direct Open Food Facts API if backend is unavailable
-                try {
-                    const directResults = await this.searchOpenFoodFacts(query, 8 - results.length);
-                    results.push(...directResults);
-                } catch (directError) {
-                    console.log('Direct Open Food Facts search also failed, using offline only');
-                }
+                console.log('Backend search failed, using offline only:', error);
             }
         }
         
-        return results;
+        // Remove duplicates by name (keep first occurrence)
+        const seen = new Set();
+        const uniqueResults = results.filter(food => {
+            const key = food.name.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        
+        return uniqueResults;
     }
 
     init() {
@@ -804,76 +799,90 @@ class CalorieTracker {
     // Handle adding enhanced food from Open Food Facts or offline database
     async handleAddEnhancedFood(foodData, quantity, unit) {
         try {
-            // Calculate calories based on food data
-            const calories = this.calculateCalories(foodData.calories, quantity, unit, foodData.unit);
-            
-            // Create food entry (hybrid approach - always store locally first)
-            const foodEntry = {
+            const timestamp = new Date().toLocaleTimeString('en-US', {
+                hour12: false, hour: '2-digit', minute: '2-digit'
+            });
+
+            // Calculate calories (everything is now per 100g basis)
+            const calories = Math.round((foodData.calories / 100) * quantity);
+
+            // Check if this is an external food that needs backend logging
+            if (foodData.source === 'Open Food Facts' && foodData.external_id) {
+                const logData = {
+                    external_food_id: foodData.external_id,
+                    name: foodData.name,
+                    quantity: quantity,
+                    unit: 'g', // Always grams now
+                    calories: calories,
+                    calories_per_100g: foodData.calories,
+                    protein_per_100g: foodData.protein || 0,
+                    carbs_per_100g: foodData.carbs || 0,
+                    fat_per_100g: foodData.fat || 0,
+                    fiber_per_100g: foodData.fiber || 0,
+                    brand: foodData.brand || null,
+                    source: 'Open Food Facts'
+                };
+
+                try {
+                    const response = await this.apiCall('/external-foods/log', 'POST', logData);
+                    
+                    if (response.success) {
+                        // Add to local food log with backend log ID
+                        const foodLogEntry = {
+                            id: response.logId || Date.now(),
+                            name: foodData.name,
+                            quantity: quantity,
+                            unit: 'g',
+                            calories: calories,
+                            timestamp: timestamp,
+                            external: true,
+                            source: 'Open Food Facts',
+                            brand: foodData.brand || ''
+                        };
+                        
+                        this.foodLog.push(foodLogEntry);
+                        this.updateFoodLog();
+                        this.updateDashboard();
+                        this.saveToStorage();
+                        this.addToFavorites(foodData);
+                        
+                        this.showMessage(`Added ${foodData.name} (${quantity}g, ${calories} cal)`, 'success');
+                        document.getElementById('foodForm').reset();
+                        this.selectedFoodData = null;
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error logging external food:', error);
+                    this.showMessage('Failed to log external food. Added locally.', 'warning');
+                }
+            }
+
+            // Fallback: add locally (for offline foods or if backend logging fails)
+            const foodLogEntry = {
                 id: Date.now(),
                 name: foodData.name,
                 quantity: quantity,
-                unit: unit,
+                unit: 'g',
                 calories: calories,
-                timestamp: new Date().toLocaleTimeString(),
-                source: foodData.source,
-                brand: foodData.brand || '',
-                external_food_id: foodData.id || null, // Store Open Food Facts ID for sync
-                // Store additional nutrition data if available
-                protein: foodData.protein ? Math.round((foodData.protein / 100) * quantity) : 0,
-                carbs: foodData.carbs ? Math.round((foodData.carbs / 100) * quantity) : 0,
-                fat: foodData.fat ? Math.round((foodData.fat / 100) * quantity) : 0
+                timestamp: timestamp,
+                offline: !this.isOnline,
+                source: foodData.source || 'Local',
+                brand: foodData.brand || ''
             };
-
-            // Add to local storage immediately (hybrid approach)
-            this.foodLog.push(foodEntry);
-            this.dailyCalories += calories;
             
-            // Add to favorites (automatically tracks usage)
+            this.foodLog.push(foodLogEntry);
+            this.updateFoodLog();
+            this.updateDashboard();
+            this.saveToStorage();
             this.addToFavorites(foodData);
             
-            // Add to sync queue for ALL foods (maintaining hybrid approach)
-            const syncData = {
-                name: foodData.name,
-                quantity: quantity,
-                unit: unit,
-                calories: calories,
-                localId: foodEntry.id,
-                source: foodData.source
-            };
-
-            // Include Open Food Facts specific data for backend sync
-            if (foodData.source === 'Open Food Facts') {
-                syncData.external_food_id = foodData.id;
-                syncData.brand = foodData.brand || '';
-                // Send raw per-100g values (not calculated for quantity)
-                syncData.protein_per_100g = foodData.protein || 0;
-                syncData.carbs_per_100g = foodData.carbs || 0;
-                syncData.fat_per_100g = foodData.fat || 0;
-                syncData.fiber_per_100g = foodData.fiber || 0;
-            }
-
-            this.addToSyncQueue('add_food', syncData);
-            
-            this.updateDashboard();
-            this.updateFoodLog();
-            
-            // Reset form and clear selected food data
+            this.showMessage(`Added ${foodData.name} (${quantity}g, ${calories} cal)`, 'success');
             document.getElementById('foodForm').reset();
-            document.getElementById('quantity').value = 1;
             this.selectedFoodData = null;
-            
-            // Hide nutrition preview if shown
-            const previewDiv = document.getElementById('nutritionPreview');
-            if (previewDiv) previewDiv.style.display = 'none';
-            
-            // Show enhanced success message
-            const sourceText = foodData.source === 'Open Food Facts' ? '🌐' : '💾';
-            const brandText = foodData.brand ? ` by ${foodData.brand}` : '';
-            this.showMessage(`Added ${foodData.name}${brandText}! +${calories} calories ${sourceText}`, 'success');
 
         } catch (error) {
             console.error('Error adding enhanced food:', error);
-            this.showMessage(`Error adding food: ${error.message}`, 'error');
+            this.showMessage('Error adding food. Please try again.', 'error');
         }
     }
 
@@ -946,16 +955,9 @@ class CalorieTracker {
     }
 
     calculateCalories(baseCalories, quantity, inputUnit, baseUnit) {
-        let multiplier = quantity;
-        
-        // Convert units if needed
-        if (inputUnit === 'grams' && baseUnit === '100g') {
-            multiplier = quantity / 100;
-        } else if (inputUnit === 'ounces' && baseUnit === '100g') {
-            multiplier = (quantity * 28.35) / 100;
-        }
-        
-        return Math.round(baseCalories * multiplier);
+        // All foods now use grams and calories are per 100g
+        // Simple calculation: (calories_per_100g / 100) * quantity_in_grams
+        return Math.round((baseCalories / 100) * quantity);
     }
 
     async showFoodSuggestions(input) {
@@ -1096,7 +1098,7 @@ class CalorieTracker {
                         <span class="food-source" title="${this.getSourceTooltip(food.source)}">${sourceIcon} ${sourceText}</span>
                     </div>
                     <div class="food-details">
-                        <span class="food-calories">${food.calories} cal/${food.unit || '100g'}</span>
+                        <span class="food-calories">${food.calories} cal/100g</span>
                         ${nutritionText ? `<span class="food-nutrition">${nutritionText}</span>` : ''}
                     </div>
                 </div>
@@ -1208,7 +1210,7 @@ class CalorieTracker {
         
         let nutritionHTML = `
             <div class="nutrition-preview">
-                <strong>${food.name}</strong> (${food.calories} cal/${food.unit})
+                <strong>${food.name}</strong> (${food.calories} cal/100g)
         `;
         
         if (food.protein || food.carbs || food.fat) {
@@ -2224,6 +2226,50 @@ class CalorieTracker {
     hideCalorieInputModal(modal) {
         document.body.style.overflow = '';
         modal.remove();
+    }
+
+    // Admin Panel Integration Methods (Optional)
+    
+    // Get admin statistics
+    async getAdminStats() {
+        try {
+            const response = await this.apiCall('/admin/stats');
+            return response.success ? response.stats : null;
+        } catch (error) {
+            console.error('Admin stats error:', error);
+            return null;
+        }
+    }
+
+    // List all foods for admin management
+    async getAdminFoods(page = 1, limit = 50, search = '') {
+        try {
+            const queryParams = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString()
+            });
+            
+            if (search) {
+                queryParams.append('search', search);
+            }
+            
+            const response = await this.apiCall(`/admin/foods?${queryParams}`);
+            return response.success ? response.foods : [];
+        } catch (error) {
+            console.error('Admin foods error:', error);
+            return [];
+        }
+    }
+
+    // Get food categories for admin management
+    async getAdminFoodCategories() {
+        try {
+            const response = await this.apiCall('/admin/food-categories');
+            return response.success ? response.categories : [];
+        } catch (error) {
+            console.error('Admin categories error:', error);
+            return [];
+        }
     }
 }
 
