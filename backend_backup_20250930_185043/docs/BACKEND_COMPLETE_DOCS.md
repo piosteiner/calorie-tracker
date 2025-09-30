@@ -11,7 +11,6 @@
 8. [Configuration Guide](#configuration-guide)
 9. [Deployment Guide](#deployment-guide)
 10. [Development Workflow](#development-workflow)
-11. [Frontend Integration](#-frontend-integration)
 
 ---
 
@@ -914,42 +913,6 @@ Required columns for Google Sheets/CSV import:
 - **User accounts** remain unchanged
 - **API authentication** uses same JWT system
 - **Database structure** enhanced, not replaced
-
----
-
-## 🌐 Frontend Integration
-
-### Integration with Enhanced Backend
-The enhanced backend requires frontend updates to take advantage of new features. A comprehensive frontend integration guide is available for developers.
-
-#### Key Frontend Changes Required:
-- **Unit Standardization**: Update HTML dropdown to grams-only
-- **Hybrid Search Integration**: Replace direct Open Food Facts calls with backend APIs
-- **Enhanced Food Logging**: Support external food logging with nutrition data
-- **Admin Panel Integration**: Optional admin features for food management
-
-#### Frontend Integration Guide
-📋 **Complete Integration Instructions**: `/docs/FRONTEND_INTEGRATION_PROMPT.md`
-
-This file contains:
-- Step-by-step frontend code updates
-- JavaScript method implementations  
-- HTML changes for unit standardization
-- API integration examples
-- Admin panel integration (optional)
-
-#### Frontend API Endpoints to Use:
-- `GET /api/foods/search` - Search local foods
-- `GET /api/external-foods/search` - Search external foods (replaces direct Open Food Facts calls)
-- `POST /api/external-foods/log` - Log external food consumption
-- `GET /api/admin/*` - Admin endpoints (optional)
-
-#### Expected Frontend Behavior:
-- **Grams-only units** for precise calculations
-- **Hybrid search results** combining local + external foods
-- **Swiss-prioritized results** from Open Food Facts
-- **Smart caching** with backend performance optimization
-- **Offline functionality** preserved with enhanced online features
 
 ---
 
