@@ -243,7 +243,7 @@ router.put('/foods/:foodId', async (req, res) => {
       message: 'Food updated successfully'
     });
   } catch (error) {
-    console.error('Admin update food error:', error);
+    console.error('Pios Food DB update error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update food'
@@ -280,7 +280,7 @@ router.delete('/foods/:foodId', async (req, res) => {
       message: 'Food deleted successfully'
     });
   } catch (error) {
-    console.error('Admin delete food error:', error);
+    console.error('Pios Food DB delete error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete food'

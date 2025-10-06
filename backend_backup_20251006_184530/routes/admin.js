@@ -3,7 +3,6 @@ const router = express.Router();
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
-const cacheCleanupJob = require('../jobs/cacheCleanup');
 
 // Apply auth middleware first, then admin check
 router.use(authenticateToken);
@@ -141,7 +140,7 @@ router.post('/users/:userId/reset-password', async (req, res) => {
   }
 });
 
-// Get all foods (admin only) - includes both local and external foods
+// Get all foods (admin only)
 router.get('/foods', async (req, res) => {
   try {
     // Get local foods with usage statistics
@@ -160,36 +159,15 @@ router.get('/foods', async (req, res) => {
       FROM foods f
       LEFT JOIN food_logs fl ON f.id = fl.food_id
       GROUP BY f.id
+      ORDER BY usage_count DESC, f.created_at DESC
     `);
-
-    // Get external foods from cached searches (available foods, not just logged ones)
-    const externalFoods = await db.query(`
-      SELECT 
-        cef.external_id as id,
-        cef.name,
-        cef.calories_per_100g as calories,
-        'per 100g' as unit,
-        'External' as category,
-        cef.brand,
-        COALESCE(efs.name, 'External') as source,
-        cef.usage_count,
-        NULL as total_quantity_logged,
-        cef.cached_at as created_at
-      FROM cached_external_foods cef
-      LEFT JOIN external_food_sources efs ON cef.external_source_id = efs.id
-      ORDER BY cef.usage_count DESC, cef.cached_at DESC
-    `);
-
-    // Combine and sort by usage count
-    const allFoods = [...localFoods, ...externalFoods].sort((a, b) => b.usage_count - a.usage_count);
     
     res.json({
       success: true,
-      foods: allFoods,
+      foods: localFoods,
       summary: {
-        total_foods: allFoods.length,
-        local_foods: localFoods.length,
-        external_foods: externalFoods.length
+        total_foods: localFoods.length,
+        local_foods: localFoods.length
       }
     });
   } catch (error) {
@@ -318,9 +296,7 @@ router.get('/stats', async (req, res) => {
         (SELECT COUNT(*) FROM users WHERE is_active = TRUE) as total_users,
         (SELECT COUNT(*) FROM users WHERE role = 'admin') as total_admins,
         (SELECT COUNT(*) FROM foods) as total_local_foods,
-        (SELECT COUNT(*) FROM cached_external_foods) as total_external_foods,
         (SELECT COUNT(*) FROM food_logs) as total_logs,
-        (SELECT COUNT(*) FROM food_logs WHERE external_food_id IS NOT NULL) as external_food_logs,
         (SELECT COUNT(*) FROM sessions WHERE is_active = TRUE AND expires_at > NOW()) as active_sessions,
         (SELECT AVG(daily_calorie_goal) FROM users WHERE is_active = TRUE) as avg_calorie_goal
     `);
@@ -355,51 +331,6 @@ router.get('/stats', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve statistics'
-    });
-  }
-});
-
-// Manual cache cleanup (admin only)
-router.post('/cache/cleanup', async (req, res) => {
-  try {
-    const result = await cacheCleanupJob.runManualCleanup();
-    res.json({
-      success: true,
-      ...result
-    });
-  } catch (error) {
-    console.error('Manual cache cleanup error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Get cache cleanup status (admin only)
-router.get('/cache/status', async (req, res) => {
-  try {
-    const status = cacheCleanupJob.getStatus();
-    const cacheStats = await db.query(`
-      SELECT 
-        COUNT(*) as total_cached_foods,
-        AVG(usage_count) as avg_usage_count,
-        MAX(usage_count) as max_usage_count,
-        MIN(cached_at) as oldest_cache,
-        MAX(cached_at) as newest_cache
-      FROM cached_external_foods
-    `);
-    
-    res.json({
-      success: true,
-      cleanup_status: status,
-      cache_stats: cacheStats[0] || {}
-    });
-  } catch (error) {
-    console.error('Cache status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get cache status'
     });
   }
 });

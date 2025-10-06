@@ -7,7 +7,7 @@
 4. [API Documentation](#api-documentation)
 5. [Database Schema](#database-schema)
 6. [File Structure](#file-structure)
-7. [Food Management System](#food-management-system)
+7. [Pios Food DB Management System](#pios-food-db-management-system)
 8. [Configuration Guide](#configuration-guide)
 9. [Deployment Guide](#deployment-guide)
 10. [Development Workflow](#development-workflow)
@@ -114,20 +114,16 @@ Backend Architecture
 │   ├── Input Validation
 │   └── Error Handling
 ├── 🎮 Controllers
-│   ├── Food Management
-│   ├── External Food Integration  
+│   ├── Pios Food DB Management
 │   ├── User Management
 │   └── Admin Operations
 ├── 🔧 Services
-│   ├── Food Import Service
-│   ├── Open Food Facts Service
-│   └── Cache Management
+│   └── Food Import Service
 ├── 📊 Database Layer (MySQL)
 │   ├── Food Database
 │   ├── User Management
 │   ├── Food Categories
 │   └── Import History
-└── 🔌 External Integrations
     ├── Open Food Facts API
     └── Swiss Food Database Priority
 ```
@@ -573,22 +569,19 @@ backend/
 │   └── ecosystem.config.js       # PM2 process configuration
 │
 ├── 🎮 Controllers/ 
-│   ├── adminFoodsController.js   # Admin food management operations
-│   ├── externalFoodsController.js # External API integration
+│   ├── adminFoodsController.js   # Pios Food DB management operations
 │   └── foodsController.js        # Local food database operations
 │
 ├── 🛣️ Routes/
 │   ├── admin.js                  # Admin endpoints (enhanced)
-│   ├── adminFoods.js            # Dedicated admin food routes
+│   ├── adminFoods.js            # Dedicated Pios Food DB routes
 │   ├── auth.js                   # Authentication endpoints
-│   ├── external-foods.js        # External food API routes  
 │   ├── foods.js                  # Local food search routes
 │   ├── logs.js                   # Food logging endpoints
 │   └── user.js                   # User management routes
 │
 ├── 🔧 Services/
-│   ├── foodsImportService.js     # CSV/JSON import processing
-│   └── openFoodFactsService.js   # Open Food Facts API integration
+│   └── foodsImportService.js     # CSV/JSON import processing
 │
 ├── 🛡️ Middleware/
 │   ├── admin.js                  # Admin authentication middleware
@@ -633,13 +626,11 @@ backend/
 - **`package.json`**: Project metadata, dependencies, and npm scripts for development and production
 
 #### Controllers (Business Logic)
-- **`adminFoodsController.js`**: Complete CRUD operations for food management, bulk operations, validation, and admin statistics
-- **`externalFoodsController.js`**: Open Food Facts API integration, search result caching, Swiss prioritization, and consumption logging
+- **`adminFoodsController.js`**: Complete CRUD operations for Pios Food DB management, bulk operations, validation, and statistics
 - **`foodsController.js`**: Local food database search, category filtering, nutrition data retrieval, and result formatting
 
 #### Services (External Integration)
 - **`foodsImportService.js`**: CSV/JSON file processing, data validation, duplicate detection, and import history tracking
-- **`openFoodFactsService.js`**: External API communication, Swiss product prioritization, response parsing, and error handling
 
 #### Security & Configuration
 - **`.gitignore`**: Comprehensive protection of sensitive data, environment files, logs, and user uploads
@@ -647,20 +638,14 @@ backend/
 
 ---
 
-## 🥗 Food Management System
+## 🥗 Pios Food DB Management System
 
 ### Local Food Database
 **Enhanced with complete nutrition profiles:**
-- **20+ curated foods** with Swiss/European accuracy
+- **Curated foods** with accurate nutrition data
 - **Complete nutrition data** per 100g (protein, carbs, fat, fiber, sodium, sugar)
-- **8 organized categories** for logical food organization
-- **Standardized units** (grams only) for precision
-
-### External Food Integration
-**Smart hybrid system combining multiple sources:**
-- **Open Food Facts API** integration with 500+ million products
-- **Swiss prioritization** for local accuracy
-- **Smart caching** of frequently accessed foods
+- **Organized categories** for logical food organization
+- **Standardized units** (100g only) for precision and simplicity
 - **26+ cached foods** with complete nutrition data
 - **Graceful Unauthenticated Access** with rate limiting and security safeguards
 
@@ -1046,7 +1031,7 @@ The enhanced backend requires frontend updates to take advantage of new features
 - **Unit Standardization**: Update HTML dropdown to grams-only
 - **Hybrid Search Integration**: Replace direct Open Food Facts calls with backend APIs
 - **Enhanced Food Logging**: Support external food logging with nutrition data
-- **Admin Panel Integration**: Optional admin features for food management
+- **Admin Panel Integration**: Optional admin features for Pios Food DB management
 
 #### Frontend Integration Guide
 📋 **Complete Integration Instructions**: `/docs/FRONTEND_INTEGRATION_PROMPT.md`
