@@ -75,7 +75,7 @@ class Database {
 
     async getSession(sessionId) {
         const sql = `
-            SELECT s.*, u.username, u.daily_calorie_goal 
+            SELECT s.*, u.username, u.daily_calorie_goal, u.role 
             FROM sessions s 
             JOIN users u ON s.user_id = u.id 
             WHERE s.id = ? AND s.is_active = TRUE AND s.expires_at > NOW()

@@ -32,8 +32,8 @@ Professional Node.js backend with comprehensive food database management, nutrit
 - `GET /api/foods/search` - Search local food database
 - `GET /api/external-foods/search` - Hybrid external food search
 - `POST /api/external-foods/log` - Log external food consumption
-- `GET /api/admin/foods` - Pios Food DB: List all foods with pagination
-- `GET /api/admin/food-categories` - Pios Food DB: Food categories
+- `GET /api/admin/foods` - Admin: List all foods with pagination
+- `GET /api/admin/food-categories` - Admin: Food categories
 - `GET /api/admin/stats` - Admin: System statistics
 
 ## 🚀 Quick Start
@@ -71,7 +71,7 @@ pm2 start ecosystem.config.js
 This enhanced version includes:
 - ✅ **Enhanced MySQL Schema**: New nutrition columns and categories
 - ✅ **Professional Services**: Business logic separation
-- ✅ **Pios Food DB Controllers**: Complete food management system
+- ✅ **Admin Controllers**: Complete food management system
 - ✅ **Database Migrations**: Automated schema updates
 - ✅ **Comprehensive Documentation**: API guides and examples
 
