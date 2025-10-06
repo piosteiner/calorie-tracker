@@ -1231,7 +1231,7 @@ class CalorieTracker {
     }
 
     // =============================================================================
-    // ADMIN FOODS TABLE - BULK OPERATIONS & SORTING
+    // PIOS FOOD DB TABLE - BULK OPERATIONS & SORTING
     // =============================================================================
 
     /**
