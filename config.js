@@ -15,9 +15,28 @@ const CONFIG = {
     ITEMS_PER_PAGE: 20,
     AUTO_SAVE_INTERVAL: 30000, // 30 seconds
     
-    // Food suggestions limit
+    // Food suggestions settings
     MAX_SUGGESTIONS: 10,
     MIN_SEARCH_LENGTH: 2,
+    
+    // Timing constants (in milliseconds)
+    TIMING: {
+        NUTRITION_PREVIEW_DURATION: 5000,        // 5 seconds
+        SYNC_INTERVAL: 30000,                    // 30 seconds
+        DEBOUNCE_DELAY: 300,                     // 300ms for search
+        CACHE_EXPIRY: 24 * 60 * 60 * 1000,      // 24 hours
+    },
+    
+    // Validation limits
+    LIMITS: {
+        MAX_FOOD_NAME_LENGTH: 100,
+        MAX_USERNAME_LENGTH: 50,
+        MIN_USERNAME_LENGTH: 3,
+        MAX_QUANTITY: 10000,
+        MAX_CALORIES_PER_100G: 10000,
+        MIN_PASSWORD_LENGTH: 6,
+        MAX_PASSWORD_LENGTH: 128,
+    },
     
     // Session settings
     TOKEN_STORAGE_KEY: 'calorieTrackerToken',

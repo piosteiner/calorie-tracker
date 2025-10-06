@@ -51,7 +51,7 @@ class CalorieTracker {
             }
             return [];
         } catch (error) {
-            console.error('Local food search error:', error);
+            logger.error('Local food search error:', error);
             return [];
         }
     }
@@ -67,11 +67,11 @@ class CalorieTracker {
                     cacheData.searches.forEach(search => {
                         this.openFoodFactsCache.set(search.key, search.results);
                     });
-                    console.log(`Loaded ${cacheData.searches.length} cached food searches`);
+                    logger.info(`Loaded ${cacheData.searches.length} cached food searches`);
                 }
             }
         } catch (error) {
-            console.error('Error loading cached foods:', error);
+            logger.error('Error loading cached foods:', error);
         }
     }
 
@@ -86,7 +86,7 @@ class CalorieTracker {
             };
             localStorage.setItem('foodSearchCache', JSON.stringify(cacheData));
         } catch (error) {
-            console.error('Error saving food cache:', error);
+            logger.error('Error saving food cache:', error);
         }
     }
 
@@ -113,7 +113,7 @@ class CalorieTracker {
             
             localStorage.setItem('favoritesFoods', JSON.stringify(topFavorites));
         } catch (error) {
-            console.error('Error adding to favorites:', error);
+            logger.error('Error adding to favorites:', error);
         }
     }
 
@@ -122,7 +122,7 @@ class CalorieTracker {
             const favorites = localStorage.getItem('favoritesFoods');
             return favorites ? JSON.parse(favorites) : [];
         } catch (error) {
-            console.error('Error getting favorites:', error);
+            logger.error('Error getting favorites:', error);
             return [];
         }
     }
@@ -133,7 +133,7 @@ class CalorieTracker {
         const searchTerm = query.toLowerCase();
         const preferences = this.getDatabaseTogglePreferences();
         
-        console.log('🔍 Search preferences:', preferences);
+        logger.info('🔍 Search preferences:', preferences);
         
         // 1. Search favorites first (instant) if enabled
         if (preferences.favorites) {
@@ -141,9 +141,9 @@ class CalorieTracker {
                 food.name.toLowerCase().includes(searchTerm)
             );
             results.push(...favorites.slice(0, 3).map(food => ({...food, source: `⭐ ${food.source}`})));
-            console.log('⭐ Favorites search enabled, found:', favorites.length);
+            logger.info('⭐ Favorites search enabled, found:', favorites.length);
         } else {
-            console.log('⭐ Favorites search disabled');
+            logger.info('⭐ Favorites search disabled');
         }
         
         // 2. Search Pios Food DB if online and enabled
@@ -153,13 +153,13 @@ class CalorieTracker {
                 if (preferences.localFoods) {
                     const localResults = await this.searchLocalFoods(query, 10);
                     results.push(...localResults);
-                    console.log('🏠 Pios Food DB search enabled, found:', localResults.length);
+                    logger.info('🏠 Pios Food DB search enabled, found:', localResults.length);
                 } else {
-                    console.log('🏠 Pios Food DB search disabled');
+                    logger.info('🏠 Pios Food DB search disabled');
                 }
                 
             } catch (error) {
-                console.log('Backend search failed, using offline only:', error);
+                logger.info('Backend search failed, using offline only:', error);
             }
         }
         
@@ -172,7 +172,7 @@ class CalorieTracker {
             return true;
         });
         
-        console.log('🔍 Total unique results after deduplication:', uniqueResults.length);
+        logger.info('🔍 Total unique results after deduplication:', uniqueResults.length);
         return uniqueResults;
     }
 
@@ -433,7 +433,7 @@ class CalorieTracker {
                     return;
                 }
             } catch (error) {
-                console.error('Auth check failed:', error);
+                logger.error('Auth check failed:', error);
                 // Clear invalid token
                 localStorage.removeItem(CONFIG.TOKEN_STORAGE_KEY);
                 this.authToken = null;
@@ -471,7 +471,7 @@ class CalorieTracker {
             
             // Don't log auth errors as they're expected when not logged in
             if (response.status !== 401 || endpoint !== '/auth/verify') {
-                console.error(`API Error (${response.status}):`, errorData.error || errorData.message);
+                logger.error(`API Error (${response.status}):`, errorData.error || errorData.message);
             }
             
             throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
@@ -499,19 +499,25 @@ class CalorieTracker {
             if (targetSection) {
                 targetSection.classList.add('active');
             } else {
-                console.error('Section not found:', sectionName + 'Section');
+                logger.error('Section not found:', sectionName + 'Section');
             }
         } catch (error) {
-            console.error('Error in showSection:', error);
+            logger.error('Error in showSection:', error);
         }
     }
 
     async handleLogin() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+        try {
+            // Validate inputs using Validators utility
+            const username = Validators.validateUsername(
+                document.getElementById('username').value
+            );
+            const password = Validators.validatePassword(
+                document.getElementById('password').value
+            );
 
-        // For demo credentials, try backend first, then fallback to offline mode
-        if ((username === 'demo' && password === 'demo123') || (username === 'admin' && password === 'admin123')) {
+            // For demo credentials, try backend first, then fallback to offline mode
+            if ((username === 'demo' && password === 'demo123') || (username === 'admin' && password === 'admin123')) {
             // First try to authenticate with backend if online
             if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
                 try {
@@ -536,7 +542,7 @@ class CalorieTracker {
                     this.showMessage('Login successful! (Connected to backend)', 'success');
                     return;
                 } catch (error) {
-                    console.log('Backend authentication failed, using demo mode:', error.message);
+                    logger.info('Backend authentication failed, using demo mode:', error.message);
                 }
             }
             
@@ -601,6 +607,10 @@ class CalorieTracker {
         } else {
             this.showMessage('Invalid credentials. Use demo/demo123 for offline access', 'error');
         }
+        } catch (validationError) {
+            // Validation failed - show user-friendly error message
+            this.showMessage(validationError.message, 'error');
+        }
     }
 
     async handleLogout() {
@@ -608,7 +618,7 @@ class CalorieTracker {
             try {
                 await this.apiCall('/auth/logout', 'POST');
             } catch (error) {
-                console.error('Logout error:', error);
+                logger.error('Logout error:', error);
             }
         }
 
@@ -623,18 +633,24 @@ class CalorieTracker {
     }
 
     async handleAddFood() {
-        const foodInput = document.getElementById('foodName').value.trim();
-        const quantity = parseInt(document.getElementById('quantity').value);
-        const unit = document.getElementById('unit').value;
+        try {
+            // Validate inputs using Validators utility
+            const foodInput = Validators.validateFoodName(
+                document.getElementById('foodName').value
+            );
+            const quantity = Validators.validateQuantity(
+                document.getElementById('quantity').value
+            );
+            const unit = document.getElementById('unit').value;
 
-        // Check if we have enhanced food data from selection
-        if (this.selectedFoodData) {
-            await this.handleAddEnhancedFood(this.selectedFoodData, quantity, unit);
-            return;
-        }
+            // Check if we have enhanced food data from selection
+            if (this.selectedFoodData) {
+                await this.handleAddEnhancedFood(this.selectedFoodData, quantity, unit);
+                return;
+            }
 
-        // Original logic for manual input
-        const foodName = foodInput.toLowerCase();
+            // Original logic for manual input
+            const foodName = foodInput.toLowerCase();
 
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
@@ -707,6 +723,10 @@ class CalorieTracker {
             // Offline mode - suggest using search functionality instead
             this.showMessage('Please use the food search to find and add foods when offline', 'error');
         }
+        } catch (validationError) {
+            // Validation failed - show user-friendly error message
+            this.showMessage(validationError.message, 'error');
+        }
     }
 
     // Handle adding enhanced food from Pios Food DB or offline database
@@ -743,7 +763,7 @@ class CalorieTracker {
             this.selectedFoodData = null;
 
         } catch (error) {
-            console.error('Error adding enhanced food:', error);
+            logger.error('Error adding enhanced food:', error);
             this.showMessage('Error adding food. Please try again.', 'error');
         }
     }
@@ -768,7 +788,7 @@ class CalorieTracker {
                 this.updateFoodLog();
                 
             } catch (error) {
-                console.error('Failed to load today\'s data:', error);
+                logger.error('Failed to load today\'s data:', error);
                 this.showMessage('Failed to load data from server', 'error');
             }
         }
@@ -781,12 +801,12 @@ class CalorieTracker {
     }
 
     async showFoodSuggestions(input) {
-        console.log('🔍 showFoodSuggestions called with input:', input);
+        logger.info('🔍 showFoodSuggestions called with input:', input);
         const suggestionsDiv = document.getElementById('foodSuggestions');
         this.isSearching = true;
         
         if (input.length < CONFIG.MIN_SEARCH_LENGTH) {
-            console.log('❌ Input too short, hiding suggestions');
+            logger.info('❌ Input too short, hiding suggestions');
             this.hideFoodSuggestions();
             this.isSearching = false;
             return;
@@ -795,7 +815,7 @@ class CalorieTracker {
         try {
             let matches = [];
             const preferences = this.getDatabaseTogglePreferences();
-            console.log('📊 Starting search with preferences:', preferences, 'online status:', this.isOnline, 'development mode:', CONFIG.DEVELOPMENT_MODE);
+            logger.info('📊 Starting search with preferences:', preferences, 'online status:', this.isOnline, 'development mode:', CONFIG.DEVELOPMENT_MODE);
 
             // 1. Search favorites first (instant results) if enabled
             if (preferences.favorites) {
@@ -803,31 +823,31 @@ class CalorieTracker {
                     food.name.toLowerCase().includes(input.toLowerCase())
                 );
                 matches.push(...favorites.slice(0, 2).map(food => ({...food, source: `⭐ ${food.source}`})));
-                console.log('⭐ Found favorites:', favorites.length);
+                logger.info('⭐ Found favorites:', favorites.length);
             } else {
-                console.log('⭐ Favorites search disabled');
+                logger.info('⭐ Favorites search disabled');
             }
 
             // 2. Search backend for comprehensive results if enabled
             if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
-                console.log('🌐 Attempting backend search...');
+                logger.info('🌐 Attempting backend search...');
                 try {
                     // Search Pios Food DB in backend database if enabled
                     if (preferences.localFoods) {
                         const localResults = await this.searchLocalFoods(input, 10);
                         matches.push(...localResults);
-                        console.log('🏠 Found local results:', localResults.length);
+                        logger.info('🏠 Found local results:', localResults.length);
                     } else {
-                        console.log('🏠 Pios Food DB search disabled');
+                        logger.info('🏠 Pios Food DB search disabled');
                     }
 
                 } catch (backendError) {
-                    console.log('❌ Backend search failed:', backendError);
+                    logger.info('❌ Backend search failed:', backendError);
                 }
             }
 
-            console.log('Total matches found:', matches.length);
-            console.log('All matches:', matches);
+            logger.debug('Total matches found:', matches.length);
+            logger.debug('All matches:', matches);
 
             // Remove duplicates based on name and normalize results
             const uniqueMatches = [];
@@ -845,7 +865,7 @@ class CalorieTracker {
             this.displayFoodSuggestions(uniqueMatches, input);
 
         } catch (error) {
-            console.error('Food suggestions error:', error);
+            logger.error('Food suggestions error:', error);
             suggestionsDiv.innerHTML = '<div class="suggestion-item error">⚠️ Search temporarily unavailable</div>';
         } finally {
             this.isSearching = false;
@@ -854,13 +874,13 @@ class CalorieTracker {
 
     // Display food suggestions with enhanced formatting
     displayFoodSuggestions(matches, input) {
-        console.log('🎨 displayFoodSuggestions called with', matches.length, 'matches');
+        logger.info('🎨 displayFoodSuggestions called with', matches.length, 'matches');
         const suggestionsDiv = document.getElementById('foodSuggestions');
-        console.log('📦 suggestionsDiv element:', suggestionsDiv);
+        logger.info('📦 suggestionsDiv element:', suggestionsDiv);
         this.selectedSuggestionIndex = -1; // Reset keyboard selection
 
         if (matches.length === 0) {
-            console.log('❌ No matches, showing no results message');
+            logger.info('❌ No matches, showing no results message');
             suggestionsDiv.innerHTML = `
                 <div class="suggestion-item no-results">
                     No foods found for "${input}". 
@@ -871,7 +891,7 @@ class CalorieTracker {
             return;
         }
 
-        console.log('✅ Building suggestions HTML for', matches.length, 'matches');
+        logger.info('✅ Building suggestions HTML for', matches.length, 'matches');
 
         // Create enhanced suggestions with comprehensive info
         const suggestions = matches.slice(0, CONFIG.MAX_SUGGESTIONS || 10).map(food => {
@@ -914,10 +934,10 @@ class CalorieTracker {
         ` : '';
 
         suggestionsDiv.innerHTML = suggestions + databaseInfo;
-        console.log('🖼️ Setting innerHTML and making suggestions visible');
-        console.log('📝 Final HTML length:', (suggestions + databaseInfo).length);
+        logger.info('🖼️ Setting innerHTML and making suggestions visible');
+        logger.info('📝 Final HTML length:', (suggestions + databaseInfo).length);
         suggestionsDiv.style.display = 'block';
-        console.log('👁️ Set suggestionsDiv display to block');
+        logger.info('👁️ Set suggestionsDiv display to block');
     }
 
     // Helper methods for food suggestions display
@@ -959,8 +979,8 @@ class CalorieTracker {
     }
 
     hideFoodSuggestions() {
-        console.log('🚫 hideFoodSuggestions called - hiding suggestions');
-        console.trace('📍 Called from:');
+        logger.info('🚫 hideFoodSuggestions called - hiding suggestions');
+        logger.debug('📍 Called from:');
         document.getElementById('foodSuggestions').style.display = 'none';
         this.selectedSuggestionIndex = -1; // Reset keyboard selection
     }
@@ -989,7 +1009,7 @@ class CalorieTracker {
             
             this.hideFoodSuggestions();
         } catch (error) {
-            console.error('Error selecting enhanced food:', error);
+            logger.error('Error selecting enhanced food:', error);
             // Fallback to simple selection
             this.selectFood(foodName);
         }
@@ -1126,7 +1146,7 @@ class CalorieTracker {
                     food.offline = false;
                 }
             } catch (error) {
-                console.error('Failed to sync food item:', food.name, error);
+                logger.error('Failed to sync food item:', food.name, error);
             }
         }
 
@@ -1322,7 +1342,7 @@ class CalorieTracker {
                 await this.apiCall(`/admin/foods/${foodId}`, 'DELETE');
                 successCount++;
             } catch (error) {
-                console.log('Backend delete failed for', foodId, '- trying local:', error.message);
+                logger.info('Backend delete failed for', foodId, '- trying local:', error.message);
                 
                 // Fallback to local array deletion
                 if (this.adminData.foods) {
@@ -1503,7 +1523,7 @@ class CalorieTracker {
                 }
                 
             } catch (error) {
-                console.error('Sync operation failed:', error);
+                logger.error('Sync operation failed:', error);
                 operation.attempts++;
                 
                 // Remove if max attempts reached
@@ -1512,7 +1532,7 @@ class CalorieTracker {
                     if (index > -1) {
                         this.syncQueue.splice(index, 1);
                     }
-                    console.warn('Sync operation abandoned after max attempts:', operation);
+                    logger.warn('Sync operation abandoned after max attempts:', operation);
                 }
             }
         }
@@ -1545,7 +1565,7 @@ class CalorieTracker {
                 await this.syncUpdateGoal(operation.data);
                 break;
             default:
-                console.warn('Unknown sync operation type:', operation.type);
+                logger.warn('Unknown sync operation type:', operation.type);
         }
     }
 
@@ -1646,7 +1666,7 @@ class CalorieTracker {
             try {
                 await this.loadAndMergeServerData();
             } catch (error) {
-                console.log('Server data unavailable, using local data:', error.message);
+                logger.info('Server data unavailable, using local data:', error.message);
             }
         }
     }
@@ -1817,23 +1837,23 @@ class CalorieTracker {
 
     // Load foods for management
     async loadPiosFoodDB() {
-        console.log('loadPiosFoodDB called');
-        console.log('Current user:', this.currentUser);
+        logger.debug('loadPiosFoodDB called');
+        logger.debug('Current user:', this.currentUser);
         
         try {
             // Try to load from backend first
             const response = await this.apiCall('/admin/foods');
             this.adminData.foods = response.foods;
-            console.log('Loaded foods from backend:', this.adminData.foods);
+            logger.info('Loaded foods from backend:', this.adminData.foods);
             this.updatePiosFoodDBDisplay();
         } catch (error) {
-            console.log('Backend load failed, using local demo data:', error.message);
+            logger.info('Backend load failed, using local demo data:', error.message);
             
             // Fallback to demo data if backend fails
             if (!this.adminData.foods) {
                 this.adminData.foods = [];
             }
-            console.log('Using local demo foods data:', this.adminData.foods);
+            logger.info('Using local demo foods data:', this.adminData.foods);
             this.updatePiosFoodDBDisplay();
             
             // Only show error message if it's not just a demo mode fallback
@@ -1845,13 +1865,13 @@ class CalorieTracker {
 
     // Update foods display
     updatePiosFoodDBDisplay() {
-        console.log('updatePiosFoodDBDisplay called');
+        logger.debug('updatePiosFoodDBDisplay called');
         const foodsList = document.getElementById('piosFoodDBList');
-        console.log('Foods list element:', foodsList);
-        console.log('Foods data to display:', this.adminData.foods);
+        logger.debug('Foods list element:', foodsList);
+        logger.debug('Foods data to display:', this.adminData.foods);
         
         if (!foodsList) {
-            console.error('piosFoodDBList element not found!');
+            logger.error('piosFoodDBList element not found!');
             return;
         }
 
@@ -1883,7 +1903,7 @@ class CalorieTracker {
         `;
         }).join('');
         
-        console.log('Foods table updated with', this.adminData.foods.length, 'items');
+        logger.info('Foods table updated with', this.adminData.foods.length, 'items');
         
         // Update sort indicators
         this.updateSortIndicators();
@@ -1894,29 +1914,30 @@ class CalorieTracker {
 
     // Handle Pios Food DB add form submission
     async handleAddPiosFoodDB() {
-        const name = document.getElementById('piosFoodDBName').value.trim();
-        const calories = document.getElementById('piosFoodDBCalories').value;
-
-        if (!name || !calories) {
-            this.showMessage('Please fill in all required fields', 'error');
-            return;
-        }
-
-        // Try to save to backend first, fall back to local demo data if needed
         try {
-            // Attempt to save to backend database
-            const response = await this.apiCall('/admin/foods', 'POST', {
-                name,
-                calories_per_unit: parseFloat(calories)
-            });
+            // Validate inputs using Validators utility
+            const name = Validators.validateFoodName(
+                document.getElementById('piosFoodDBName').value
+            );
+            const calories = Validators.validateCalories(
+                document.getElementById('piosFoodDBCalories').value
+            );
 
-            this.showMessage('Food added successfully to Pios Food DB', 'success');
-            document.getElementById('piosFoodDBForm').reset();
-            this.loadPiosFoodDB(); // Refresh the foods list from backend
-            return;
-            
-        } catch (error) {
-            console.log('Backend save failed, using local demo mode:', error.message);
+            // Try to save to backend first, fall back to local demo data if needed
+            try {
+                // Attempt to save to backend database
+                const response = await this.apiCall('/admin/foods', 'POST', {
+                    name,
+                    calories_per_unit: calories
+                });
+
+                this.showMessage('Food added successfully to Pios Food DB', 'success');
+                document.getElementById('piosFoodDBForm').reset();
+                this.loadPiosFoodDB(); // Refresh the foods list from backend
+                return;
+                
+            } catch (error) {
+                logger.info('Backend save failed, using local demo mode:', error.message);
             
             // Fallback to local demo data if backend fails
             if (!this.adminData.foods) {
@@ -1948,18 +1969,9 @@ class CalorieTracker {
             // Update the display to show the new food
             this.updatePiosFoodDBDisplay();
         }
-
-        try {
-            await this.apiCall('/admin/foods', 'POST', {
-                name,
-                calories_per_unit: parseFloat(calories)
-            });
-
-            this.showMessage('Food added successfully', 'success');
-            document.getElementById('piosFoodDBForm').reset();
-            this.loadPiosFoodDB(); // Refresh the foods list
-        } catch (error) {
-            this.showMessage(`Failed to add food: ${error.message}`, 'error');
+        } catch (validationError) {
+            // Validation failed - show user-friendly error message
+            this.showMessage(validationError.message, 'error');
         }
     }
 
@@ -1995,7 +2007,7 @@ class CalorieTracker {
             this.showMessage('Food deleted successfully from Pios Food DB', 'success');
             this.loadPiosFoodDB(); // Refresh the foods list from backend
         } catch (error) {
-            console.log('Backend delete failed, using local demo mode:', error.message);
+            logger.info('Backend delete failed, using local demo mode:', error.message);
             
             // Fallback to local array deletion
             if (this.adminData.foods) {
@@ -2070,14 +2082,14 @@ class CalorieTracker {
 
     // Admin navigation
     showAdminSection(section) {
-        console.log('showAdminSection called with section:', section);
+        logger.info('showAdminSection called with section:', section);
         
         // Hide all admin sections
         document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
         
         // Show selected section
         const targetSection = document.getElementById(`admin${section}`);
-        console.log(`Target section admin${section}:`, targetSection);
+        logger.info(`Target section admin${section}:`, targetSection);
         if (targetSection) {
             targetSection.classList.add('active');
         }
@@ -2091,11 +2103,11 @@ class CalorieTracker {
                 this.loadAdminUsers();
                 break;
             case 'Foods':
-                console.log('Loading Pios Food DB section...');
+                logger.info('Loading Pios Food DB section...');
                 this.loadPiosFoodDB();
                 break;
             case 'Database':
-                console.log('Loading Database section...');
+                logger.info('Loading Database section...');
                 this.loadDatabaseManagement();
                 break;
         }
@@ -2117,7 +2129,7 @@ class CalorieTracker {
             await this.loadDatabaseTables();
             
         } catch (error) {
-            console.error('Error loading database management:', error);
+            logger.error('Error loading database management:', error);
             this.showMessage('Failed to load database management interface', 'error');
         }
     }
@@ -2134,7 +2146,7 @@ class CalorieTracker {
             document.getElementById('mysqlVersion').textContent = stats.mysql_version || 'Unknown';
             
         } catch (error) {
-            console.error('Error loading database stats:', error);
+            logger.error('Error loading database stats:', error);
             this.showMessage('Failed to load database statistics', 'error');
         }
     }
@@ -2145,7 +2157,7 @@ class CalorieTracker {
             const response = await this.apiCall('/admin/database/tables');
             this.displayDatabaseTables(response.tables);
         } catch (error) {
-            console.error('Error loading database tables:', error);
+            logger.error('Error loading database tables:', error);
             this.showMessage('Failed to load database tables', 'error');
         }
     }
@@ -2194,7 +2206,7 @@ class CalorieTracker {
             const response = await this.apiCall('/admin/database/query', 'POST', { sql });
             this.displayQueryResults(response);
         } catch (error) {
-            console.error('Error executing query:', error);
+            logger.error('Error executing query:', error);
             resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
         }
     }
@@ -2250,7 +2262,7 @@ class CalorieTracker {
             this.showTableBrowser(tableName, structureResponse, dataResponse);
             
         } catch (error) {
-            console.error('Error browsing table:', error);
+            logger.error('Error browsing table:', error);
             this.showMessage(`Failed to browse table: ${tableName}`, 'error');
         }
     }
@@ -2400,7 +2412,7 @@ class CalorieTracker {
             const response = await this.apiCall(url);
             this.displayTableData(response);
         } catch (error) {
-            console.error('Error searching table data:', error);
+            logger.error('Error searching table data:', error);
         }
     }
 
@@ -2428,7 +2440,7 @@ class CalorieTracker {
             document.body.appendChild(overlay);
             
         } catch (error) {
-            console.error('Error showing table structure:', error);
+            logger.error('Error showing table structure:', error);
             this.showMessage(`Failed to load structure for table: ${tableName}`, 'error');
         }
     }
@@ -2477,7 +2489,7 @@ class CalorieTracker {
                 return foods.find(food => food.name.toLowerCase() === foodName.toLowerCase()) || null;
             }
         } catch (error) {
-            console.error('Error getting food details:', error);
+            logger.error('Error getting food details:', error);
             return null;
         }
     }
@@ -2731,7 +2743,7 @@ class CalorieTracker {
             const response = await this.apiCall('/admin/stats');
             return response.success ? response.stats : null;
         } catch (error) {
-            console.error('Admin stats error:', error);
+            logger.error('Admin stats error:', error);
             return null;
         }
     }
@@ -2751,7 +2763,7 @@ class CalorieTracker {
             const response = await this.apiCall(`/admin/foods?${queryParams}`);
             return response.success ? response.foods : [];
         } catch (error) {
-            console.error('Pios Food DB error:', error);
+            logger.error('Pios Food DB error:', error);
             return [];
         }
     }
@@ -2762,7 +2774,7 @@ class CalorieTracker {
             const response = await this.apiCall('/admin/food-categories');
             return response.success ? response.categories : [];
         } catch (error) {
-            console.error('Admin categories error:', error);
+            logger.error('Admin categories error:', error);
             return [];
         }
     }
