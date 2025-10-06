@@ -588,6 +588,11 @@ class CalorieTracker {
                     document.getElementById('welcomeUser').textContent = `Welcome, ${response.user.username}!`;
                     this.showSection('dashboard');
                     await this.loadTodaysData();
+                    
+                    // Check admin status and show admin interface if applicable
+                    await this.checkAdminStatus();
+                    this.toggleAdminInterface();
+                    
                     return;
                 }
             } catch (error) {
@@ -746,6 +751,11 @@ class CalorieTracker {
                 document.getElementById('welcomeUser').textContent = `Welcome, ${response.user.username}!`;
                 this.showSection('dashboard');
                 await this.loadTodaysData();
+                
+                // Check admin status and show admin interface if applicable
+                await this.checkAdminStatus();
+                this.toggleAdminInterface();
+                
                 this.showMessage('Login successful!', 'success');
                 
             } catch (error) {
@@ -1693,7 +1703,13 @@ class CalorieTracker {
             return this.isAdmin;
         }
 
-        // For non-demo users in production mode, check with backend
+        // Check if user has admin role from backend
+        if (this.currentUser && this.currentUser.role === 'admin') {
+            this.isAdmin = true;
+            return this.isAdmin;
+        }
+
+        // Fallback: For users with valid token, try to verify admin status with backend
         if (!CONFIG.DEVELOPMENT_MODE && this.authToken) {
             try {
                 const response = await this.apiCall('/admin/stats');
