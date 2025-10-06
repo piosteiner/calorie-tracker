@@ -14,7 +14,10 @@ class CalorieTracker {
         this.adminData = {
             users: [],
             foods: [],
-            stats: {}
+            stats: {},
+            foodsSortColumn: 'name', // Default sort column
+            foodsSortDirection: 'asc', // 'asc' or 'desc'
+            selectedFoodIds: new Set() // Track selected food IDs for bulk operations
         };
         
         // Hybrid storage properties
@@ -23,165 +26,9 @@ class CalorieTracker {
         this.syncInProgress = false;
         this.syncStatus = 'pending'; // 'pending', 'syncing', 'synced', 'error'
         
-        // Open Food Facts API integration
-        this.openFoodFactsCache = new Map();
-        this.setupOpenFoodFacts();
         this.loadCachedFoods();
         
         this.init();
-    }
-
-    // Open Food Facts API methods
-    setupOpenFoodFacts() {
-        this.openFoodFactsAPI = {
-            baseURL: 'https://world.openfoodfacts.org',
-            searchURL: '/cgi/search.pl',
-            productURL: '/api/v0/product'
-        };
-    }
-
-    // Search foods from Open Food Facts
-    async searchOpenFoodFacts(query, limit = 10) {
-        if (!query || query.length < 2) return [];
-        
-        console.log('🔍 searchOpenFoodFacts called with:', query, 'limit:', limit);
-        
-        // Check cache first
-        const cacheKey = `search_${query.toLowerCase()}_${limit}`;
-        if (this.openFoodFactsCache.has(cacheKey)) {
-            console.log('💾 Using cached Open Food Facts results for:', query);
-            return this.openFoodFactsCache.get(cacheKey);
-        }
-        
-        try {
-            const url = `${this.openFoodFactsAPI.baseURL}${this.openFoodFactsAPI.searchURL}?search_terms=${encodeURIComponent(query)}&page_size=${limit}&json=1&fields=product_name,nutriments,quantity,brands,countries`;
-            console.log('🌐 Fetching from Open Food Facts URL:', url);
-            
-            const response = await fetch(url);
-            console.log('📡 Open Food Facts response status:', response.status, response.ok);
-            
-            if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-            
-            const data = await response.json();
-            console.log('📊 Open Food Facts raw data:', data);
-            
-            const foods = this.processOpenFoodFactsResults(data.products || []);
-            console.log('🍎 Processed Open Food Facts foods:', foods);
-            
-            // Cache results for 10 minutes
-            this.openFoodFactsCache.set(cacheKey, foods);
-            setTimeout(() => this.openFoodFactsCache.delete(cacheKey), 10 * 60 * 1000);
-            
-            return foods;
-        } catch (error) {
-            console.error('❌ Open Food Facts search error:', error);
-            return [];
-        }
-    }
-
-    // Process Open Food Facts API results
-    processOpenFoodFactsResults(products) {
-        console.log('🔍 Processing', products.length, 'Open Food Facts products');
-        const processed = products
-            .filter(product => {
-                const hasName = product.product_name;
-                const hasNutriments = product.nutriments;
-                const hasCalories = product.nutriments && (
-                    product.nutriments['energy-kcal_100g'] || 
-                    product.nutriments['energy_100g'] || 
-                    product.nutriments['energy-kcal'] ||
-                    product.nutriments.energy_100g ||
-                    product.nutriments.energy_kcal_100g
-                );
-                
-                console.log('🥗 Product:', product.product_name, {
-                    hasName,
-                    hasNutriments,
-                    hasCalories,
-                    nutriments: product.nutriments ? Object.keys(product.nutriments).filter(k => k.includes('energy') || k.includes('kcal')) : []
-                });
-                
-                return hasName && hasNutriments && hasCalories;
-            })
-            .map(product => {
-                // Try multiple calorie field names
-                const calories = product.nutriments['energy-kcal_100g'] || 
-                               product.nutriments['energy_100g'] || 
-                               product.nutriments['energy-kcal'] ||
-                               product.nutriments.energy_100g ||
-                               product.nutriments.energy_kcal_100g ||
-                               0;
-                
-                return {
-                    id: `off_${product._id || Math.random().toString(36).substr(2, 9)}`,
-                    name: product.product_name,
-                    calories: Math.round(calories),
-                    unit: '100g',
-                    brand: product.brands ? product.brands.split(',')[0].trim() : '',
-                    countries: product.countries || '',
-                    source: 'Open Food Facts',
-                    // Additional nutrition data
-                    protein: product.nutriments.proteins_100g || 0,
-                    carbs: product.nutriments.carbohydrates_100g || 0,
-                    fat: product.nutriments.fat_100g || 0,
-                    fiber: product.nutriments.fiber_100g || 0
-                };
-            });
-        
-        console.log('✅ Processed', processed.length, 'valid Open Food Facts products');
-        return processed.slice(0, 10); // Limit results
-    }
-
-    // Combined search: backend (which includes Open Food Facts)
-    async searchAllFoods(query) {
-        const results = [];
-        
-        // Search backend (which includes Open Food Facts) if online
-        if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
-            try {
-                const backendResults = await this.searchBackendFoods(query, 8);
-                results.push(...backendResults);
-            } catch (error) {
-                console.log('Backend search failed, trying direct Open Food Facts:', error);
-                // Fallback to direct Open Food Facts API if backend is unavailable
-                try {
-                    const directResults = await this.searchOpenFoodFacts(query, 6);
-                    results.push(...directResults);
-                } catch (directError) {
-                    console.log('Direct Open Food Facts search also failed');
-                }
-            }
-        }
-        
-        return results;
-    }
-
-    // Search backend foods (includes Open Food Facts integration)
-    async searchBackendFoods(query, limit = 10) {
-        try {
-            const response = await this.apiCall(`/external-foods/search?q=${encodeURIComponent(query)}&limit=${limit}&source=openfoodfacts`);
-            
-            if (response.success && response.foods) {
-                return response.foods.map(food => ({
-                    id: food.external_id || `off_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                    external_id: food.external_id, // Store for logging
-                    name: food.name,
-                    calories: food.calories_per_100g || food.calories,
-                    unit: 'g', // Standard unit is grams
-                    brand: food.brand || '',
-                    source: 'Open Food Facts',
-                    protein: food.protein_per_100g || 0,
-                    carbs: food.carbs_per_100g || 0,
-                    fat: food.fat_per_100g || 0,
-                    fiber: food.fiber_per_100g || 0,
-                    cached: !!response.cached
-                }));
-            }
-            return [];
-        } catch (error) {
-            console.error('Backend food search error:', error);
-            return [];
-        }
     }
 
     // Search Pios Food DB in backend database
@@ -299,25 +146,16 @@ class CalorieTracker {
             console.log('⭐ Favorites search disabled');
         }
         
-        // 2. Search backend (hybrid: local + external foods) if online and enabled
+        // 2. Search Pios Food DB if online and enabled
         if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
             try {
-                // Search Pios Food DB first if enabled
+                // Search Pios Food DB if enabled
                 if (preferences.localFoods) {
-                    const localResults = await this.searchLocalFoods(query, 5);
+                    const localResults = await this.searchLocalFoods(query, 10);
                     results.push(...localResults);
                     console.log('🏠 Pios Food DB search enabled, found:', localResults.length);
                 } else {
                     console.log('🏠 Pios Food DB search disabled');
-                }
-                
-                // Search external foods (Open Food Facts via backend) if enabled
-                if (preferences.openFoodFacts) {
-                    const externalResults = await this.searchBackendFoods(query, 8 - results.length);
-                    results.push(...externalResults);
-                    console.log('🌐 Open Food Facts search enabled, found:', externalResults.length);
-                } else {
-                    console.log('🌐 Open Food Facts search disabled');
                 }
                 
             } catch (error) {
@@ -488,8 +326,7 @@ class CalorieTracker {
     getDatabaseTogglePreferences() {
         return {
             favorites: document.getElementById('toggleFavorites').checked,
-            localFoods: document.getElementById('toggleLocalFoods').checked,
-            openFoodFacts: document.getElementById('toggleOpenFoodFacts').checked
+            localFoods: document.getElementById('toggleLocalFoods').checked
         };
     }
 
@@ -872,7 +709,7 @@ class CalorieTracker {
         }
     }
 
-    // Handle adding enhanced food from Open Food Facts or offline database
+    // Handle adding enhanced food from Pios Food DB or offline database
     async handleAddEnhancedFood(foodData, quantity, unit) {
         try {
             const timestamp = new Date().toLocaleTimeString('en-US', {
@@ -882,58 +719,7 @@ class CalorieTracker {
             // Calculate calories (everything is now per 100g basis)
             const calories = Math.round((foodData.calories / 100) * quantity);
 
-            // Check if this is an external food that needs backend logging
-            if (foodData.source === 'Open Food Facts' && foodData.external_id) {
-                const logData = {
-                    external_food_id: foodData.external_id,
-                    name: foodData.name,
-                    quantity: quantity,
-                    unit: 'g', // Always grams now
-                    calories: calories,
-                    calories_per_100g: foodData.calories,
-                    protein_per_100g: foodData.protein || 0,
-                    carbs_per_100g: foodData.carbs || 0,
-                    fat_per_100g: foodData.fat || 0,
-                    fiber_per_100g: foodData.fiber || 0,
-                    brand: foodData.brand || null,
-                    source: 'Open Food Facts'
-                };
-
-                try {
-                    const response = await this.apiCall('/external-foods/log', 'POST', logData);
-                    
-                    if (response.success) {
-                        // Add to local food log with backend log ID
-                        const foodLogEntry = {
-                            id: response.logId || Date.now(),
-                            name: foodData.name,
-                            quantity: quantity,
-                            unit: 'g',
-                            calories: calories,
-                            timestamp: timestamp,
-                            external: true,
-                            source: 'Open Food Facts',
-                            brand: foodData.brand || ''
-                        };
-                        
-                        this.foodLog.push(foodLogEntry);
-                        this.updateFoodLog();
-                        this.updateDashboard();
-                        this.saveToStorage();
-                        this.addToFavorites(foodData);
-                        
-                        this.showMessage(`Added ${foodData.name} (${quantity}g, ${calories} cal)`, 'success');
-                        document.getElementById('foodForm').reset();
-                        this.selectedFoodData = null;
-                        return;
-                    }
-                } catch (error) {
-                    console.error('Error logging external food:', error);
-                    this.showMessage('Failed to log external food. Added locally.', 'warning');
-                }
-            }
-
-            // Fallback: add locally (for offline foods or if backend logging fails)
+            // Add food to log (local database)
             const foodLogEntry = {
                 id: Date.now(),
                 name: foodData.name,
@@ -942,7 +728,7 @@ class CalorieTracker {
                 calories: calories,
                 timestamp: timestamp,
                 offline: !this.isOnline,
-                source: foodData.source || 'Local',
+                source: foodData.source || 'Pios Food DB',
                 brand: foodData.brand || ''
             };
             
@@ -1028,56 +814,15 @@ class CalorieTracker {
                 try {
                     // Search Pios Food DB in backend database if enabled
                     if (preferences.localFoods) {
-                        const localResults = await this.searchLocalFoods(input, 3);
+                        const localResults = await this.searchLocalFoods(input, 10);
                         matches.push(...localResults);
                         console.log('🏠 Found local results:', localResults.length);
                     } else {
                         console.log('🏠 Pios Food DB search disabled');
                     }
 
-                    // Search external foods (cached + Open Food Facts with Swiss priority) if enabled
-                    if (preferences.openFoodFacts) {
-                        const externalResults = await this.searchBackendFoods(input, 8);
-                        matches.push(...externalResults);
-                        console.log('🌍 Found external results:', externalResults.length);
-                        
-                        // If backend didn't return results (e.g., not authenticated), try Open Food Facts directly
-                        if (externalResults.length === 0) {
-                            console.log('🔄 No backend results, trying Open Food Facts directly...');
-                            try {
-                                const directResults = await this.searchOpenFoodFacts(input, 8);
-                                matches.push(...directResults);
-                                console.log('🍎 Found direct Open Food Facts results:', directResults.length);
-                            } catch (directError) {
-                                console.log('❌ Direct Open Food Facts search failed:', directError);
-                            }
-                        }
-                    } else {
-                        console.log('🌍 Open Food Facts search disabled');
-                    }
-
                 } catch (backendError) {
-                    console.log('❌ Backend search failed, trying direct Open Food Facts:', backendError);
-                    // Fallback to direct Open Food Facts for comprehensive coverage if enabled
-                    if (preferences.openFoodFacts) {
-                        try {
-                            const directResults = await this.searchOpenFoodFacts(input, 8);
-                            matches.push(...directResults);
-                            console.log('🍎 Found direct Open Food Facts results:', directResults.length);
-                        } catch (directError) {
-                            console.log('❌ Direct Open Food Facts search failed:', directError);
-                        }
-                    }
-                }
-            } else if (preferences.openFoodFacts) {
-                // Development mode or offline - still provide Open Food Facts access if enabled
-                console.log('🔧 Development/offline mode: searching Open Food Facts for:', input);
-                try {
-                    const directResults = await this.searchOpenFoodFacts(input, 8);
-                    console.log('🍎 Open Food Facts results:', directResults);
-                    matches.push(...directResults);
-                } catch (error) {
-                    console.log('Open Food Facts search failed in development mode:', error);
+                    console.log('❌ Backend search failed:', backendError);
                 }
             }
 
@@ -1151,7 +896,6 @@ class CalorieTracker {
 
         // Add enhanced footer with database info
         const preferences = this.getDatabaseTogglePreferences();
-        const hasOpenFoodFacts = matches.some(food => food.source === 'Open Food Facts');
         const totalShown = Math.min(matches.length, CONFIG.MAX_SUGGESTIONS || 10);
         const totalFound = matches.length;
         
@@ -1159,7 +903,6 @@ class CalorieTracker {
         const searchedDatabases = [];
         if (preferences.favorites) searchedDatabases.push('⭐ Favorites');
         if (preferences.localFoods) searchedDatabases.push('🏠 Pios Food DB');
-        if (preferences.openFoodFacts) searchedDatabases.push('🌐 Open Food Facts');
         
         const databaseInfo = searchedDatabases.length > 0 ? `
             <div class="suggestions-info">
@@ -1169,23 +912,16 @@ class CalorieTracker {
                 </small>
             </div>
         ` : '';
-        
-        const attribution = hasOpenFoodFacts ? `
-            <div class="suggestions-attribution">
-                <small>🌐 Food data from <a href="https://world.openfoodfacts.org" target="_blank">Open Food Facts</a></small>
-            </div>
-        ` : '';
 
-        suggestionsDiv.innerHTML = suggestions + databaseInfo + attribution;
+        suggestionsDiv.innerHTML = suggestions + databaseInfo;
         console.log('🖼️ Setting innerHTML and making suggestions visible');
-        console.log('📝 Final HTML length:', (suggestions + databaseInfo + attribution).length);
+        console.log('📝 Final HTML length:', (suggestions + databaseInfo).length);
         suggestionsDiv.style.display = 'block';
         console.log('👁️ Set suggestionsDiv display to block');
     }
 
     // Helper methods for food suggestions display
     getSourceIcon(source) {
-        if (source === 'Open Food Facts') return '🌐';
         if (source && source.includes('⭐')) return '⭐';
         if (source === 'Local Database') return '🏪';
         if (source === 'Pios Food DB') return '🏠';
@@ -1203,7 +939,6 @@ class CalorieTracker {
     }
 
     getSourceText(source) {
-        if (source === 'Open Food Facts') return 'Open Food Facts';
         if (source && source.includes('⭐')) return source.replace('⭐ ', '');
         if (source === 'Local Database') return 'Local Database';
         if (source === 'Pios Food DB') return 'Pios Food DB';
@@ -1211,7 +946,6 @@ class CalorieTracker {
     }
 
     getSourceTooltip(source) {
-        if (source === 'Open Food Facts') return 'Global food database with Swiss products (Migros, Coop, etc.)';
         if (source && source.includes('⭐')) return 'Your favorite food from search history';
         if (source === 'Local Database') return 'Local database';
         if (source === 'Pios Food DB') return 'Custom foods from your account or Pios Food DB';
@@ -1426,6 +1160,261 @@ class CalorieTracker {
                     messageDiv.remove();
                 }
             }, 3000);
+        }
+    }
+
+    // =============================================================================
+    // GLOBAL CONFIRMATION MODAL
+    // =============================================================================
+
+    /**
+     * Show a reusable confirmation modal
+     * @param {string} title - Modal title
+     * @param {string} message - Confirmation message
+     * @param {string} confirmText - Confirm button text (default: "Confirm")
+     * @param {string} confirmType - Button type: "primary", "danger" (default: "primary")
+     * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
+     */
+    showConfirmation(title, message, confirmText = 'Confirm', confirmType = 'primary') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirmationModal');
+            const titleEl = document.getElementById('confirmationTitle');
+            const messageEl = document.getElementById('confirmationMessage');
+            const confirmBtn = document.getElementById('confirmationConfirmBtn');
+            const cancelBtn = document.getElementById('confirmationCancelBtn');
+
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            confirmBtn.textContent = confirmText;
+            
+            // Set button style
+            confirmBtn.className = `btn btn-${confirmType}`;
+
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // Handle confirm
+            const handleConfirm = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            // Handle cancel
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            // Cleanup function
+            const cleanup = () => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                modal.removeEventListener('click', handleOverlayClick);
+            };
+
+            // Handle clicking overlay
+            const handleOverlayClick = (e) => {
+                if (e.target.classList.contains('modal-overlay')) {
+                    handleCancel();
+                }
+            };
+
+            // Attach event listeners
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            modal.addEventListener('click', handleOverlayClick);
+        });
+    }
+
+    // =============================================================================
+    // ADMIN FOODS TABLE - BULK OPERATIONS & SORTING
+    // =============================================================================
+
+    /**
+     * Toggle select all checkboxes
+     */
+    toggleSelectAll(checkbox) {
+        const foodCheckboxes = document.querySelectorAll('.food-checkbox');
+        this.adminData.selectedFoodIds.clear();
+        
+        foodCheckboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+            if (checkbox.checked) {
+                this.adminData.selectedFoodIds.add(cb.dataset.foodId);
+            }
+        });
+        
+        this.updateBulkActionsToolbar();
+    }
+
+    /**
+     * Handle individual checkbox selection
+     */
+    toggleFoodSelection(checkbox, foodId) {
+        if (checkbox.checked) {
+            this.adminData.selectedFoodIds.add(foodId);
+        } else {
+            this.adminData.selectedFoodIds.delete(foodId);
+        }
+        
+        // Update "select all" checkbox state
+        const selectAllCheckbox = document.getElementById('selectAllFoods');
+        const foodCheckboxes = document.querySelectorAll('.food-checkbox');
+        const allChecked = Array.from(foodCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(foodCheckboxes).some(cb => cb.checked);
+        
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+        
+        this.updateBulkActionsToolbar();
+    }
+
+    /**
+     * Update bulk actions toolbar visibility and count
+     */
+    updateBulkActionsToolbar() {
+        const toolbar = document.getElementById('bulkActionsToolbar');
+        const countEl = document.getElementById('selectedCount');
+        const count = this.adminData.selectedFoodIds.size;
+        
+        if (count > 0) {
+            toolbar.style.display = 'flex';
+            countEl.textContent = `${count} item${count > 1 ? 's' : ''} selected`;
+        } else {
+            toolbar.style.display = 'none';
+        }
+    }
+
+    /**
+     * Bulk delete selected foods
+     */
+    async bulkDeleteFoods() {
+        const count = this.adminData.selectedFoodIds.size;
+        
+        if (count === 0) {
+            this.showMessage('No foods selected', 'error');
+            return;
+        }
+
+        const confirmed = await this.showConfirmation(
+            'Delete Multiple Foods',
+            `Are you sure you want to delete ${count} food${count > 1 ? 's' : ''}? This action cannot be undone.`,
+            'Delete',
+            'danger'
+        );
+
+        if (!confirmed) return;
+
+        const selectedIds = Array.from(this.adminData.selectedFoodIds);
+        let successCount = 0;
+        let failCount = 0;
+
+        // Show progress message
+        this.showMessage(`Deleting ${count} foods...`, 'info');
+
+        for (const foodId of selectedIds) {
+            try {
+                // Try to delete from backend
+                await this.apiCall(`/admin/foods/${foodId}`, 'DELETE');
+                successCount++;
+            } catch (error) {
+                console.log('Backend delete failed for', foodId, '- trying local:', error.message);
+                
+                // Fallback to local array deletion
+                if (this.adminData.foods) {
+                    const foodIndex = this.adminData.foods.findIndex(food => food.id == foodId);
+                    if (foodIndex !== -1) {
+                        this.adminData.foods.splice(foodIndex, 1);
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } else {
+                    failCount++;
+                }
+            }
+        }
+
+        // Clear selection
+        this.adminData.selectedFoodIds.clear();
+        document.getElementById('selectAllFoods').checked = false;
+        
+        // Show result message
+        if (successCount > 0) {
+            this.showMessage(
+                `Successfully deleted ${successCount} food${successCount > 1 ? 's' : ''}` +
+                (failCount > 0 ? ` (${failCount} failed)` : ''),
+                failCount > 0 ? 'warning' : 'success'
+            );
+        } else {
+            this.showMessage('Failed to delete foods', 'error');
+        }
+
+        // Refresh the list
+        this.loadPiosFoodDB();
+    }
+
+    /**
+     * Sort foods table by column
+     */
+    sortFoodsTable(column) {
+        // Toggle direction if clicking same column
+        if (this.adminData.foodsSortColumn === column) {
+            this.adminData.foodsSortDirection = 
+                this.adminData.foodsSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.adminData.foodsSortColumn = column;
+            this.adminData.foodsSortDirection = 'asc';
+        }
+
+        // Sort the foods array
+        this.adminData.foods.sort((a, b) => {
+            let aVal, bVal;
+            
+            switch (column) {
+                case 'name':
+                    aVal = a.name.toLowerCase();
+                    bVal = b.name.toLowerCase();
+                    break;
+                case 'calories':
+                    aVal = a.calories || 0;
+                    bVal = b.calories || 0;
+                    break;
+                case 'usage':
+                    aVal = a.usage_count || 0;
+                    bVal = b.usage_count || 0;
+                    break;
+                default:
+                    return 0;
+            }
+
+            // Compare values
+            if (aVal < bVal) return this.adminData.foodsSortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return this.adminData.foodsSortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Update display with sorted data
+        this.updatePiosFoodDBDisplay();
+    }
+
+    /**
+     * Update sort indicators in table headers
+     */
+    updateSortIndicators() {
+        // Clear all indicators
+        document.querySelectorAll('.sort-indicator').forEach(el => {
+            el.textContent = '';
+        });
+
+        // Set active indicator
+        const indicator = document.getElementById(`sort-${this.adminData.foodsSortColumn}`);
+        if (indicator) {
+            indicator.textContent = this.adminData.foodsSortDirection === 'asc' ? ' ↑' : ' ↓';
         }
     }
 
@@ -1756,16 +1745,9 @@ class CalorieTracker {
                 totalFoods: 125,
                 totalLogs: 1247,
                 todaysLogs: 23,
-                activeUsers: 8,
-                // External food stats (demo)
-                externalFoods: {
-                    openFoodFactsUsage: 89,
-                    cachedFoods: 156,
-                    uniqueExternalFoods: 45
-                }
+                activeUsers: 8
             };
             this.updateAdminStatsDisplay();
-            await this.loadExternalFoodStats(); // Load external food stats
             return;
         }
 
@@ -1774,80 +1756,9 @@ class CalorieTracker {
             const response = await this.apiCall('/admin/stats');
             this.adminData.stats = response;
             this.updateAdminStatsDisplay();
-            await this.loadExternalFoodStats(); // Load external food stats
         } catch (error) {
             this.showMessage('Failed to load admin statistics', 'error');
         }
-    }
-
-    // Load external food statistics
-    async loadExternalFoodStats() {
-        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
-            // Demo data for external foods
-            this.adminData.externalFoodStats = {
-                usage_stats: [
-                    { source_name: 'Open Food Facts', unique_foods: 45, total_logs: 89, total_calories: 12450 }
-                ],
-                cache_stats: [
-                    { source_name: 'Open Food Facts', cached_foods: 156, total_usage: 234 }
-                ]
-            };
-            this.updateExternalFoodStatsDisplay();
-            return;
-        }
-
-        try {
-            const response = await this.apiCall('/admin/external-foods/stats');
-            if (response.success) {
-                this.adminData.externalFoodStats = response;
-                this.updateExternalFoodStatsDisplay();
-            }
-        } catch (error) {
-            console.log('External food stats not available:', error);
-            // This is okay - external food stats are optional
-        }
-    }
-
-    // Update external food stats display
-    updateExternalFoodStatsDisplay() {
-        const statsContainer = document.getElementById('externalFoodStats');
-        if (!statsContainer || !this.adminData.externalFoodStats) return;
-
-        const { usage_stats, cache_stats } = this.adminData.externalFoodStats;
-        
-        let html = '<div class="external-food-stats">';
-        html += '<h4>🌐 External Food Sources</h4>';
-        
-        if (usage_stats && usage_stats.length > 0) {
-            html += '<div class="stats-section">';
-            html += '<h5>Usage Statistics</h5>';
-            usage_stats.forEach(stat => {
-                html += `
-                    <div class="stat-item">
-                        <span class="stat-label">${stat.source_name}</span>
-                        <span class="stat-value">${stat.unique_foods} foods, ${stat.total_logs} logs</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-        }
-        
-        if (cache_stats && cache_stats.length > 0) {
-            html += '<div class="stats-section">';
-            html += '<h5>Cache Performance</h5>';
-            cache_stats.forEach(stat => {
-                html += `
-                    <div class="stat-item">
-                        <span class="stat-label">${stat.source_name} Cache</span>
-                        <span class="stat-value">${stat.cached_foods} cached, ${stat.total_usage} hits</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-        }
-        
-        html += '</div>';
-        statsContainer.innerHTML = html;
     }
 
     // Update admin stats display
@@ -1944,8 +1855,23 @@ class CalorieTracker {
             return;
         }
 
-        foodsList.innerHTML = this.adminData.foods.map(food => `
+        if (!this.adminData.foods || this.adminData.foods.length === 0) {
+            foodsList.innerHTML = '<tr><td colspan="5" class="empty">No foods in database yet</td></tr>';
+            this.updateSortIndicators();
+            return;
+        }
+
+        foodsList.innerHTML = this.adminData.foods.map(food => {
+            const isSelected = this.adminData.selectedFoodIds.has(String(food.id));
+            return `
             <tr>
+                <td class="checkbox-column">
+                    <input type="checkbox" 
+                           class="food-checkbox" 
+                           data-food-id="${food.id}"
+                           ${isSelected ? 'checked' : ''}
+                           onchange="app.toggleFoodSelection(this, '${food.id}')">
+                </td>
                 <td>${food.name}</td>
                 <td>${food.calories}</td>
                 <td>${food.usage_count || 0}</td>
@@ -1954,9 +1880,16 @@ class CalorieTracker {
                     <button class="btn btn-small btn-danger" onclick="app.deleteFood(${food.id})">Delete</button>
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         
         console.log('Foods table updated with', this.adminData.foods.length, 'items');
+        
+        // Update sort indicators
+        this.updateSortIndicators();
+        
+        // Update bulk actions toolbar
+        this.updateBulkActionsToolbar();
     }
 
     // Handle Pios Food DB add form submission
@@ -2044,9 +1977,17 @@ class CalorieTracker {
 
     // Delete food
     async deleteFood(foodId) {
-        if (!confirm('Are you sure you want to delete this food? This cannot be undone.')) {
-            return;
-        }
+        const food = this.adminData.foods.find(f => f.id == foodId);
+        const foodName = food ? food.name : 'this food';
+        
+        const confirmed = await this.showConfirmation(
+            'Delete Food',
+            `Are you sure you want to delete "${foodName}"? This action cannot be undone.`,
+            'Delete',
+            'danger'
+        );
+
+        if (!confirmed) return;
 
         try {
             // Try to delete from backend first
@@ -2075,7 +2016,14 @@ class CalorieTracker {
 
     // Reset user password
     async resetUserPassword(userId) {
-        if (!confirm('Reset password for this user?')) return;
+        const confirmed = await this.showConfirmation(
+            'Reset Password',
+            'Are you sure you want to reset this user\'s password? They will receive an email with instructions.',
+            'Reset Password',
+            'primary'
+        );
+
+        if (!confirmed) return;
 
         if (CONFIG.DEVELOPMENT_MODE) {
             this.showMessage('Password reset email sent (Demo mode)', 'success');
@@ -2092,7 +2040,17 @@ class CalorieTracker {
 
     // Delete user
     async deleteUser(userId) {
-        if (!confirm('Delete this user? This action cannot be undone.')) return;
+        const user = this.adminData.users.find(u => u.id == userId);
+        const username = user ? user.username : 'this user';
+        
+        const confirmed = await this.showConfirmation(
+            'Delete User',
+            `Are you sure you want to delete user "${username}"? This action cannot be undone and will remove all their data.`,
+            'Delete User',
+            'danger'
+        );
+
+        if (!confirmed) return;
 
         if (CONFIG.DEVELOPMENT_MODE) {
             this.adminData.users = this.adminData.users.filter(u => u.id !== userId);
@@ -2536,19 +2494,15 @@ class CalorieTracker {
                 </div>
                 <div class="modal-body">
                     <div class="data-source">
-                        <h4>🌍 Open Food Facts</h4>
-                        <p><strong>Primary nutrition database</strong> - A collaborative, free and open database of food products from around the world.</p>
+                        <h4>� Pios Food DB</h4>
+                        <p><strong>Primary nutrition database</strong> - A curated database of food products with accurate nutrition information.</p>
                         <ul>
-                            <li>🇨🇭 <strong>Swiss products</strong>: Migros, Coop, Denner brands</li>
-                            <li>🇪🇺 <strong>European coverage</strong>: Germany, France, Italy, Austria</li>
-                            <li>📊 <strong>Rich data</strong>: Calories, macros, ingredients, allergens</li>
-                            <li>🆓 <strong>Open source</strong>: Community-driven, transparent</li>
+                            <li>� <strong>Personalized</strong>: Foods specific to your preferences</li>
+                            <li>📊 <strong>Accurate data</strong>: Verified calories and macros</li>
+                            <li>� <strong>Editable</strong>: Can be customized by administrators</li>
+                            <li>🔗 <strong>Backend sync</strong>: Synchronized across your devices</li>
                         </ul>
-                        <a href="https://world.openfoodfacts.org" target="_blank" class="external-link">
-                            Visit Open Food Facts →
-                        </a>
                     </div>
-                    
                     
                     <div class="data-source">
                         <h4>⭐ Smart Favorites</h4>
@@ -2559,18 +2513,6 @@ class CalorieTracker {
                             <li>💨 <strong>Quick access</strong>: Instant suggestions for favorites</li>
                             <li>🔒 <strong>Local storage</strong>: Data stays on your device</li>
                         </ul>
-                    </div>
-                    
-                    <div class="attribution-note">
-                        <h4>🙏 Attribution & Thanks</h4>
-                        <p>
-                            This app is made possible by the incredible work of the Open Food Facts community. 
-                            Their commitment to open data and transparency helps millions of people make informed food choices.
-                        </p>
-                        <p>
-                            <strong>License</strong>: Open Food Facts data is available under the 
-                            <a href="https://opendatacommons.org/licenses/odbl/" target="_blank">Open Database License</a>.
-                        </p>
                     </div>
                 </div>
             </div>
@@ -2635,17 +2577,6 @@ class CalorieTracker {
                         </ul>
                     </div>
                     
-                    <div class="data-source">
-                        <h4>🌐 Open Food Facts</h4>
-                        <p><strong>Global food database</strong> - Millions of products from around the world including Swiss brands.</p>
-                        <ul>
-                            <li>🇨🇭 <strong>Swiss products</strong>: Migros, Coop, Denner, and local brands</li>
-                            <li>🌍 <strong>International coverage</strong>: Products from Europe and beyond</li>
-                            <li>📊 <strong>Rich data</strong>: Detailed nutrition facts, ingredients, allergens</li>
-                            <li>🆓 <strong>Community-driven</strong>: Free, open-source database</li>
-                        </ul>
-                    </div>
-                    
                     <div class="attribution-note">
                         <h4>💡 How to Use</h4>
                         <p>
@@ -2653,8 +2584,8 @@ class CalorieTracker {
                             Disable databases you don't need to see more focused results.
                         </p>
                         <p>
-                            <strong>Tip:</strong> Keep "Favorites" and "Offline Cache" enabled for the fastest, 
-                            most relevant results. Enable "Open Food Facts" for the broadest product coverage.
+                            <strong>Tip:</strong> Keep "Favorites" enabled for the fastest, 
+                            most relevant results. Enable "Pios Food DB" for comprehensive coverage.
                         </p>
                         <p>
                             <strong>Your settings are saved automatically</strong> and remembered for future sessions.

@@ -1073,12 +1073,6 @@ body {
     text-decoration: underline;
 }
 
-.swiss-note {
-    font-size: 14px;
-    color: #28a745 !important;
-    font-weight: 500;
-}
-
 .footer-links {
     display: flex;
     justify-content: center;
@@ -1219,14 +1213,6 @@ body {
     padding: 16px;
 }
 
-.suggestions-attribution {
-    padding: 12px;
-    text-align: center;
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
-    margin-top: 8px;
-}
-
 .suggestions-info {
     padding: 8px 12px;
     text-align: center;
@@ -1234,16 +1220,6 @@ body {
     color: #6c757d;
     font-size: 11px;
     border-top: 1px solid #e9ecef;
-}
-
-.suggestions-attribution a {
-    color: #667eea;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.suggestions-attribution a:hover {
-    text-decoration: underline;
 }
 
 /* Nutrition Preview Styles */
@@ -1501,58 +1477,6 @@ body {
 
 .data-sources-modal .attribution-note a {
     color: #667eea;
-}
-
-/* External Food Stats in Admin Panel */
-.external-food-stats-container {
-    margin-top: 30px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border-left: 4px solid #667eea;
-}
-
-.external-food-stats h4 {
-    margin: 0 0 20px 0;
-    color: #495057;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.external-food-stats h5 {
-    margin: 15px 0 10px 0;
-    color: #6c757d;
-    font-size: 14px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.external-food-stats .stats-section {
-    margin-bottom: 20px;
-}
-
-.external-food-stats .stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    margin: 5px 0;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid #e9ecef;
-}
-
-.external-food-stats .stat-label {
-    font-weight: 500;
-    color: #495057;
-}
-
-.external-food-stats .stat-value {
-    font-family: monospace;
-    font-size: 13px;
-    color: #667eea;
-    font-weight: 600;
 }
 
 /* Calorie Input Modal Styles */
@@ -2231,5 +2155,214 @@ body {
     .structure-table td {
         max-width: 100px;
         padding: 6px 8px;
+    }
+}
+
+/* =============================================================================
+   CONFIRMATION MODAL
+   ============================================================================= */
+
+.confirmation-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+.confirmation-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.confirmation-modal-content {
+    position: relative;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    animation: slideIn 0.3s ease;
+}
+
+.confirmation-modal-header {
+    padding: 24px 24px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.confirmation-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.confirmation-modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.confirmation-modal-body {
+    padding: 24px;
+}
+
+.confirmation-modal-body p {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.confirmation-modal-footer {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--border-primary);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* =============================================================================
+   BULK ACTIONS TOOLBAR
+   ============================================================================= */
+
+.bulk-actions-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    animation: slideDown 0.3s ease;
+}
+
+.selected-count {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.bulk-actions-toolbar .btn {
+    margin: 0;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================================================
+   SORTABLE TABLE COLUMNS
+   ============================================================================= */
+
+.admin-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: background 0.2s ease;
+}
+
+.admin-table th.sortable:hover {
+    background: var(--bg-hover);
+}
+
+.admin-table th.sortable:active {
+    transform: scale(0.98);
+}
+
+.sort-indicator {
+    display: inline-block;
+    margin-left: 4px;
+    font-weight: bold;
+    color: var(--accent-primary);
+    min-width: 12px;
+}
+
+/* =============================================================================
+   CHECKBOX COLUMN
+   ============================================================================= */
+
+.admin-table .checkbox-column {
+    width: 40px;
+    text-align: center;
+    padding: 8px !important;
+}
+
+.admin-table input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-primary);
+}
+
+.admin-table input[type="checkbox"]:hover {
+    transform: scale(1.1);
+}
+
+.admin-table .empty {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 40px 20px;
+    font-size: 15px;
+}
+
+/* =============================================================================
+   RESPONSIVE BULK ACTIONS
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    .bulk-actions-toolbar {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+    
+    .bulk-actions-toolbar .btn {
+        width: 100%;
+    }
+    
+    .confirmation-modal-content {
+        width: 95%;
+        margin: 0 10px;
+    }
+    
+    .confirmation-modal-footer {
+        flex-direction: column-reverse;
+    }
+    
+    .confirmation-modal-footer .btn {
+        width: 100%;
     }
 }

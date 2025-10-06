@@ -139,13 +139,6 @@
                                         <span class="toggle-text">Pios Food DB</span>
                                     </span>
                                 </label>
-                                <label class="toggle-item">
-                                    <input type="checkbox" id="toggleOpenFoodFacts" checked>
-                                    <span class="toggle-label">
-                                        <span class="toggle-icon">🌐</span>
-                                        <span class="toggle-text">Open Food Facts</span>
-                                    </span>
-                                </label>
                             </div>
                         </div>
                         
@@ -197,11 +190,6 @@
                                     <div class="admin-stat-label">Active Users</div>
                                 </div>
                             </div>
-                            
-                            <!-- External Food Sources Stats -->
-                            <div id="externalFoodStats" class="external-food-stats-container">
-                                <!-- External food statistics will be populated here -->
-                            </div>
                         </div>
 
                         <!-- Admin Users Management -->
@@ -245,14 +233,31 @@
                                 </form>
                             </div>
 
+                            <!-- Bulk Actions Toolbar -->
+                            <div id="bulkActionsToolbar" class="bulk-actions-toolbar" style="display: none;">
+                                <span id="selectedCount" class="selected-count">0 items selected</span>
+                                <button id="bulkDeleteBtn" class="btn btn-danger" onclick="app.bulkDeleteFoods()">
+                                    🗑️ Delete Selected
+                                </button>
+                            </div>
+
                             <!-- Foods List -->
                             <div class="admin-table-container">
                                 <table class="admin-table">
                                     <thead>
                                         <tr>
-                                            <th>Food Name</th>
-                                            <th>Calories (per 100g)</th>
-                                            <th>Usage Count</th>
+                                            <th class="checkbox-column">
+                                                <input type="checkbox" id="selectAllFoods" onchange="app.toggleSelectAll(this)">
+                                            </th>
+                                            <th class="sortable" onclick="app.sortFoodsTable('name')">
+                                                Food Name <span class="sort-indicator" id="sort-name"></span>
+                                            </th>
+                                            <th class="sortable" onclick="app.sortFoodsTable('calories')">
+                                                Calories (per 100g) <span class="sort-indicator" id="sort-calories"></span>
+                                            </th>
+                                            <th class="sortable" onclick="app.sortFoodsTable('usage')">
+                                                Usage Count <span class="sort-indicator" id="sort-usage"></span>
+                                            </th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -361,28 +366,38 @@
             <div class="container">
                 <div class="footer-content">
                     <div class="data-sources">
-                        <h4>🌐 Data Sources</h4>
+                        <h4>� Pios Food DB</h4>
                         <p>
-                            Nutrition data powered by 
-                            <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">
-                                <strong>Open Food Facts</strong>
-                            </a> - 
-                            A collaborative, free and open database of food products from around the world.
-                        </p>
-                        <p class="swiss-note">
-                            🇨🇭 Including Swiss products from Migros, Coop, and other local brands.
+                            Nutrition data from our curated food database - 
+                            A personalized collection of foods with accurate calorie and nutrition information.
                         </p>
                     </div>
                     <div class="footer-links">
-                        <a href="https://world.openfoodfacts.org/discover" target="_blank" rel="noopener">About Open Food Facts</a>
-                        <span>•</span>
                         <a href="javascript:void(0)" onclick="app.showDataSourcesInfo()">Data Sources Info</a>
                         <span>•</span>
-                        <span class="footer-version">v1.2.0</span>
+                        <span class="footer-version">v1.3.0</span>
                     </div>
                 </div>
             </div>
         </footer>
+    </div>
+
+    <!-- Global Confirmation Modal -->
+    <div id="confirmationModal" class="confirmation-modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="confirmation-modal-content">
+            <div class="confirmation-modal-header">
+                <span class="confirmation-icon">⚠️</span>
+                <h3 id="confirmationTitle">Confirm Action</h3>
+            </div>
+            <div class="confirmation-modal-body">
+                <p id="confirmationMessage">Are you sure you want to proceed?</p>
+            </div>
+            <div class="confirmation-modal-footer">
+                <button id="confirmationCancelBtn" class="btn btn-secondary">Cancel</button>
+                <button id="confirmationConfirmBtn" class="btn btn-primary">Confirm</button>
+            </div>
+        </div>
     </div>
 
     <script src="config.js"></script>
