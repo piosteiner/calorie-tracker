@@ -7,6 +7,13 @@ const crypto = require('crypto');
 const db = require('../database');
 const router = express.Router();
 
+// Ensure JWT_SECRET is available
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
 // Login endpoint
 router.post('/login', [
     body('username').trim().notEmpty().withMessage('Username is required'),
@@ -53,7 +60,7 @@ router.post('/login', [
                 userId: user.id,
                 username: user.username 
             },
-            process.env.JWT_SECRET || 'your-secret-key',
+            JWT_SECRET,
             { expiresIn: '24h' }
         );
 
@@ -82,7 +89,7 @@ router.post('/logout', async (req, res) => {
         const token = req.headers.authorization?.split(' ')[1];
         
         if (token) {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+            const decoded = jwt.verify(token, JWT_SECRET);
             await db.deleteSession(decoded.sessionId);
         }
 
@@ -111,7 +118,7 @@ router.get('/verify', async (req, res) => {
             });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const decoded = jwt.verify(token, JWT_SECRET);
         const session = await db.getSession(decoded.sessionId);
 
         if (!session) {

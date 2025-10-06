@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
 const db = require('../database');
 
+// Ensure JWT_SECRET is available
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
 // Middleware to authenticate requests
 const authenticateToken = async (req, res, next) => {
     try {
@@ -13,7 +20,7 @@ const authenticateToken = async (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const decoded = jwt.verify(token, JWT_SECRET);
         
         // Verify session is still valid
         const session = await db.getSession(decoded.sessionId);
@@ -47,7 +54,7 @@ const optionalAuth = async (req, res, next) => {
         const token = authHeader && authHeader.split(' ')[1];
 
         if (token) {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+            const decoded = jwt.verify(token, JWT_SECRET);
             const session = await db.getSession(decoded.sessionId);
             
             if (session) {
