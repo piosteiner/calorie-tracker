@@ -393,6 +393,15 @@ class CalorieTracker {
             this.handleAddFood();
         });
 
+        // Admin food form
+        const adminFoodForm = document.getElementById('adminAddFoodForm');
+        if (adminFoodForm) {
+            adminFoodForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleAddAdminFood();
+            });
+        }
+
         // Food name input for suggestions
         document.getElementById('foodName').addEventListener('input', (e) => {
             this.debouncedFoodSearch(e.target.value);
@@ -1889,7 +1898,6 @@ class CalorieTracker {
             <tr>
                 <td>${food.name}</td>
                 <td>${food.calories}</td>
-                <td>${food.unit}</td>
                 <td>${food.usage_count || 0}</td>
                 <td>
                     <button class="btn btn-small" onclick="app.editFood(${food.id})">Edit</button>
@@ -1899,6 +1907,70 @@ class CalorieTracker {
         `).join('');
         
         console.log('Foods table updated with', this.adminData.foods.length, 'items');
+    }
+
+    // Handle admin add food form submission
+    async handleAddAdminFood() {
+        const name = document.getElementById('adminFoodName').value.trim();
+        const calories = document.getElementById('adminFoodCalories').value;
+
+        if (!name || !calories) {
+            this.showMessage('Please fill in all required fields', 'error');
+            return;
+        }
+
+        // For demo admin, just show message
+        if (this.currentUser && this.currentUser.username === 'admin') {
+            this.showMessage('Food would be added to database (Demo mode)', 'info');
+            document.getElementById('adminAddFoodForm').reset();
+            return;
+        }
+
+        try {
+            await this.apiCall('/admin/foods', 'POST', {
+                name,
+                calories_per_unit: parseFloat(calories)
+            });
+
+            this.showMessage('Food added successfully', 'success');
+            document.getElementById('adminAddFoodForm').reset();
+            this.loadAdminFoods(); // Refresh the foods list
+        } catch (error) {
+            this.showMessage(`Failed to add food: ${error.message}`, 'error');
+        }
+    }
+
+    // Edit food (placeholder - would need a proper edit modal)
+    async editFood(foodId) {
+        // For demo mode, just show message
+        if (this.currentUser && this.currentUser.username === 'admin') {
+            this.showMessage(`Edit food functionality would open for food ID ${foodId} (Demo mode)`, 'info');
+            return;
+        }
+
+        // In production, this would open an edit modal with the food details
+        this.showMessage('Edit food functionality not implemented yet', 'info');
+    }
+
+    // Delete food
+    async deleteFood(foodId) {
+        if (!confirm('Are you sure you want to delete this food? This cannot be undone.')) {
+            return;
+        }
+
+        // For demo mode, just show message
+        if (this.currentUser && this.currentUser.username === 'admin') {
+            this.showMessage(`Food with ID ${foodId} would be deleted (Demo mode)`, 'info');
+            return;
+        }
+
+        try {
+            await this.apiCall(`/admin/foods/${foodId}`, 'DELETE');
+            this.showMessage('Food deleted successfully', 'success');
+            this.loadAdminFoods(); // Refresh the foods list
+        } catch (error) {
+            this.showMessage(`Failed to delete food: ${error.message}`, 'error');
+        }
     }
 
     // Reset user password
