@@ -393,12 +393,12 @@ class CalorieTracker {
             this.handleAddFood();
         });
 
-        // Admin food form
-        const adminFoodForm = document.getElementById('adminAddFoodForm');
-        if (adminFoodForm) {
-            adminFoodForm.addEventListener('submit', (e) => {
+        // Pios Food DB form
+        const piosFoodDBForm = document.getElementById('piosFoodDBForm');
+        if (piosFoodDBForm) {
+            piosFoodDBForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.handleAddAdminFood();
+                this.handleAddPiosFoodDB();
             });
         }
 
@@ -1174,7 +1174,7 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return 'Global food database with Swiss products (Migros, Coop, etc.)';
         if (source && source.includes('⭐')) return 'Your favorite food from search history';
         if (source === 'Local Database') return 'Local food database';
-        if (source === 'Local Foods') return 'Custom foods from your account or admin-added foods';
+        if (source === 'Local Foods') return 'Custom foods from your account or Pios Food DB';
         return source || 'Food database';
     }
 
@@ -1859,40 +1859,42 @@ class CalorieTracker {
     }
 
     // Load foods for management
-    async loadAdminFoods() {
-        console.log('loadAdminFoods called');
+    async loadPiosFoodDB() {
+        console.log('loadPiosFoodDB called');
         console.log('Current user:', this.currentUser);
         
-        // Use demo data for demo admin user - initialize empty if not exists
-        if (this.currentUser && this.currentUser.username === 'admin') {
-            // Initialize demo foods array if it doesn't exist
+        try {
+            // Try to load from backend first
+            const response = await this.apiCall('/admin/foods');
+            this.adminData.foods = response.foods;
+            console.log('Loaded foods from backend:', this.adminData.foods);
+            this.updatePiosFoodDBDisplay();
+        } catch (error) {
+            console.log('Backend load failed, using local demo data:', error.message);
+            
+            // Fallback to demo data if backend fails
             if (!this.adminData.foods) {
                 this.adminData.foods = [];
             }
-            console.log('Admin foods data:', this.adminData.foods);
-            this.updateAdminFoodsDisplay();
-            return;
-        }
-
-        try {
-            const response = await this.apiCall('/admin/foods');
-            this.adminData.foods = response.foods;
-            this.updateAdminFoodsDisplay();
-        } catch (error) {
-            this.showMessage('Failed to load foods', 'error');
-            console.error('Error loading foods:', error);
+            console.log('Using local demo foods data:', this.adminData.foods);
+            this.updatePiosFoodDBDisplay();
+            
+            // Only show error message if it's not just a demo mode fallback
+            if (!error.message.includes('401') && !error.message.includes('403')) {
+                this.showMessage('Using local demo data (Backend unavailable)', 'warning');
+            }
         }
     }
 
     // Update foods display
-    updateAdminFoodsDisplay() {
-        console.log('updateAdminFoodsDisplay called');
-        const foodsList = document.getElementById('adminFoodsList');
+    updatePiosFoodDBDisplay() {
+        console.log('updatePiosFoodDBDisplay called');
+        const foodsList = document.getElementById('piosFoodDBList');
         console.log('Foods list element:', foodsList);
         console.log('Foods data to display:', this.adminData.foods);
         
         if (!foodsList) {
-            console.error('adminFoodsList element not found!');
+            console.error('piosFoodDBList element not found!');
             return;
         }
 
@@ -1911,19 +1913,33 @@ class CalorieTracker {
         console.log('Foods table updated with', this.adminData.foods.length, 'items');
     }
 
-    // Handle admin add food form submission
-    async handleAddAdminFood() {
-        const name = document.getElementById('adminFoodName').value.trim();
-        const calories = document.getElementById('adminFoodCalories').value;
+    // Handle Pios Food DB add form submission
+    async handleAddPiosFoodDB() {
+        const name = document.getElementById('piosFoodDBName').value.trim();
+        const calories = document.getElementById('piosFoodDBCalories').value;
 
         if (!name || !calories) {
             this.showMessage('Please fill in all required fields', 'error');
             return;
         }
 
-        // For demo admin, add to local demo data
-        if (this.currentUser && this.currentUser.username === 'admin') {
-            // Initialize demo foods array if it doesn't exist
+        // Try to save to backend first, fall back to local demo data if needed
+        try {
+            // Attempt to save to backend database
+            const response = await this.apiCall('/admin/foods', 'POST', {
+                name,
+                calories_per_unit: parseFloat(calories)
+            });
+
+            this.showMessage('Food added successfully to Pios Food DB', 'success');
+            document.getElementById('piosFoodDBForm').reset();
+            this.loadPiosFoodDB(); // Refresh the foods list from backend
+            return;
+            
+        } catch (error) {
+            console.log('Backend save failed, using local demo mode:', error.message);
+            
+            // Fallback to local demo data if backend fails
             if (!this.adminData.foods) {
                 this.adminData.foods = [];
             }
@@ -1947,12 +1963,11 @@ class CalorieTracker {
             // Add to the demo foods array
             this.adminData.foods.push(newFood);
             
-            this.showMessage(`Added "${name}" with ${calories} calories per 100g (Demo mode)`, 'success');
-            document.getElementById('adminAddFoodForm').reset();
+            this.showMessage(`Added "${name}" locally (Backend unavailable - Demo mode)`, 'warning');
+            document.getElementById('piosFoodDBForm').reset();
             
             // Update the display to show the new food
-            this.updateAdminFoodsDisplay();
-            return;
+            this.updatePiosFoodDBDisplay();
         }
 
         try {
@@ -1962,8 +1977,8 @@ class CalorieTracker {
             });
 
             this.showMessage('Food added successfully', 'success');
-            document.getElementById('adminAddFoodForm').reset();
-            this.loadAdminFoods(); // Refresh the foods list
+            document.getElementById('piosFoodDBForm').reset();
+            this.loadPiosFoodDB(); // Refresh the foods list
         } catch (error) {
             this.showMessage(`Failed to add food: ${error.message}`, 'error');
         }
@@ -1987,28 +2002,28 @@ class CalorieTracker {
             return;
         }
 
-        // For demo mode, remove from local array
-        if (this.currentUser && this.currentUser.username === 'admin') {
+        try {
+            // Try to delete from backend first
+            await this.apiCall(`/admin/foods/${foodId}`, 'DELETE');
+            this.showMessage('Food deleted successfully from Pios Food DB', 'success');
+            this.loadPiosFoodDB(); // Refresh the foods list from backend
+        } catch (error) {
+            console.log('Backend delete failed, using local demo mode:', error.message);
+            
+            // Fallback to local array deletion
             if (this.adminData.foods) {
                 const foodIndex = this.adminData.foods.findIndex(food => food.id == foodId);
                 if (foodIndex !== -1) {
                     const deletedFood = this.adminData.foods[foodIndex];
                     this.adminData.foods.splice(foodIndex, 1);
-                    this.showMessage(`Deleted "${deletedFood.name}" (Demo mode)`, 'success');
-                    this.updateAdminFoodsDisplay();
+                    this.showMessage(`Deleted "${deletedFood.name}" locally (Backend unavailable)`, 'warning');
+                    this.updatePiosFoodDBDisplay();
                 } else {
                     this.showMessage('Food not found', 'error');
                 }
+            } else {
+                this.showMessage(`Failed to delete food: ${error.message}`, 'error');
             }
-            return;
-        }
-
-        try {
-            await this.apiCall(`/admin/foods/${foodId}`, 'DELETE');
-            this.showMessage('Food deleted successfully', 'success');
-            this.loadAdminFoods(); // Refresh the foods list
-        } catch (error) {
-            this.showMessage(`Failed to delete food: ${error.message}`, 'error');
         }
     }
 
@@ -2072,8 +2087,8 @@ class CalorieTracker {
                 this.loadAdminUsers();
                 break;
             case 'Foods':
-                console.log('Loading Foods section...');
-                this.loadAdminFoods();
+                console.log('Loading Pios Food DB section...');
+                this.loadPiosFoodDB();
                 break;
             case 'Database':
                 console.log('Loading Database section...');
@@ -2759,7 +2774,7 @@ class CalorieTracker {
             const response = await this.apiCall(`/admin/foods?${queryParams}`);
             return response.success ? response.foods : [];
         } catch (error) {
-            console.error('Admin foods error:', error);
+            console.error('Pios Food DB error:', error);
             return [];
         }
     }

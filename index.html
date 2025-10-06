@@ -168,7 +168,7 @@
                         <nav class="admin-nav">
                             <button class="btn btn-admin" onclick="app.showAdminSection('Stats')">📊 Statistics</button>
                             <button class="btn btn-admin" onclick="app.showAdminSection('Users')">👥 Users</button>
-                            <button class="btn btn-admin" onclick="app.showAdminSection('Foods')">🥗 Foods</button>
+                            <button class="btn btn-admin" onclick="app.showAdminSection('Foods')">🥗 Pios Food DB</button>
                             <button class="btn btn-admin" onclick="app.showAdminSection('Database')">🗄️ Database</button>
                         </nav>
 
@@ -226,17 +226,17 @@
                             </div>
                         </div>
 
-                        <!-- Admin Foods Management -->
+                        <!-- Pios Food DB Management -->
                         <div id="adminFoods" class="admin-section">
-                            <h3>Food Database Management</h3>
+                            <h3>Pios Food DB Management</h3>
                             
                             <!-- Add New Food Form -->
                             <div class="admin-add-food">
                                 <h4>Add New Food</h4>
-                                <form id="adminAddFoodForm" class="admin-form">
+                                <form id="piosFoodDBForm" class="admin-form">
                                     <div class="admin-form-row">
-                                        <input type="text" id="adminFoodName" placeholder="Food name" required>
-                                        <input type="number" id="adminFoodCalories" placeholder="Calories per 100g" required>
+                                        <input type="text" id="piosFoodDBName" placeholder="Food name" required>
+                                        <input type="number" id="piosFoodDBCalories" placeholder="Calories per 100g" required>
                                         <button type="submit" class="btn btn-primary">Add Food</button>
                                     </div>
                                     <small style="color: var(--text-secondary); margin-top: 5px; display: block;">
@@ -256,7 +256,7 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="adminFoodsList">
+                                    <tbody id="piosFoodDBList">
                                         <tr><td colspan="5" class="loading">Loading foods...</td></tr>
                                     </tbody>
                                 </table>
