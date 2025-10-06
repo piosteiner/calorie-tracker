@@ -63,7 +63,8 @@ router.post('/login', [
             user: {
                 id: user.id,
                 username: user.username,
-                dailyCalorieGoal: user.daily_calorie_goal
+                dailyCalorieGoal: user.daily_calorie_goal,
+                role: user.role
             }
         });
 
@@ -124,7 +125,8 @@ router.get('/verify', async (req, res) => {
             user: {
                 id: session.user_id,
                 username: session.username,
-                dailyCalorieGoal: session.daily_calorie_goal
+                dailyCalorieGoal: session.daily_calorie_goal,
+                role: session.role
             }
         });
 
