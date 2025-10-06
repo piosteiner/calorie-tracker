@@ -204,15 +204,17 @@ router.get('/foods', async (req, res) => {
 // Add new food (admin only)
 router.post('/foods', async (req, res) => {
   try {
-    const { name, calories_per_unit, default_unit, category, brand } = req.body;
+    const { name, calories_per_unit, category, brand } = req.body;
     
-    if (!name || !calories_per_unit || !default_unit) {
+    if (!name || !calories_per_unit) {
       return res.status(400).json({
         success: false,
-        message: 'Name, calories per unit, and default unit are required'
+        message: 'Name and calories per unit are required'
       });
     }
 
+    // Always use 100g as the default unit since all calories are standardized to per 100g
+    const default_unit = '100g';
     const result = await db.createFood(name, calories_per_unit, default_unit, category, brand);
     
     res.json({
@@ -240,7 +242,10 @@ router.post('/foods', async (req, res) => {
 router.put('/foods/:foodId', async (req, res) => {
   try {
     const foodId = req.params.foodId;
-    const { name, calories_per_unit, default_unit, category, brand } = req.body;
+    const { name, calories_per_unit, category, brand } = req.body;
+    
+    // Always use 100g as the default unit since all calories are standardized to per 100g
+    const default_unit = '100g';
     
     const result = await db.query(`
       UPDATE foods 

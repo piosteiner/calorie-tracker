@@ -210,10 +210,16 @@ Search local food database.
 #### `GET /api/external-foods/search?q={query}&limit={limit}`
 Search external food databases (Open Food Facts).
 
+**Authentication:** Optional (unauthenticated users have reduced limits)
+
 **Parameters:**
 - `q` (string, required): Search query
-- `limit` (number, optional): Maximum results (default: 10)
+- `limit` (number, optional): Maximum results (authenticated: 10, unauthenticated: 5)
 - `source` (string, optional): External source (default: "openfoodfacts")
+
+**Rate Limiting:** 
+- Authenticated users: No additional limits
+- Unauthenticated users: 20 requests per 15 minutes
 
 **Response:**
 ```json
@@ -243,6 +249,12 @@ Search external food databases (Open Food Facts).
 #### `POST /api/external-foods/log`
 Log external food consumption with caching.
 
+**Authentication:** Optional (unauthenticated users receive local-only response)
+
+**Rate Limiting:** 
+- Authenticated users: No additional limits (logs to database)
+- Unauthenticated users: 20 requests per 15 minutes (local storage only)
+
 **Request:**
 ```json
 {
@@ -260,13 +272,23 @@ Log external food consumption with caching.
 }
 ```
 
-**Response:**
+**Response (Authenticated):**
 ```json
 {
     "success": true,
     "logId": 1234,
     "cached": true,
     "message": "Food logged and cached successfully"
+}
+```
+
+**Response (Unauthenticated):**
+```json
+{
+    "success": true,
+    "message": "Food logged locally only (authentication required for backend storage)",
+    "localOnly": true,
+    "suggestion": "Please log in to save food logs to your account"
 }
 ```
 
@@ -640,6 +662,7 @@ backend/
 - **Swiss prioritization** for local accuracy
 - **Smart caching** of frequently accessed foods
 - **26+ cached foods** with complete nutrition data
+- **Graceful Unauthenticated Access** with rate limiting and security safeguards
 
 ### Food Categories System
 ```javascript
@@ -930,6 +953,7 @@ The backend includes an automated system for syncing changes to your live GitHub
 - **Comprehensive Copy**: Includes all enhanced features (controllers, services, migrations, docs)
 - **Change Tracking**: Detailed commit messages with feature summaries
 - **Error Handling**: Validates operations before pushing
+- **Frontend Copilot Integration**: Adopts sensible frontend suggestions with security safeguards
 
 #### Repository Structure After Sync
 ```

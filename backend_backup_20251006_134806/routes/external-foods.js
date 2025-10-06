@@ -6,6 +6,20 @@ const { requireAdmin } = require('../middleware/admin');
 
 const router = express.Router();
 
+// Rate limiting for unauthenticated users
+const rateLimit = require('express-rate-limit');
+const unauthenticatedLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // Limit unauthenticated users to 20 requests per window
+    skip: (req) => req.user && req.user.id, // Skip rate limiting for authenticated users
+    message: {
+        success: false,
+        message: 'Too many requests. Please log in for unlimited access.',
+        rateLimited: true
+    },
+    trustProxy: true
+});
+
 // Search external foods (public endpoint for food search)
 router.get('/search', [
     query('q')
@@ -14,13 +28,13 @@ router.get('/search', [
         .withMessage('Search query must be between 2-100 characters'),
     query('limit')
         .optional()
-        .isInt({ min: 1, max: 50 })
-        .withMessage('Limit must be between 1-50'),
+        .isInt({ min: 1, max: 10 })
+        .withMessage('Limit must be between 1-10'), // Reduced limit for unauthenticated users
     query('source')
         .optional()
         .isIn(['openfoodfacts'])
         .withMessage('Invalid source')
-], optionalAuth, async (req, res) => {
+], optionalAuth, unauthenticatedLimiter, async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -68,7 +82,7 @@ router.get('/details/:id', [
     }
 });
 
-// Log external food consumption
+// Log external food consumption (allows unauthenticated for local logging)
 router.post('/log', [
     body('external_food_id')
         .trim()
@@ -120,7 +134,7 @@ router.post('/log', [
         .isISO8601()
         .toDate()
         .withMessage('Log date must be a valid date')
-], optionalAuth, async (req, res) => {
+], optionalAuth, unauthenticatedLimiter, async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

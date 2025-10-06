@@ -5,7 +5,15 @@ class ExternalFoodsController {
     // Search foods from external sources
     async searchExternalFoods(req, res) {
         try {
-            const { q: query, limit = 10, source = 'openfoodfacts' } = req.query;
+            // Adjust limits based on authentication status
+            const isAuthenticated = req.user && req.user.id;
+            const defaultLimit = isAuthenticated ? 10 : 5; // Reduced limit for unauthenticated users
+            const maxLimit = isAuthenticated ? 50 : 10;
+            
+            let { q: query, limit = defaultLimit, source = 'openfoodfacts' } = req.query;
+            
+            // Enforce maximum limits
+            limit = Math.min(parseInt(limit), maxLimit);
             
             if (!query || query.length < 2) {
                 return res.status(400).json({
@@ -63,13 +71,14 @@ class ExternalFoodsController {
     // Log external food consumption
     async logExternalFood(req, res) {
         try {
-            // Check if user is authenticated
+            // Check if user is authenticated (but allow graceful degradation)
             if (!req.user || !req.user.id) {
                 // For non-authenticated users, return success but indicate local storage only
                 return res.status(200).json({
                     success: true,
                     message: 'Food logged locally only (authentication required for backend storage)',
-                    localOnly: true
+                    localOnly: true,
+                    suggestion: 'Please log in to save food logs to your account'
                 });
             }
 

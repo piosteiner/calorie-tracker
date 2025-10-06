@@ -37,7 +37,7 @@ router.get('/foods', [
 router.post('/foods', [
     body('name').trim().isLength({ min: 1, max: 100 }).withMessage('Name is required (1-100 characters)'),
     body('calories_per_unit').isFloat({ min: 0 }).withMessage('Calories per unit must be a positive number'),
-    body('default_unit').trim().isLength({ min: 1, max: 20 }).withMessage('Default unit is required (1-20 characters)'),
+    // default_unit is automatically set to '100g' in the controller
     body('category_id').optional().isInt({ min: 1 }).withMessage('Category ID must be a positive integer'),
     body('brand').optional().trim().isLength({ max: 100 }).withMessage('Brand must be max 100 characters'),
     body('protein_per_100g').optional().isFloat({ min: 0 }).withMessage('Protein must be a positive number'),
@@ -75,7 +75,7 @@ router.put('/foods/:foodId', [
     param('foodId').isInt({ min: 1 }).withMessage('Food ID must be a positive integer'),
     body('name').trim().isLength({ min: 1, max: 100 }).withMessage('Name is required (1-100 characters)'),
     body('calories_per_unit').isFloat({ min: 0 }).withMessage('Calories per unit must be a positive number'),
-    body('default_unit').trim().isLength({ min: 1, max: 20 }).withMessage('Default unit is required (1-20 characters)'),
+    // default_unit is automatically set to '100g' in the controller
     body('category_id').optional().isInt({ min: 1 }).withMessage('Category ID must be a positive integer'),
     body('brand').optional().trim().isLength({ max: 100 }).withMessage('Brand must be max 100 characters'),
     body('protein_per_100g').optional().isFloat({ min: 0 }).withMessage('Protein must be a positive number'),
