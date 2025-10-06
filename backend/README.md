@@ -61,7 +61,7 @@ pm2 start ecosystem.config.js
 ## 📖 Documentation
 
 - `/docs/API.md` - Complete API documentation
-- `/docs/FOOD_DATABASE_MANAGEMENT.md` - Food management guide
+- `/docs/FOOD_DATABASE_MANAGEMENT.md` - Pios Food DB management guide
 - `/docs/FRONTEND_INTEGRATION_PROMPT.md` - Frontend integration
 - `/migrations/` - Database migration scripts
 - `/templates/` - Import templates and examples
@@ -71,7 +71,7 @@ pm2 start ecosystem.config.js
 This enhanced version includes:
 - ✅ **Enhanced MySQL Schema**: New nutrition columns and categories
 - ✅ **Professional Services**: Business logic separation
-- ✅ **Admin Controllers**: Complete food management system
+- ✅ **Admin Controllers**: Complete Pios Food DB management system
 - ✅ **Database Migrations**: Automated schema updates
 - ✅ **Comprehensive Documentation**: API guides and examples
 

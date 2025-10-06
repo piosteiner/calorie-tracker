@@ -90,7 +90,7 @@ class AdminFoodsController {
             });
 
         } catch (error) {
-            console.error('Get foods error:', error);
+            console.error('Pios Food DB get foods error:', error);
             res.status(500).json({
                 success: false,
                 message: 'Failed to retrieve foods'
@@ -140,7 +140,7 @@ class AdminFoodsController {
             });
 
         } catch (error) {
-            console.error('Create food error:', error);
+            console.error('Pios Food DB create food error:', error);
             res.status(500).json({
                 success: false,
                 message: 'Failed to create food'
@@ -190,7 +190,7 @@ class AdminFoodsController {
             });
 
         } catch (error) {
-            console.error('Update food error:', error);
+            console.error('Pios Food DB update food error:', error);
             res.status(500).json({
                 success: false,
                 message: 'Failed to update food'
@@ -226,7 +226,7 @@ class AdminFoodsController {
             });
 
         } catch (error) {
-            console.error('Delete food error:', error);
+            console.error('Pios Food DB delete food error:', error);
             res.status(500).json({
                 success: false,
                 message: 'Failed to delete food'

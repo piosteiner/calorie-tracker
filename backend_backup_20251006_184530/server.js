@@ -10,12 +10,8 @@ const foodRoutes = require('./routes/foods');
 const logRoutes = require('./routes/logs');
 const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
-const externalFoodsRoutes = require('./routes/external-foods');
 const adminFoodsRoutes = require('./routes/adminFoods');
 const adminDatabaseRoutes = require('./routes/adminDatabase');
-
-// Start cache cleanup job
-const cacheCleanupJob = require('./jobs/cacheCleanup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,8 +54,8 @@ app.use('/api/foods', foodRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/foods', adminFoodsRoutes);
 app.use('/api/admin/database', adminDatabaseRoutes);
-app.use('/api/external-foods', externalFoodsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -97,9 +93,6 @@ app.listen(PORT, () => {
     console.log(`🚀 Calorie Tracker API running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
-    
-    // Start cache cleanup job
-    cacheCleanupJob.start();
 });
 
 module.exports = app;
