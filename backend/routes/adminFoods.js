@@ -25,7 +25,7 @@ router.get('/foods', [
 
         await adminFoodsController.getAllFoods(req, res);
     } catch (error) {
-        console.error('Admin foods route error:', error);
+        console.error('Pios Food DB route error:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -62,7 +62,7 @@ router.post('/foods', [
 
         await adminFoodsController.createFood(req, res);
     } catch (error) {
-        console.error('Admin create food route error:', error);
+        console.error('Pios Food DB create route error:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -100,7 +100,7 @@ router.put('/foods/:foodId', [
 
         await adminFoodsController.updateFood(req, res);
     } catch (error) {
-        console.error('Admin update food route error:', error);
+        console.error('Pios Food DB update route error:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -124,7 +124,7 @@ router.delete('/foods/:foodId', [
 
         await adminFoodsController.deleteFood(req, res);
     } catch (error) {
-        console.error('Admin delete food route error:', error);
+        console.error('Pios Food DB delete route error:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -153,7 +153,7 @@ router.post('/foods/import',
         try {
             await adminFoodsController.importFoods(req, res);
         } catch (error) {
-            console.error('Admin import foods route error:', error);
+            console.error('Pios Food DB import route error:', error);
             res.status(500).json({
                 success: false,
                 message: 'Internal server error'

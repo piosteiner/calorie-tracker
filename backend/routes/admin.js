@@ -193,7 +193,7 @@ router.get('/foods', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Admin get foods error:', error);
+    console.error('Pios Food DB get error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve foods'
@@ -223,7 +223,7 @@ router.post('/foods', async (req, res) => {
       foodId: result.insertId
     });
   } catch (error) {
-    console.error('Admin add food error:', error);
+    console.error('Pios Food DB add error:', error);
     if (error.code === 'ER_DUP_ENTRY') {
       res.status(400).json({
         success: false,
