@@ -1245,7 +1245,7 @@ class CalorieTracker {
 
         suggestionsDiv.innerHTML = suggestions + databaseInfo + attribution;
         console.log('🖼️ Setting innerHTML and making suggestions visible');
-        console.log('📝 Final HTML length:', (suggestions + resultInfo + attribution).length);
+        console.log('📝 Final HTML length:', (suggestions + databaseInfo + attribution).length);
         suggestionsDiv.style.display = 'block';
         console.log('👁️ Set suggestionsDiv display to block');
     }
