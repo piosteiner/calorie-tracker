@@ -137,7 +137,7 @@ router.get('/categories', requireAdmin, async (req, res) => {
     try {
         await adminFoodsController.getCategories(req, res);
     } catch (error) {
-        console.error('Admin categories route error:', error);
+        console.error('Pios Food DB categories route error:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'
@@ -167,7 +167,7 @@ router.get('/imports', requireAdmin, async (req, res) => {
     try {
         await adminFoodsController.getImportHistory(req, res);
     } catch (error) {
-        console.error('Admin import history route error:', error);
+        console.error('Pios Food DB import history route error:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'
