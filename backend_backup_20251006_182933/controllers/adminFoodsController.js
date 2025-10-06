@@ -102,10 +102,13 @@ class AdminFoodsController {
     async createFood(req, res) {
         try {
             const {
-                name, calories_per_unit, default_unit, category_id, brand,
+                name, calories_per_unit, category_id, brand,
                 protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                 sodium_per_100g, sugar_per_100g, description, barcode, is_verified
             } = req.body;
+            
+            // Always use 100g as the default unit since all calories are standardized to per 100g
+            const default_unit = '100g';
 
             // Check if food already exists
             const existing = await db.query('SELECT id FROM foods WHERE LOWER(name) = LOWER(?)', [name]);
@@ -150,10 +153,13 @@ class AdminFoodsController {
         try {
             const { foodId } = req.params;
             const {
-                name, calories_per_unit, default_unit, category_id, brand,
+                name, calories_per_unit, category_id, brand,
                 protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                 sodium_per_100g, sugar_per_100g, description, barcode, is_verified
             } = req.body;
+            
+            // Always use 100g as the default unit since all calories are standardized to per 100g
+            const default_unit = '100g';
 
             // Check if food exists
             const existing = await db.query('SELECT id FROM foods WHERE id = ?', [foodId]);
