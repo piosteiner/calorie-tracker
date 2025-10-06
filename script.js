@@ -1863,10 +1863,12 @@ class CalorieTracker {
         console.log('loadAdminFoods called');
         console.log('Current user:', this.currentUser);
         
-        // Use empty demo data for demo admin user
+        // Use demo data for demo admin user - initialize empty if not exists
         if (this.currentUser && this.currentUser.username === 'admin') {
-            // Use empty foods array since offline database is removed
-            this.adminData.foods = [];
+            // Initialize demo foods array if it doesn't exist
+            if (!this.adminData.foods) {
+                this.adminData.foods = [];
+            }
             console.log('Admin foods data:', this.adminData.foods);
             this.updateAdminFoodsDisplay();
             return;
@@ -1919,10 +1921,37 @@ class CalorieTracker {
             return;
         }
 
-        // For demo admin, just show message
+        // For demo admin, add to local demo data
         if (this.currentUser && this.currentUser.username === 'admin') {
-            this.showMessage('Food would be added to database (Demo mode)', 'info');
+            // Initialize demo foods array if it doesn't exist
+            if (!this.adminData.foods) {
+                this.adminData.foods = [];
+            }
+            
+            // Generate ID in format "foodname_YYYYMMDD"
+            const today = new Date();
+            const dateStr = today.getFullYear() + 
+                          String(today.getMonth() + 1).padStart(2, '0') + 
+                          String(today.getDate()).padStart(2, '0');
+            const foodNameForId = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+            const foodId = `${foodNameForId}_${dateStr}`;
+            
+            // Create a new food item with demo data
+            const newFood = {
+                id: foodId,
+                name: name,
+                calories: parseFloat(calories),
+                usage_count: 0
+            };
+            
+            // Add to the demo foods array
+            this.adminData.foods.push(newFood);
+            
+            this.showMessage(`Added "${name}" with ${calories} calories per 100g (Demo mode)`, 'success');
             document.getElementById('adminAddFoodForm').reset();
+            
+            // Update the display to show the new food
+            this.updateAdminFoodsDisplay();
             return;
         }
 
@@ -1958,9 +1987,19 @@ class CalorieTracker {
             return;
         }
 
-        // For demo mode, just show message
+        // For demo mode, remove from local array
         if (this.currentUser && this.currentUser.username === 'admin') {
-            this.showMessage(`Food with ID ${foodId} would be deleted (Demo mode)`, 'info');
+            if (this.adminData.foods) {
+                const foodIndex = this.adminData.foods.findIndex(food => food.id == foodId);
+                if (foodIndex !== -1) {
+                    const deletedFood = this.adminData.foods[foodIndex];
+                    this.adminData.foods.splice(foodIndex, 1);
+                    this.showMessage(`Deleted "${deletedFood.name}" (Demo mode)`, 'success');
+                    this.updateAdminFoodsDisplay();
+                } else {
+                    this.showMessage('Food not found', 'error');
+                }
+            }
             return;
         }
 
