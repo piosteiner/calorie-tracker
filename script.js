@@ -668,14 +668,44 @@ class CalorieTracker {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
-        // Always try offline mode first for demo credentials
+        // For demo credentials, try backend first, then fallback to offline mode
         if ((username === 'demo' && password === 'demo123') || (username === 'admin' && password === 'admin123')) {
+            // First try to authenticate with backend if online
+            if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+                try {
+                    const response = await this.apiCall('/auth/login', 'POST', {
+                        username,
+                        password
+                    });
+
+                    // Successfully authenticated with backend
+                    this.authToken = response.token;
+                    this.currentUser = response.user;
+                    this.calorieGoal = response.user.dailyCalorieGoal;
+                    
+                    localStorage.setItem(CONFIG.TOKEN_STORAGE_KEY, response.token);
+                    localStorage.setItem(CONFIG.USER_STORAGE_KEY, JSON.stringify(response.user));
+                    
+                    document.getElementById('welcomeUser').textContent = `Welcome, ${response.user.username}!`;
+                    this.showSection('dashboard');
+                    await this.loadTodaysData();
+                    await this.checkAdminStatus();
+                    this.toggleAdminInterface();
+                    this.showMessage('Login successful! (Connected to backend)', 'success');
+                    return;
+                } catch (error) {
+                    console.log('Backend authentication failed, using demo mode:', error.message);
+                }
+            }
+            
+            // Fallback to offline demo mode
             this.currentUser = { 
                 id: username === 'admin' ? 2 : 1, 
                 username: username, 
                 dailyCalorieGoal: 2000 
             };
             this.calorieGoal = 2000;
+            this.authToken = null; // Explicitly set to null for demo mode
             localStorage.setItem(CONFIG.USER_STORAGE_KEY, JSON.stringify(this.currentUser));
             
             // Load hybrid data (local + server if available)
@@ -685,10 +715,10 @@ class CalorieTracker {
             await this.checkAdminStatus();
             this.toggleAdminInterface();
             
-            document.getElementById('welcomeUser').textContent = `Welcome, ${username}!`;
+            document.getElementById('welcomeUser').textContent = `Welcome, ${username}! (Demo mode)`;
             this.showSection('dashboard');
             this.updateDashboard();
-            this.showMessage('Login successful!', 'success');
+            this.showMessage('Login successful! (Demo mode - backend unavailable)', 'warning');
             
             // Start background sync if there's pending data
             if (this.syncQueue.length > 0) {
