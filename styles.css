@@ -1909,3 +1909,324 @@ body {
         padding: 12px;
     }
 }
+
+/* =============================================================================
+   DATABASE MANAGEMENT STYLES
+   ============================================================================= */
+
+.database-stats {
+    margin-bottom: 30px;
+}
+
+.sql-query-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.query-input-container {
+    margin-bottom: 15px;
+}
+
+#sqlQuery {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    resize: vertical;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.query-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.query-results {
+    margin-top: 20px;
+}
+
+.query-meta {
+    background: var(--bg-secondary);
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.results-table-container {
+    max-height: 400px;
+    overflow: auto;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+}
+
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.results-table th {
+    background: var(--bg-secondary);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-primary);
+    position: sticky;
+    top: 0;
+    font-weight: 600;
+}
+
+.results-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-secondary);
+    max-width: 200px;
+    word-wrap: break-word;
+}
+
+.results-table tr:hover {
+    background: var(--bg-hover);
+}
+
+.database-tables-section {
+    margin-top: 30px;
+}
+
+/* Table Browser Modal */
+#tableBrowserModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#tableBrowserModal .modal-content {
+    background: var(--bg-card);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1000px;
+    max-height: 90%;
+    overflow: auto;
+    box-shadow: 0 10px 30px var(--shadow-heavy);
+}
+
+#tableBrowserModal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+#tableBrowserModal .modal-body {
+    padding: 30px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.table-structure {
+    margin-bottom: 30px;
+}
+
+.structure-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.structure-table th,
+.structure-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.structure-table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+}
+
+.structure-table code {
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.data-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 15px;
+}
+
+#tableSearchInput {
+    flex: 1;
+    max-width: 300px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+#tablePagination {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.data-table th {
+    background: var(--bg-secondary);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.data-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-secondary);
+    max-width: 150px;
+    word-wrap: break-word;
+    font-size: 13px;
+}
+
+.data-table tr:hover {
+    background: var(--bg-hover);
+}
+
+.data-table em {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* Structure Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.structure-modal {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 80%;
+    overflow: auto;
+    box-shadow: 0 10px 30px var(--shadow-heavy);
+}
+
+.structure-modal h4 {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.structure-modal .btn {
+    margin-top: 20px;
+}
+
+/* Loading and error states */
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.error {
+    background: var(--msg-error-bg);
+    color: var(--msg-error-text);
+    border: 1px solid var(--msg-error-border);
+    padding: 12px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.no-data {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #tableBrowserModal .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    #tableBrowserModal .modal-body {
+        padding: 20px;
+    }
+    
+    .data-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #tableSearchInput {
+        max-width: none;
+        margin-bottom: 10px;
+    }
+    
+    .results-table,
+    .data-table,
+    .structure-table {
+        font-size: 12px;
+    }
+    
+    .results-table td,
+    .data-table td,
+    .structure-table td {
+        max-width: 100px;
+        padding: 6px 8px;
+    }
+}

@@ -169,6 +169,7 @@
                             <button class="btn btn-admin" onclick="app.showAdminSection('Stats')">📊 Statistics</button>
                             <button class="btn btn-admin" onclick="app.showAdminSection('Users')">👥 Users</button>
                             <button class="btn btn-admin" onclick="app.showAdminSection('Foods')">🥗 Foods</button>
+                            <button class="btn btn-admin" onclick="app.showAdminSection('Database')">🗄️ Database</button>
                         </nav>
 
                         <!-- Admin Statistics -->
@@ -258,6 +259,95 @@
                                         <tr><td colspan="5" class="loading">Loading foods...</td></tr>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+
+                        <!-- Admin Database Management -->
+                        <div id="adminDatabase" class="admin-section">
+                            <h3>Database Management</h3>
+                            
+                            <!-- Database Statistics -->
+                            <div class="database-stats">
+                                <h4>Database Statistics</h4>
+                                <div class="admin-stats-grid">
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="dbTableCount">0</div>
+                                        <div class="admin-stat-label">Tables</div>
+                                    </div>
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="dbTotalRows">0</div>
+                                        <div class="admin-stat-label">Total Rows</div>
+                                    </div>
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="dbSize">0 MB</div>
+                                        <div class="admin-stat-label">Database Size</div>
+                                    </div>
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="mysqlVersion">-</div>
+                                        <div class="admin-stat-label">MySQL Version</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SQL Query Interface -->
+                            <div class="sql-query-section">
+                                <h4>SQL Query Tool</h4>
+                                <div class="query-input-container">
+                                    <textarea id="sqlQuery" placeholder="SELECT * FROM users LIMIT 10;" rows="4"></textarea>
+                                    <div class="query-buttons">
+                                        <button onclick="app.executeSQLQuery()" class="btn btn-primary">▶️ Execute Query</button>
+                                        <button onclick="app.clearQuery()" class="btn btn-secondary">🗑️ Clear</button>
+                                    </div>
+                                </div>
+                                <div id="queryResults" class="query-results"></div>
+                            </div>
+
+                            <!-- Database Tables -->
+                            <div class="database-tables-section">
+                                <h4>Database Tables</h4>
+                                <div class="admin-table-container">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Table Name</th>
+                                                <th>Rows</th>
+                                                <th>Size</th>
+                                                <th>Created</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="databaseTablesList">
+                                            <tr><td colspan="5" class="loading">Loading tables...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Table Browser Modal -->
+                            <div id="tableBrowserModal" class="modal" style="display: none;">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h4 id="tableBrowserTitle">Browse Table</h4>
+                                        <button onclick="app.closeTableBrowser()" class="modal-close">×</button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <!-- Table structure -->
+                                        <div class="table-structure">
+                                            <h5>Table Structure</h5>
+                                            <div id="tableStructure"></div>
+                                        </div>
+                                        
+                                        <!-- Data browser -->
+                                        <div class="table-data">
+                                            <h5>Table Data</h5>
+                                            <div class="data-controls">
+                                                <input type="text" id="tableSearchInput" placeholder="Search..." onkeyup="app.searchTableData()">
+                                                <span id="tablePagination"></span>
+                                            </div>
+                                            <div id="tableDataContainer"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

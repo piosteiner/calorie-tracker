@@ -1964,7 +1964,364 @@ class CalorieTracker {
                 console.log('Loading Foods section...');
                 this.loadAdminFoods();
                 break;
+            case 'Database':
+                console.log('Loading Database section...');
+                this.loadDatabaseManagement();
+                break;
         }
+    }
+
+    // =============================================================================
+    // DATABASE MANAGEMENT FUNCTIONALITY
+    // =============================================================================
+
+    // Load database management interface
+    async loadDatabaseManagement() {
+        if (!this.isAdmin) return;
+        
+        try {
+            // Load database statistics
+            await this.loadDatabaseStats();
+            
+            // Load database tables
+            await this.loadDatabaseTables();
+            
+        } catch (error) {
+            console.error('Error loading database management:', error);
+            this.showMessage('Failed to load database management interface', 'error');
+        }
+    }
+
+    // Load database statistics
+    async loadDatabaseStats() {
+        try {
+            const response = await this.apiCall('/admin/database/stats');
+            const stats = response.stats;
+            
+            document.getElementById('dbTableCount').textContent = stats.table_count || 0;
+            document.getElementById('dbTotalRows').textContent = (stats.total_rows || 0).toLocaleString();
+            document.getElementById('dbSize').textContent = this.formatBytes(stats.database_size || 0);
+            document.getElementById('mysqlVersion').textContent = stats.mysql_version || 'Unknown';
+            
+        } catch (error) {
+            console.error('Error loading database stats:', error);
+            this.showMessage('Failed to load database statistics', 'error');
+        }
+    }
+
+    // Load database tables
+    async loadDatabaseTables() {
+        try {
+            const response = await this.apiCall('/admin/database/tables');
+            this.displayDatabaseTables(response.tables);
+        } catch (error) {
+            console.error('Error loading database tables:', error);
+            this.showMessage('Failed to load database tables', 'error');
+        }
+    }
+
+    // Display database tables
+    displayDatabaseTables(tables) {
+        const tablesList = document.getElementById('databaseTablesList');
+        
+        if (!tables || tables.length === 0) {
+            tablesList.innerHTML = '<tr><td colspan="5" class="no-data">No tables found</td></tr>';
+            return;
+        }
+        
+        tablesList.innerHTML = tables.map(table => `
+            <tr>
+                <td><strong>${table.table_name}</strong></td>
+                <td>${(table.row_count || 0).toLocaleString()}</td>
+                <td>${this.formatBytes(table.size_bytes || 0)}</td>
+                <td>${table.created_at ? new Date(table.created_at).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                    <button onclick="app.browseTable('${table.table_name}')" class="btn btn-sm btn-info">
+                        👁️ Browse
+                    </button>
+                    <button onclick="app.showTableStructure('${table.table_name}')" class="btn btn-sm btn-secondary">
+                        🏗️ Structure
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Execute SQL query
+    async executeSQLQuery() {
+        const queryTextarea = document.getElementById('sqlQuery');
+        const sql = queryTextarea.value.trim();
+        
+        if (!sql) {
+            this.showMessage('Please enter a SQL query', 'error');
+            return;
+        }
+        
+        const resultsDiv = document.getElementById('queryResults');
+        resultsDiv.innerHTML = '<div class="loading">Executing query...</div>';
+        
+        try {
+            const response = await this.apiCall('/admin/database/query', 'POST', { sql });
+            this.displayQueryResults(response);
+        } catch (error) {
+            console.error('Error executing query:', error);
+            resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+        }
+    }
+
+    // Display query results
+    displayQueryResults(response) {
+        const resultsDiv = document.getElementById('queryResults');
+        
+        if (!response.results || response.results.length === 0) {
+            resultsDiv.innerHTML = '<div class="no-data">Query executed successfully. No results returned.</div>';
+            return;
+        }
+        
+        const results = response.results;
+        const columns = Object.keys(results[0]);
+        
+        const tableHTML = `
+            <div class="query-meta">
+                <small>
+                    ${response.meta.rowCount} rows returned in ${response.meta.executionTime}
+                </small>
+            </div>
+            <div class="results-table-container">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            ${columns.map(col => `<th>${col}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${results.map(row => `
+                            <tr>
+                                ${columns.map(col => `<td>${this.formatCellValue(row[col])}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        resultsDiv.innerHTML = tableHTML;
+    }
+
+    // Browse table data
+    async browseTable(tableName) {
+        try {
+            // Load table structure
+            const structureResponse = await this.apiCall(`/admin/database/tables/${tableName}/structure`);
+            
+            // Load table data
+            const dataResponse = await this.apiCall(`/admin/database/tables/${tableName}/data`);
+            
+            this.showTableBrowser(tableName, structureResponse, dataResponse);
+            
+        } catch (error) {
+            console.error('Error browsing table:', error);
+            this.showMessage(`Failed to browse table: ${tableName}`, 'error');
+        }
+    }
+
+    // Show table browser modal
+    showTableBrowser(tableName, structureData, tableData) {
+        const modal = document.getElementById('tableBrowserModal');
+        const title = document.getElementById('tableBrowserTitle');
+        
+        title.textContent = `Browse Table: ${tableName}`;
+        
+        // Display table structure
+        this.displayTableStructure(structureData.columns);
+        
+        // Display table data
+        this.displayTableData(tableData);
+        
+        // Show modal
+        modal.style.display = 'block';
+        this.currentBrowsingTable = {
+            name: tableName,
+            currentPage: tableData.pagination.page
+        };
+    }
+
+    // Display table structure
+    displayTableStructure(columns) {
+        const container = document.getElementById('tableStructure');
+        
+        const tableHTML = `
+            <table class="structure-table">
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Type</th>
+                        <th>Nullable</th>
+                        <th>Default</th>
+                        <th>Key</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${columns.map(col => `
+                        <tr>
+                            <td><strong>${col.column_name}</strong></td>
+                            <td><code>${col.data_type}</code></td>
+                            <td>${col.is_nullable === 'YES' ? '✅' : '❌'}</td>
+                            <td><code>${col.default_value || 'NULL'}</code></td>
+                            <td>${this.formatKeyType(col.key_type)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        container.innerHTML = tableHTML;
+    }
+
+    // Display table data
+    displayTableData(dataResponse) {
+        const container = document.getElementById('tableDataContainer');
+        const pagination = document.getElementById('tablePagination');
+        
+        const { data, pagination: pag } = dataResponse;
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="no-data">No data found</div>';
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        const columns = Object.keys(data[0]);
+        
+        const tableHTML = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        ${columns.map(col => `<th>${col}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(row => `
+                        <tr>
+                            ${columns.map(col => `<td>${this.formatCellValue(row[col])}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        container.innerHTML = tableHTML;
+        
+        // Update pagination
+        pagination.innerHTML = `
+            Page ${pag.page} of ${pag.totalPages} 
+            (${pag.total.toLocaleString()} total rows)
+        `;
+    }
+
+    // Helper functions
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    formatCellValue(value) {
+        if (value === null) return '<em>NULL</em>';
+        if (value === '') return '<em>Empty</em>';
+        if (typeof value === 'string' && value.length > 100) {
+            return value.substring(0, 100) + '...';
+        }
+        return String(value);
+    }
+
+    formatKeyType(keyType) {
+        switch (keyType) {
+            case 'PRI': return '🔑 Primary';
+            case 'UNI': return '🔐 Unique';
+            case 'MUL': return '📎 Index';
+            default: return '';
+        }
+    }
+
+    // Clear SQL query
+    clearQuery() {
+        document.getElementById('sqlQuery').value = '';
+        document.getElementById('queryResults').innerHTML = '';
+    }
+
+    // Close table browser
+    closeTableBrowser() {
+        document.getElementById('tableBrowserModal').style.display = 'none';
+        this.currentBrowsingTable = null;
+    }
+
+    // Search table data
+    async searchTableData() {
+        if (!this.currentBrowsingTable) return;
+        
+        const searchInput = document.getElementById('tableSearchInput');
+        const searchTerm = searchInput.value.trim();
+        
+        try {
+            const url = `/admin/database/tables/${this.currentBrowsingTable.name}/data?search=${encodeURIComponent(searchTerm)}`;
+            const response = await this.apiCall(url);
+            this.displayTableData(response);
+        } catch (error) {
+            console.error('Error searching table data:', error);
+        }
+    }
+
+    // Show table structure
+    async showTableStructure(tableName) {
+        try {
+            const response = await this.apiCall(`/admin/database/tables/${tableName}/structure`);
+            
+            // Create a simple modal to show structure
+            const structureHTML = `
+                <div class="structure-modal">
+                    <h4>Table Structure: ${tableName}</h4>
+                    ${this.formatTableStructure(response.columns)}
+                    <button onclick="this.parentElement.remove()" class="btn btn-secondary">Close</button>
+                </div>
+            `;
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = structureHTML;
+            overlay.onclick = (e) => {
+                if (e.target === overlay) overlay.remove();
+            };
+            
+            document.body.appendChild(overlay);
+            
+        } catch (error) {
+            console.error('Error showing table structure:', error);
+            this.showMessage(`Failed to load structure for table: ${tableName}`, 'error');
+        }
+    }
+
+    formatTableStructure(columns) {
+        return `
+            <table class="structure-table">
+                <thead>
+                    <tr><th>Column</th><th>Type</th><th>Nullable</th><th>Default</th><th>Key</th></tr>
+                </thead>
+                <tbody>
+                    ${columns.map(col => `
+                        <tr>
+                            <td><strong>${col.column_name}</strong></td>
+                            <td><code>${col.data_type}</code></td>
+                            <td>${col.is_nullable === 'YES' ? '✅' : '❌'}</td>
+                            <td><code>${col.default_value || 'NULL'}</code></td>
+                            <td>${this.formatKeyType(col.key_type)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
     }
 
     // =============================================================================
