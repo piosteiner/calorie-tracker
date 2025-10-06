@@ -23,40 +23,6 @@ class CalorieTracker {
         this.syncInProgress = false;
         this.syncStatus = 'pending'; // 'pending', 'syncing', 'synced', 'error'
         
-        // Sample food database (fallback for offline mode)
-        this.offlineFoodDatabase = {
-            'apple': { id: 1, calories: 52, unit: 'g' },  // per 100g
-            'banana': { id: 2, calories: 89, unit: 'g' },  // per 100g
-            'chicken breast': { id: 3, calories: 165, unit: 'g' },  // per 100g
-            'rice': { id: 4, calories: 130, unit: 'g' },  // per 100g cooked
-            'bread': { id: 5, calories: 265, unit: 'g' },  // per 100g
-            'egg': { id: 6, calories: 155, unit: 'g' },  // per 100g
-            'milk': { id: 7, calories: 42, unit: 'g' },  // per 100g whole milk
-            'cheese': { id: 8, calories: 113, unit: 'g' },  // per 100g
-            'salmon': { id: 9, calories: 208, unit: 'g' },  // per 100g
-            'broccoli': { id: 10, calories: 34, unit: 'g' },  // per 100g
-            'pasta': { id: 11, calories: 131, unit: 'g' },  // per 100g cooked
-            'yogurt': { id: 12, calories: 59, unit: 'g' },  // per 100g plain
-            'almonds': { id: 13, calories: 579, unit: 'g' },  // per 100g
-            'orange': { id: 14, calories: 47, unit: 'g' },  // per 100g
-            'spinach': { id: 15, calories: 23, unit: 'g' },  // per 100g
-            'potato': { id: 16, calories: 77, unit: 'g' },  // per 100g
-            'tomato': { id: 17, calories: 18, unit: 'g' },  // per 100g
-            'avocado': { id: 18, calories: 160, unit: 'g' },  // per 100g
-            'oatmeal': { id: 19, calories: 68, unit: 'g' },  // per 100g cooked
-            'peanut butter': { id: 20, calories: 588, unit: 'g' },  // per 100g
-            'lasagna': { id: 21, calories: 135, unit: 'g' },  // per 100g
-            'lasagne': { id: 22, calories: 135, unit: 'g' },  // per 100g
-            'meat lasagna': { id: 23, calories: 150, unit: 'g' },  // per 100g
-            'vegetable lasagna': { id: 24, calories: 120, unit: 'g' },  // per 100g
-            'beef lasagna': { id: 25, calories: 155, unit: 'g' },  // per 100g
-            'cheese lasagna': { id: 26, calories: 140, unit: 'g' },  // per 100g
-            'pizza': { id: 27, calories: 266, unit: 'g' },  // per 100g
-            'hamburger': { id: 28, calories: 295, unit: 'g' },  // per 100g
-            'french fries': { id: 29, calories: 365, unit: 'g' },  // per 100g
-            'chocolate': { id: 30, calories: 546, unit: 'g' }  // per 100g
-        };
-        
         // Open Food Facts API integration
         this.openFoodFactsCache = new Map();
         this.setupOpenFoodFacts();
@@ -166,15 +132,11 @@ class CalorieTracker {
         return processed.slice(0, 10); // Limit results
     }
 
-    // Combined search: offline + backend (which includes Open Food Facts)
+    // Combined search: backend (which includes Open Food Facts)
     async searchAllFoods(query) {
         const results = [];
         
-        // 1. Search offline database first (fast)
-        const offlineResults = this.searchOfflineDatabase(query);
-        results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
-        
-        // 2. Search backend (which includes Open Food Facts) if online
+        // Search backend (which includes Open Food Facts) if online
         if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 const backendResults = await this.searchBackendFoods(query, 8);
@@ -186,7 +148,7 @@ class CalorieTracker {
                     const directResults = await this.searchOpenFoodFacts(query, 6);
                     results.push(...directResults);
                 } catch (directError) {
-                    console.log('Direct Open Food Facts search also failed, using offline only');
+                    console.log('Direct Open Food Facts search also failed');
                 }
             }
         }
@@ -220,19 +182,6 @@ class CalorieTracker {
             console.error('Backend food search error:', error);
             return [];
         }
-    }
-
-    // Search offline database
-    searchOfflineDatabase(query) {
-        const searchTerm = query.toLowerCase();
-        return Object.entries(this.offlineFoodDatabase)
-            .filter(([name]) => name.toLowerCase().includes(searchTerm))
-            .map(([name, data]) => ({
-                id: `offline_${data.id}`,
-                name: name,
-                calories: data.calories,
-                unit: data.unit
-            }));
     }
 
     // Search local foods in backend database
@@ -350,16 +299,7 @@ class CalorieTracker {
             console.log('⭐ Favorites search disabled');
         }
         
-        // 2. Search offline database (instant fallback) if enabled
-        if (preferences.offlineDb) {
-            const offlineResults = this.searchOfflineDatabase(query);
-            results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
-            console.log('📱 Offline DB search enabled, found:', offlineResults.length);
-        } else {
-            console.log('📱 Offline DB search disabled');
-        }
-        
-        // 3. Search backend (hybrid: local + external foods) if online and enabled
+        // 2. Search backend (hybrid: local + external foods) if online and enabled
         if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 // Search local foods first if enabled
@@ -490,7 +430,7 @@ class CalorieTracker {
         this.loadDatabaseTogglePreferences();
         
         // Add event listeners to toggle checkboxes
-        const toggles = ['toggleFavorites', 'toggleOfflineDb', 'toggleLocalFoods', 'toggleOpenFoodFacts'];
+        const toggles = ['toggleFavorites', 'toggleLocalFoods', 'toggleOpenFoodFacts'];
         toggles.forEach(toggleId => {
             const toggle = document.getElementById(toggleId);
             if (toggle) {
@@ -513,7 +453,6 @@ class CalorieTracker {
         // Default all to true if not set
         const defaults = {
             favorites: true,
-            offlineDb: true,
             localFoods: true,
             openFoodFacts: true
         };
@@ -521,7 +460,6 @@ class CalorieTracker {
         const settings = { ...defaults, ...preferences };
         
         document.getElementById('toggleFavorites').checked = settings.favorites;
-        document.getElementById('toggleOfflineDb').checked = settings.offlineDb;
         document.getElementById('toggleLocalFoods').checked = settings.localFoods;
         document.getElementById('toggleOpenFoodFacts').checked = settings.openFoodFacts;
     }
@@ -530,7 +468,6 @@ class CalorieTracker {
     saveDatabaseTogglePreferences() {
         const preferences = {
             favorites: document.getElementById('toggleFavorites').checked,
-            offlineDb: document.getElementById('toggleOfflineDb').checked,
             localFoods: document.getElementById('toggleLocalFoods').checked,
             openFoodFacts: document.getElementById('toggleOpenFoodFacts').checked
         };
@@ -542,7 +479,6 @@ class CalorieTracker {
     getDatabaseTogglePreferences() {
         return {
             favorites: document.getElementById('toggleFavorites').checked,
-            offlineDb: document.getElementById('toggleOfflineDb').checked,
             localFoods: document.getElementById('toggleLocalFoods').checked,
             openFoodFacts: document.getElementById('toggleOpenFoodFacts').checked
         };
@@ -882,8 +818,8 @@ class CalorieTracker {
                 this.showMessage(`Error adding food: ${error.message}`, 'error');
             }
         } else {
-            // Offline mode
-            this.handleAddFoodOffline(foodName, quantity, unit);
+            // Offline mode - suggest using search functionality instead
+            this.showMessage('Please use the food search to find and add foods when offline', 'error');
         }
     }
 
@@ -977,48 +913,6 @@ class CalorieTracker {
         }
     }
 
-    handleAddFoodOffline(foodName, quantity, unit) {
-        if (!this.offlineFoodDatabase[foodName]) {
-            this.showMessage(`Food "${foodName}" not found. Try: ${Object.keys(this.offlineFoodDatabase).slice(0, 5).join(', ')}...`, 'error');
-            return;
-        }
-
-        const foodData = this.offlineFoodDatabase[foodName];
-        const calories = this.calculateCalories(foodData.calories, quantity, unit, foodData.unit);
-
-        const foodEntry = {
-            id: Date.now(),
-            name: foodName,
-            quantity: quantity,
-            unit: unit,
-            calories: calories,
-            timestamp: new Date().toLocaleTimeString(),
-            offline: true
-        };
-
-        this.foodLog.push(foodEntry);
-        this.dailyCalories += calories;
-        
-        // Add to sync queue for background upload
-        this.addToSyncQueue('add_food', {
-            name: foodName,
-            quantity: quantity,
-            unit: unit,
-            calories: calories,
-            foodId: foodData.id,
-            localId: foodEntry.id
-        });
-        
-        this.updateDashboard();
-        this.updateFoodLog();
-        this.saveToStorage();
-        
-        document.getElementById('foodForm').reset();
-        document.getElementById('quantity').value = 1;
-        
-        this.showMessage(`Added ${foodName}! +${calories} calories`, 'success');
-    }
-
     async loadTodaysData() {
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
@@ -1079,16 +973,7 @@ class CalorieTracker {
                 console.log('⭐ Favorites search disabled');
             }
 
-            // 2. Search offline database (instant results) if enabled
-            if (preferences.offlineDb) {
-                const offlineResults = this.searchOfflineDatabase(input);
-                matches.push(...offlineResults.slice(0, 2).map(food => ({...food, source: 'Offline Database'})));
-                console.log('💾 Found offline results:', offlineResults.length);
-            } else {
-                console.log('💾 Offline database search disabled');
-            }
-
-            // 3. Search backend for comprehensive results if enabled
+            // 2. Search backend for comprehensive results if enabled
             if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
                 console.log('🌐 Attempting backend search...');
                 try {
@@ -1224,7 +1109,6 @@ class CalorieTracker {
         // Create database sources indicator
         const searchedDatabases = [];
         if (preferences.favorites) searchedDatabases.push('⭐ Favorites');
-        if (preferences.offlineDb) searchedDatabases.push('📱 Offline Cache');
         if (preferences.localFoods) searchedDatabases.push('🏠 Local Foods');
         if (preferences.openFoodFacts) searchedDatabases.push('🌐 Open Food Facts');
         
@@ -1255,7 +1139,6 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return '🌐';
         if (source && source.includes('⭐')) return '⭐';
         if (source === 'Local Database') return '🏪';
-        if (source === 'Offline Database') return '📱';
         if (source === 'Local Foods') return '🏠';
         return '💾';
     }
@@ -1274,7 +1157,6 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return 'Open Food Facts';
         if (source && source.includes('⭐')) return source.replace('⭐ ', '');
         if (source === 'Local Database') return 'Local Database';
-        if (source === 'Offline Database') return 'Offline Cache';
         if (source === 'Local Foods') return 'Local Foods';
         return source || 'Database';
     }
@@ -1283,7 +1165,6 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return 'Global food database with Swiss products (Migros, Coop, etc.)';
         if (source && source.includes('⭐')) return 'Your favorite food from search history';
         if (source === 'Local Database') return 'Local food database';
-        if (source === 'Offline Database') return 'Offline cache - works without internet';
         if (source === 'Local Foods') return 'Custom foods from your account or admin-added foods';
         return source || 'Food database';
     }
@@ -1972,20 +1853,11 @@ class CalorieTracker {
     async loadAdminFoods() {
         console.log('loadAdminFoods called');
         console.log('Current user:', this.currentUser);
-        console.log('Offline food database:', this.offlineFoodDatabase);
         
-        // Use demo data for demo admin user
+        // Use empty demo data for demo admin user
         if (this.currentUser && this.currentUser.username === 'admin') {
-            // Convert offline food database object to array format for admin display
-            const foodsArray = Object.entries(this.offlineFoodDatabase).map(([name, data], index) => ({
-                id: index + 1,
-                name: name,
-                calories: data.calories,
-                unit: data.unit,
-                usage_count: Math.floor(Math.random() * 50) // Random usage count for demo
-            }));
-            
-            this.adminData.foods = foodsArray;
+            // Use empty foods array since offline database is removed
+            this.adminData.foods = [];
             console.log('Admin foods data:', this.adminData.foods);
             this.updateAdminFoodsDisplay();
             return;
@@ -2099,54 +1971,12 @@ class CalorieTracker {
     // ENHANCED FOOD SEARCH INTEGRATION
     // =============================================================================
 
-    // Search foods from backend database
-    async searchFoods(query) {
-        if (!query || query.length < CONFIG.MIN_SEARCH_LENGTH) {
-            return [];
-        }
 
-        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
-            // Fallback to offline database
-            return Object.keys(this.offlineFoodDatabase)
-                .filter(food => food.toLowerCase().includes(query.toLowerCase()))
-                .slice(0, CONFIG.MAX_SUGGESTIONS)
-                .map(name => ({
-                    id: null,
-                    name: name,
-                    calories_per_unit: this.offlineFoodDatabase[name].calories,
-                    default_unit: this.offlineFoodDatabase[name].unit
-                }));
-        }
-
-        try {
-            const response = await this.apiCall(`/foods/search?q=${encodeURIComponent(query)}`);
-            return response.success ? response.foods : [];
-        } catch (error) {
-            console.error('Food search error:', error);
-            // Fallback to offline database
-            return Object.keys(this.offlineFoodDatabase)
-                .filter(food => food.toLowerCase().includes(query.toLowerCase()))
-                .slice(0, CONFIG.MAX_SUGGESTIONS)
-                .map(name => ({
-                    id: null,
-                    name: name,
-                    calories_per_unit: this.offlineFoodDatabase[name].calories,
-                    default_unit: this.offlineFoodDatabase[name].unit
-                }));
-        }
-    }
 
     // Get food details by ID or name
     async getFoodDetails(foodId = null, foodName = null) {
         if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
-            if (foodName && this.offlineFoodDatabase[foodName.toLowerCase()]) {
-                return {
-                    id: null,
-                    name: foodName,
-                    calories_per_unit: this.offlineFoodDatabase[foodName.toLowerCase()].calories,
-                    default_unit: this.offlineFoodDatabase[foodName.toLowerCase()].unit
-                };
-            }
+            // No offline database available - return null
             return null;
         }
 
@@ -2190,16 +2020,6 @@ class CalorieTracker {
                         </a>
                     </div>
                     
-                    <div class="data-source">
-                        <h4>💾 Offline Database</h4>
-                        <p><strong>Local nutrition database</strong> - Curated common foods for offline functionality.</p>
-                        <ul>
-                            <li>⚡ <strong>Instant access</strong>: Works without internet</li>
-                            <li>🥗 <strong>Common foods</strong>: Fruits, vegetables, proteins, grains</li>
-                            <li>🎯 <strong>Reliable data</strong>: Manually verified nutrition facts</li>
-                            <li>🔄 <strong>Fallback</strong>: Used when online sources are unavailable</li>
-                        </ul>
-                    </div>
                     
                     <div class="data-source">
                         <h4>⭐ Smart Favorites</h4>
