@@ -88,7 +88,7 @@
                 <div class="add-food-card">
                     <div class="card-header-with-info">
                         <h3>Log Food</h3>
-                        <button type="button" class="info-button" onclick="app.showDataSourcesInfo()" title="Learn about our food databases">
+                        <button type="button" class="info-button" data-action="show-data-sources" title="Learn about our food databases">
                             <span class="info-icon">ℹ️</span>
                             <span class="info-text">Data Sources</span>
                         </button>
@@ -119,7 +119,7 @@
                             <div class="search-controls-header">
                                 <label class="search-controls-title">
                                     🔍 Search Databases
-                                    <button type="button" class="info-button-small" onclick="app.showDatabaseToggleInfo()" title="Learn about database search options">
+                                    <button type="button" class="info-button-small" data-action="show-database-toggle-info" title="Learn about database search options">
                                         <span class="info-icon-small">?</span>
                                     </button>
                                 </label>
@@ -159,10 +159,10 @@
                     <div class="admin-card">
                         <h2>🛡️ Admin Panel</h2>
                         <nav class="admin-nav">
-                            <button class="btn btn-admin" onclick="app.showAdminSection('Stats')">📊 Statistics</button>
-                            <button class="btn btn-admin" onclick="app.showAdminSection('Users')">👥 Users</button>
-                            <button class="btn btn-admin" onclick="app.showAdminSection('Foods')">🥗 Pios Food DB</button>
-                            <button class="btn btn-admin" onclick="app.showAdminSection('Database')">🗄️ Database</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Stats">📊 Statistics</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Users">👥 Users</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Foods">🥗 Pios Food DB</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Database">🗄️ Database</button>
                         </nav>
 
                         <!-- Admin Statistics -->
@@ -236,7 +236,7 @@
                             <!-- Bulk Actions Toolbar -->
                             <div id="bulkActionsToolbar" class="bulk-actions-toolbar" style="display: none;">
                                 <span id="selectedCount" class="selected-count">0 items selected</span>
-                                <button id="bulkDeleteBtn" class="btn btn-danger" onclick="app.bulkDeleteFoods()">
+                                <button id="bulkDeleteBtn" class="btn btn-danger" data-action="bulk-delete-foods">
                                     🗑️ Delete Selected
                                 </button>
                             </div>
@@ -247,15 +247,15 @@
                                     <thead>
                                         <tr>
                                             <th class="checkbox-column">
-                                                <input type="checkbox" id="selectAllFoods" onchange="app.toggleSelectAll(this)">
+                                                <input type="checkbox" id="selectAllFoods" data-action="toggle-select-all">
                                             </th>
-                                            <th class="sortable" onclick="app.sortFoodsTable('name')">
+                                            <th class="sortable" data-action="sort-foods-table" data-column="name">
                                                 Food Name <span class="sort-indicator" id="sort-name"></span>
                                             </th>
-                                            <th class="sortable" onclick="app.sortFoodsTable('calories')">
+                                            <th class="sortable" data-action="sort-foods-table" data-column="calories">
                                                 Calories (per 100g) <span class="sort-indicator" id="sort-calories"></span>
                                             </th>
-                                            <th class="sortable" onclick="app.sortFoodsTable('usage')">
+                                            <th class="sortable" data-action="sort-foods-table" data-column="usage">
                                                 Usage Count <span class="sort-indicator" id="sort-usage"></span>
                                             </th>
                                             <th>Actions</th>
@@ -301,8 +301,8 @@
                                 <div class="query-input-container">
                                     <textarea id="sqlQuery" placeholder="SELECT * FROM users LIMIT 10;" rows="4"></textarea>
                                     <div class="query-buttons">
-                                        <button onclick="app.executeSQLQuery()" class="btn btn-primary">▶️ Execute Query</button>
-                                        <button onclick="app.clearQuery()" class="btn btn-secondary">🗑️ Clear</button>
+                                        <button data-action="execute-sql-query" class="btn btn-primary">▶️ Execute Query</button>
+                                        <button data-action="clear-query" class="btn btn-secondary">🗑️ Clear</button>
                                     </div>
                                 </div>
                                 <div id="queryResults" class="query-results"></div>
@@ -334,7 +334,7 @@
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h4 id="tableBrowserTitle">Browse Table</h4>
-                                        <button onclick="app.closeTableBrowser()" class="modal-close">×</button>
+                                        <button data-action="close-table-browser" class="modal-close">×</button>
                                     </div>
                                     <div class="modal-body">
                                         <!-- Table structure -->
@@ -347,7 +347,7 @@
                                         <div class="table-data">
                                             <h5>Table Data</h5>
                                             <div class="data-controls">
-                                                <input type="text" id="tableSearchInput" placeholder="Search..." onkeyup="app.searchTableData()">
+                                                <input type="text" id="tableSearchInput" placeholder="Search..." data-action="search-table-data">
                                                 <span id="tablePagination"></span>
                                             </div>
                                             <div id="tableDataContainer"></div>
@@ -373,7 +373,7 @@
                         </p>
                     </div>
                     <div class="footer-links">
-                        <a href="javascript:void(0)" onclick="app.showDataSourcesInfo()">Data Sources Info</a>
+                        <a href="#" data-action="show-data-sources">Data Sources Info</a>
                         <span>•</span>
                         <span class="footer-version">v1.3.0</span>
                     </div>

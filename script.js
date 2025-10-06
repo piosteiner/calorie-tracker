@@ -262,6 +262,145 @@ class CalorieTracker {
         
         // Initialize database search toggles
         this.initDatabaseToggles();
+        
+        // Initialize event delegation for data-action attributes
+        this.initEventDelegation();
+    }
+
+    // Initialize event delegation for all data-action elements
+    initEventDelegation() {
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            
+            const action = target.dataset.action;
+            
+            switch (action) {
+                // Info buttons
+                case 'show-data-sources':
+                    e.preventDefault();
+                    this.showDataSourcesInfo();
+                    break;
+                    
+                case 'show-database-toggle-info':
+                    e.preventDefault();
+                    this.showDatabaseToggleInfo();
+                    break;
+                
+                // Admin section navigation
+                case 'show-admin-section':
+                    e.preventDefault();
+                    this.showAdminSection(target.dataset.section);
+                    break;
+                
+                // Bulk operations
+                case 'bulk-delete-foods':
+                    e.preventDefault();
+                    this.bulkDeleteFoods();
+                    break;
+                
+                // Sort table
+                case 'sort-foods-table':
+                    e.preventDefault();
+                    this.sortFoodsTable(target.dataset.column);
+                    break;
+                
+                // SQL Query buttons
+                case 'execute-sql-query':
+                    e.preventDefault();
+                    this.executeSQLQuery();
+                    break;
+                    
+                case 'clear-query':
+                    e.preventDefault();
+                    this.clearQuery();
+                    break;
+                
+                // Table browser
+                case 'close-table-browser':
+                    e.preventDefault();
+                    this.closeTableBrowser();
+                    break;
+                
+                // Dynamically generated actions (from script.js)
+                case 'delete-food':
+                    e.preventDefault();
+                    this.deleteFood(parseInt(target.dataset.foodId));
+                    break;
+                    
+                case 'delete-user':
+                    e.preventDefault();
+                    this.deleteUser(parseInt(target.dataset.userId));
+                    break;
+                    
+                case 'reset-user-password':
+                    e.preventDefault();
+                    this.resetUserPassword(parseInt(target.dataset.userId));
+                    break;
+                    
+                case 'browse-table':
+                    e.preventDefault();
+                    this.browseTable(target.dataset.tableName);
+                    break;
+                    
+                case 'show-table-structure':
+                    e.preventDefault();
+                    this.showTableStructure(target.dataset.tableName);
+                    break;
+                    
+                case 'select-enhanced-food':
+                    e.preventDefault();
+                    this.selectEnhancedFood(target.dataset.foodData);
+                    break;
+                    
+                case 'edit-food':
+                    e.preventDefault();
+                    this.editFood(parseInt(target.dataset.foodId));
+                    break;
+                    
+                case 'close-modal':
+                    e.preventDefault();
+                    target.closest('.data-sources-modal')?.remove();
+                    break;
+                    
+                case 'close-structure-modal':
+                    e.preventDefault();
+                    target.parentElement?.remove();
+                    break;
+            }
+        });
+        
+        // Handle change events for checkboxes
+        document.addEventListener('change', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            
+            const action = target.dataset.action;
+            
+            switch (action) {
+                case 'toggle-select-all':
+                    this.toggleSelectAll(target);
+                    break;
+                    
+                case 'toggle-food-selection':
+                    this.toggleFoodSelection(target, target.dataset.foodId);
+                    break;
+            }
+        });
+        
+        // Handle keyup events
+        document.addEventListener('keyup', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            
+            const action = target.dataset.action;
+            
+            switch (action) {
+                case 'search-table-data':
+                    this.searchTableData();
+                    break;
+            }
+        });
     }
 
     // Initialize debouncing for food search
@@ -901,7 +1040,7 @@ class CalorieTracker {
             const sourceText = this.getSourceText(food.source);
             
             return `
-                <div class="suggestion-item enhanced" onclick="app.selectEnhancedFood('${encodeURIComponent(JSON.stringify(food))}')">
+                <div class="suggestion-item enhanced" data-action="select-enhanced-food" data-food-data='${encodeURIComponent(JSON.stringify(food))}'>
                     <div class="food-main">
                         <span class="food-name">${this.highlightMatch(food.name, input)}${brandText}</span>
                         <span class="food-source" title="${this.getSourceTooltip(food.source)}">${sourceIcon} ${sourceText}</span>
@@ -1088,7 +1227,7 @@ class CalorieTracker {
                     <div class="food-details">${food.quantity} ${food.unit} • ${food.timestamp}</div>
                 </div>
                 <div class="food-calories">${food.calories} cal</div>
-                <button class="delete-btn" onclick="app.deleteFood(${food.id})">×</button>
+                <button class="delete-btn" data-action="delete-food" data-food-id="${food.id}">×</button>
             </div>
         `).reverse().join('');
     }
@@ -1828,8 +1967,8 @@ class CalorieTracker {
                 <td>${user.totalLogs}</td>
                 <td>${user.lastLogin}</td>
                 <td>
-                    <button class="btn btn-small" onclick="app.resetUserPassword(${user.id})">Reset Password</button>
-                    <button class="btn btn-small btn-danger" onclick="app.deleteUser(${user.id})">Delete</button>
+                    <button class="btn btn-small" data-action="reset-user-password" data-user-id="${user.id}">Reset Password</button>
+                    <button class="btn btn-small btn-danger" data-action="delete-user" data-user-id="${user.id}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -1890,14 +2029,14 @@ class CalorieTracker {
                            class="food-checkbox" 
                            data-food-id="${food.id}"
                            ${isSelected ? 'checked' : ''}
-                           onchange="app.toggleFoodSelection(this, '${food.id}')">
+                           data-action="toggle-food-selection">
                 </td>
                 <td>${food.name}</td>
                 <td>${food.calories}</td>
                 <td>${food.usage_count || 0}</td>
                 <td>
-                    <button class="btn btn-small" onclick="app.editFood(${food.id})">Edit</button>
-                    <button class="btn btn-small btn-danger" onclick="app.deleteFood(${food.id})">Delete</button>
+                    <button class="btn btn-small" data-action="edit-food" data-food-id="${food.id}">Edit</button>
+                    <button class="btn btn-small btn-danger" data-action="delete-food" data-food-id="${food.id}">Delete</button>
                 </td>
             </tr>
         `;
@@ -2178,10 +2317,10 @@ class CalorieTracker {
                 <td>${this.formatBytes(table.size_bytes || 0)}</td>
                 <td>${table.created_at ? new Date(table.created_at).toLocaleDateString() : 'N/A'}</td>
                 <td>
-                    <button onclick="app.browseTable('${table.table_name}')" class="btn btn-sm btn-info">
+                    <button data-action="browse-table" data-table-name="${table.table_name}" class="btn btn-sm btn-info">
                         👁️ Browse
                     </button>
-                    <button onclick="app.showTableStructure('${table.table_name}')" class="btn btn-sm btn-secondary">
+                    <button data-action="show-table-structure" data-table-name="${table.table_name}" class="btn btn-sm btn-secondary">
                         🏗️ Structure
                     </button>
                 </td>
@@ -2426,16 +2565,16 @@ class CalorieTracker {
                 <div class="structure-modal">
                     <h4>Table Structure: ${tableName}</h4>
                     ${this.formatTableStructure(response.columns)}
-                    <button onclick="this.parentElement.remove()" class="btn btn-secondary">Close</button>
+                    <button data-action="close-structure-modal" class="btn btn-secondary">Close</button>
                 </div>
             `;
             
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay';
             overlay.innerHTML = structureHTML;
-            overlay.onclick = (e) => {
+            overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) overlay.remove();
-            };
+            });
             
             document.body.appendChild(overlay);
             
@@ -2498,11 +2637,11 @@ class CalorieTracker {
         const modal = document.createElement('div');
         modal.className = 'data-sources-modal';
         modal.innerHTML = `
-            <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="modal-overlay" data-action="close-modal"></div>
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>🌐 Data Sources & Attribution</h3>
-                    <button class="modal-close" onclick="this.closest('.data-sources-modal').remove()">&times;</button>
+                    <button class="modal-close" data-action="close-modal">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="data-source">
@@ -2549,11 +2688,11 @@ class CalorieTracker {
         const modal = document.createElement('div');
         modal.className = 'data-sources-modal';
         modal.innerHTML = `
-            <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="modal-overlay" data-action="close-modal"></div>
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>🔍 Database Search Controls</h3>
-                    <button class="modal-close" onclick="this.closest('.data-sources-modal').remove()">&times;</button>
+                    <button class="modal-close" data-action="close-modal">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="data-source">
