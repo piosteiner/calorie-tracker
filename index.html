@@ -113,6 +113,48 @@
                                 </select>
                             </div>
                         </div>
+
+                        <!-- Database Search Toggles -->
+                        <div class="search-controls">
+                            <div class="search-controls-header">
+                                <label class="search-controls-title">
+                                    🔍 Search Databases
+                                    <button type="button" class="info-button-small" onclick="app.showDatabaseToggleInfo()" title="Learn about database search options">
+                                        <span class="info-icon-small">?</span>
+                                    </button>
+                                </label>
+                            </div>
+                            <div class="toggle-grid">
+                                <label class="toggle-item">
+                                    <input type="checkbox" id="toggleFavorites" checked>
+                                    <span class="toggle-label">
+                                        <span class="toggle-icon">⭐</span>
+                                        <span class="toggle-text">Favorites</span>
+                                    </span>
+                                </label>
+                                <label class="toggle-item">
+                                    <input type="checkbox" id="toggleOfflineDb" checked>
+                                    <span class="toggle-label">
+                                        <span class="toggle-icon">📱</span>
+                                        <span class="toggle-text">Offline Cache</span>
+                                    </span>
+                                </label>
+                                <label class="toggle-item">
+                                    <input type="checkbox" id="toggleLocalFoods" checked>
+                                    <span class="toggle-label">
+                                        <span class="toggle-icon">🏠</span>
+                                        <span class="toggle-text">Local Foods</span>
+                                    </span>
+                                </label>
+                                <label class="toggle-item">
+                                    <input type="checkbox" id="toggleOpenFoodFacts" checked>
+                                    <span class="toggle-label">
+                                        <span class="toggle-icon">🌐</span>
+                                        <span class="toggle-text">Open Food Facts</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
                         
                         <button type="submit" class="btn btn-primary">Add Food</button>
                     </form>

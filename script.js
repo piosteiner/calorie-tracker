@@ -331,31 +331,54 @@ class CalorieTracker {
         }
     }
 
-    // Enhanced search with favorites priority
+    // Enhanced search with favorites priority - respects database toggles
     async searchAllFoodsWithFavorites(query) {
         const results = [];
         const searchTerm = query.toLowerCase();
+        const preferences = this.getDatabaseTogglePreferences();
         
-        // 1. Search favorites first (instant)
-        const favorites = this.getFavorites().filter(food => 
-            food.name.toLowerCase().includes(searchTerm)
-        );
-        results.push(...favorites.slice(0, 3).map(food => ({...food, source: `⭐ ${food.source}`})));
+        console.log('🔍 Search preferences:', preferences);
         
-        // 2. Search offline database (instant fallback)
-        const offlineResults = this.searchOfflineDatabase(query);
-        results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
+        // 1. Search favorites first (instant) if enabled
+        if (preferences.favorites) {
+            const favorites = this.getFavorites().filter(food => 
+                food.name.toLowerCase().includes(searchTerm)
+            );
+            results.push(...favorites.slice(0, 3).map(food => ({...food, source: `⭐ ${food.source}`})));
+            console.log('⭐ Favorites search enabled, found:', favorites.length);
+        } else {
+            console.log('⭐ Favorites search disabled');
+        }
         
-        // 3. Search backend (hybrid: local + external foods) if online
+        // 2. Search offline database (instant fallback) if enabled
+        if (preferences.offlineDb) {
+            const offlineResults = this.searchOfflineDatabase(query);
+            results.push(...offlineResults.map(food => ({...food, source: 'Offline Database'})));
+            console.log('📱 Offline DB search enabled, found:', offlineResults.length);
+        } else {
+            console.log('📱 Offline DB search disabled');
+        }
+        
+        // 3. Search backend (hybrid: local + external foods) if online and enabled
         if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
             try {
-                // Search local foods first
-                const localResults = await this.searchLocalFoods(query, 5);
-                results.push(...localResults);
+                // Search local foods first if enabled
+                if (preferences.localFoods) {
+                    const localResults = await this.searchLocalFoods(query, 5);
+                    results.push(...localResults);
+                    console.log('🏠 Local foods search enabled, found:', localResults.length);
+                } else {
+                    console.log('🏠 Local foods search disabled');
+                }
                 
-                // Search external foods (Open Food Facts via backend)
-                const externalResults = await this.searchBackendFoods(query, 8 - results.length);
-                results.push(...externalResults);
+                // Search external foods (Open Food Facts via backend) if enabled
+                if (preferences.openFoodFacts) {
+                    const externalResults = await this.searchBackendFoods(query, 8 - results.length);
+                    results.push(...externalResults);
+                    console.log('🌐 Open Food Facts search enabled, found:', externalResults.length);
+                } else {
+                    console.log('🌐 Open Food Facts search disabled');
+                }
                 
             } catch (error) {
                 console.log('Backend search failed, using offline only:', error);
@@ -371,6 +394,7 @@ class CalorieTracker {
             return true;
         });
         
+        console.log('🔍 Total unique results after deduplication:', uniqueResults.length);
         return uniqueResults;
     }
 
@@ -448,6 +472,9 @@ class CalorieTracker {
 
         // Initialize debounced search
         this.initDebouncing();
+        
+        // Initialize database search toggles
+        this.initDatabaseToggles();
     }
 
     // Initialize debouncing for food search
@@ -455,6 +482,70 @@ class CalorieTracker {
         this.searchTimeout = null;
         this.isSearching = false;
         this.selectedSuggestionIndex = -1;
+    }
+
+    // Initialize database search toggles
+    initDatabaseToggles() {
+        // Load saved preferences from localStorage
+        this.loadDatabaseTogglePreferences();
+        
+        // Add event listeners to toggle checkboxes
+        const toggles = ['toggleFavorites', 'toggleOfflineDb', 'toggleLocalFoods', 'toggleOpenFoodFacts'];
+        toggles.forEach(toggleId => {
+            const toggle = document.getElementById(toggleId);
+            if (toggle) {
+                toggle.addEventListener('change', () => {
+                    this.saveDatabaseTogglePreferences();
+                    // Clear existing suggestions and re-search if there's current input
+                    const foodInput = document.getElementById('foodName');
+                    if (foodInput.value.length >= CONFIG.MIN_SEARCH_LENGTH) {
+                        this.debouncedFoodSearch(foodInput.value);
+                    }
+                });
+            }
+        });
+    }
+
+    // Load database toggle preferences from localStorage
+    loadDatabaseTogglePreferences() {
+        const preferences = JSON.parse(localStorage.getItem('databaseTogglePreferences') || '{}');
+        
+        // Default all to true if not set
+        const defaults = {
+            favorites: true,
+            offlineDb: true,
+            localFoods: true,
+            openFoodFacts: true
+        };
+        
+        const settings = { ...defaults, ...preferences };
+        
+        document.getElementById('toggleFavorites').checked = settings.favorites;
+        document.getElementById('toggleOfflineDb').checked = settings.offlineDb;
+        document.getElementById('toggleLocalFoods').checked = settings.localFoods;
+        document.getElementById('toggleOpenFoodFacts').checked = settings.openFoodFacts;
+    }
+
+    // Save database toggle preferences to localStorage
+    saveDatabaseTogglePreferences() {
+        const preferences = {
+            favorites: document.getElementById('toggleFavorites').checked,
+            offlineDb: document.getElementById('toggleOfflineDb').checked,
+            localFoods: document.getElementById('toggleLocalFoods').checked,
+            openFoodFacts: document.getElementById('toggleOpenFoodFacts').checked
+        };
+        
+        localStorage.setItem('databaseTogglePreferences', JSON.stringify(preferences));
+    }
+
+    // Get current database toggle preferences
+    getDatabaseTogglePreferences() {
+        return {
+            favorites: document.getElementById('toggleFavorites').checked,
+            offlineDb: document.getElementById('toggleOfflineDb').checked,
+            localFoods: document.getElementById('toggleLocalFoods').checked,
+            openFoodFacts: document.getElementById('toggleOpenFoodFacts').checked
+        };
     }
 
     // Handle keyboard navigation in food suggestions
@@ -974,37 +1065,67 @@ class CalorieTracker {
 
         try {
             let matches = [];
-            console.log('📊 Starting search with online status:', this.isOnline, 'development mode:', CONFIG.DEVELOPMENT_MODE);
+            const preferences = this.getDatabaseTogglePreferences();
+            console.log('📊 Starting search with preferences:', preferences, 'online status:', this.isOnline, 'development mode:', CONFIG.DEVELOPMENT_MODE);
 
-            // 1. Always search favorites first (instant results)
-            const favorites = this.getFavorites().filter(food => 
-                food.name.toLowerCase().includes(input.toLowerCase())
-            );
-            matches.push(...favorites.slice(0, 2).map(food => ({...food, source: `⭐ ${food.source}`})));
-            console.log('⭐ Found favorites:', favorites.length);
+            // 1. Search favorites first (instant results) if enabled
+            if (preferences.favorites) {
+                const favorites = this.getFavorites().filter(food => 
+                    food.name.toLowerCase().includes(input.toLowerCase())
+                );
+                matches.push(...favorites.slice(0, 2).map(food => ({...food, source: `⭐ ${food.source}`})));
+                console.log('⭐ Found favorites:', favorites.length);
+            } else {
+                console.log('⭐ Favorites search disabled');
+            }
 
-            // 2. Search offline database (instant results)
-            const offlineResults = this.searchOfflineDatabase(input);
-            matches.push(...offlineResults.slice(0, 2).map(food => ({...food, source: 'Offline Database'})));
-            console.log('💾 Found offline results:', offlineResults.length);
+            // 2. Search offline database (instant results) if enabled
+            if (preferences.offlineDb) {
+                const offlineResults = this.searchOfflineDatabase(input);
+                matches.push(...offlineResults.slice(0, 2).map(food => ({...food, source: 'Offline Database'})));
+                console.log('💾 Found offline results:', offlineResults.length);
+            } else {
+                console.log('💾 Offline database search disabled');
+            }
 
-            // 3. Search backend for comprehensive results
+            // 3. Search backend for comprehensive results if enabled
             if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
                 console.log('🌐 Attempting backend search...');
                 try {
-                    // Search local foods in backend database
-                    const localResults = await this.searchLocalFoods(input, 3);
-                    matches.push(...localResults);
-                    console.log('🏠 Found local results:', localResults.length);
+                    // Search local foods in backend database if enabled
+                    if (preferences.localFoods) {
+                        const localResults = await this.searchLocalFoods(input, 3);
+                        matches.push(...localResults);
+                        console.log('🏠 Found local results:', localResults.length);
+                    } else {
+                        console.log('🏠 Local foods search disabled');
+                    }
 
-                    // Search external foods (cached + Open Food Facts with Swiss priority)
-                    const externalResults = await this.searchBackendFoods(input, 8);
-                    matches.push(...externalResults);
-                    console.log('🌍 Found external results:', externalResults.length);
-                    
-                    // If backend didn't return results (e.g., not authenticated), try Open Food Facts directly
-                    if (externalResults.length === 0) {
-                        console.log('🔄 No backend results, trying Open Food Facts directly...');
+                    // Search external foods (cached + Open Food Facts with Swiss priority) if enabled
+                    if (preferences.openFoodFacts) {
+                        const externalResults = await this.searchBackendFoods(input, 8);
+                        matches.push(...externalResults);
+                        console.log('🌍 Found external results:', externalResults.length);
+                        
+                        // If backend didn't return results (e.g., not authenticated), try Open Food Facts directly
+                        if (externalResults.length === 0) {
+                            console.log('🔄 No backend results, trying Open Food Facts directly...');
+                            try {
+                                const directResults = await this.searchOpenFoodFacts(input, 8);
+                                matches.push(...directResults);
+                                console.log('🍎 Found direct Open Food Facts results:', directResults.length);
+                            } catch (directError) {
+                                console.log('❌ Direct Open Food Facts search failed:', directError);
+                            }
+                        }
+                    } else {
+                        console.log('🌍 Open Food Facts search disabled');
+                    }
+
+                } catch (backendError) {
+                    console.log('❌ Backend search failed, trying direct Open Food Facts:', backendError);
+                    // Fallback to direct Open Food Facts for comprehensive coverage if enabled
+                    if (preferences.openFoodFacts) {
                         try {
                             const directResults = await this.searchOpenFoodFacts(input, 8);
                             matches.push(...directResults);
@@ -1013,20 +1134,9 @@ class CalorieTracker {
                             console.log('❌ Direct Open Food Facts search failed:', directError);
                         }
                     }
-
-                } catch (backendError) {
-                    console.log('❌ Backend search failed, trying direct Open Food Facts:', backendError);
-                    // Fallback to direct Open Food Facts for comprehensive coverage
-                    try {
-                        const directResults = await this.searchOpenFoodFacts(input, 8);
-                        matches.push(...directResults);
-                        console.log('🍎 Found direct Open Food Facts results:', directResults.length);
-                    } catch (directError) {
-                        console.log('❌ Direct Open Food Facts search failed:', directError);
-                    }
                 }
-            } else {
-                // Development mode or offline - still provide Open Food Facts access
+            } else if (preferences.openFoodFacts) {
+                // Development mode or offline - still provide Open Food Facts access if enabled
                 console.log('🔧 Development/offline mode: searching Open Food Facts for:', input);
                 try {
                     const directResults = await this.searchOpenFoodFacts(input, 8);
@@ -1105,10 +1215,27 @@ class CalorieTracker {
             `;
         }).join('');
 
-        // Add attribution footer for Open Food Facts
+        // Add enhanced footer with database info
+        const preferences = this.getDatabaseTogglePreferences();
         const hasOpenFoodFacts = matches.some(food => food.source === 'Open Food Facts');
         const totalShown = Math.min(matches.length, CONFIG.MAX_SUGGESTIONS || 10);
         const totalFound = matches.length;
+        
+        // Create database sources indicator
+        const searchedDatabases = [];
+        if (preferences.favorites) searchedDatabases.push('⭐ Favorites');
+        if (preferences.offlineDb) searchedDatabases.push('📱 Offline Cache');
+        if (preferences.localFoods) searchedDatabases.push('🏠 Local Foods');
+        if (preferences.openFoodFacts) searchedDatabases.push('🌐 Open Food Facts');
+        
+        const databaseInfo = searchedDatabases.length > 0 ? `
+            <div class="suggestions-info">
+                <small>
+                    ${totalFound > totalShown ? `Showing ${totalShown} of ${totalFound} results | ` : ''}
+                    Searched: ${searchedDatabases.join(', ')}
+                </small>
+            </div>
+        ` : '';
         
         const attribution = hasOpenFoodFacts ? `
             <div class="suggestions-attribution">
@@ -1116,13 +1243,7 @@ class CalorieTracker {
             </div>
         ` : '';
 
-        const resultInfo = totalFound > totalShown ? `
-            <div class="suggestions-info">
-                <small>Showing ${totalShown} of ${totalFound} results</small>
-            </div>
-        ` : '';
-
-        suggestionsDiv.innerHTML = suggestions + resultInfo + attribution;
+        suggestionsDiv.innerHTML = suggestions + databaseInfo + attribution;
         console.log('🖼️ Setting innerHTML and making suggestions visible');
         console.log('📝 Final HTML length:', (suggestions + resultInfo + attribution).length);
         suggestionsDiv.style.display = 'block';
@@ -1134,6 +1255,8 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return '🌐';
         if (source && source.includes('⭐')) return '⭐';
         if (source === 'Local Database') return '🏪';
+        if (source === 'Offline Database') return '📱';
+        if (source === 'Local Foods') return '🏠';
         return '💾';
     }
 
@@ -1151,13 +1274,17 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return 'Open Food Facts';
         if (source && source.includes('⭐')) return source.replace('⭐ ', '');
         if (source === 'Local Database') return 'Local Database';
+        if (source === 'Offline Database') return 'Offline Cache';
+        if (source === 'Local Foods') return 'Local Foods';
         return source || 'Database';
     }
 
     getSourceTooltip(source) {
-        if (source === 'Open Food Facts') return 'Data from Open Food Facts - world.openfoodfacts.org';
-        if (source && source.includes('⭐')) return 'Favorite food from your history';
+        if (source === 'Open Food Facts') return 'Global food database with Swiss products (Migros, Coop, etc.)';
+        if (source && source.includes('⭐')) return 'Your favorite food from search history';
         if (source === 'Local Database') return 'Local food database';
+        if (source === 'Offline Database') return 'Offline cache - works without internet';
+        if (source === 'Local Foods') return 'Custom foods from your account or admin-added foods';
         return source || 'Food database';
     }
 
@@ -2094,6 +2221,94 @@ class CalorieTracker {
                         <p>
                             <strong>License</strong>: Open Food Facts data is available under the 
                             <a href="https://opendatacommons.org/licenses/odbl/" target="_blank">Open Database License</a>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+        
+        // Restore body scroll when modal is closed
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.classList.contains('modal-overlay') || e.target.classList.contains('modal-close')) {
+                document.body.style.overflow = '';
+                modal.remove();
+            }
+        });
+    }
+
+    // Show database toggle information modal
+    showDatabaseToggleInfo() {
+        const modal = document.createElement('div');
+        modal.className = 'data-sources-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🔍 Database Search Controls</h3>
+                    <button class="modal-close" onclick="this.closest('.data-sources-modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="data-source">
+                        <h4>⭐ Favorites</h4>
+                        <p><strong>Your personalized food list</strong> - Foods you've used recently or marked as favorites.</p>
+                        <ul>
+                            <li>⚡ <strong>Instant results</strong>: Shows immediately as you type</li>
+                            <li>🎯 <strong>Most relevant</strong>: Based on your usage history</li>
+                            <li>💾 <strong>Saved locally</strong>: Works offline</li>
+                            <li>📊 <strong>Accurate data</strong>: Uses nutrition info from your previous entries</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="data-source">
+                        <h4>📱 Offline Cache</h4>
+                        <p><strong>Local fallback database</strong> - Common foods stored on your device for offline use.</p>
+                        <ul>
+                            <li>🔄 <strong>Always available</strong>: Works without internet connection</li>
+                            <li>🥗 <strong>Essential foods</strong>: Fruits, vegetables, proteins, grains</li>
+                            <li>✅ <strong>Verified data</strong>: Manually curated nutrition information</li>
+                            <li>⚡ <strong>Fast search</strong>: Instant local lookup</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="data-source">
+                        <h4>🏠 Local Foods</h4>
+                        <p><strong>Custom database entries</strong> - Foods added by admins or imported from your account.</p>
+                        <ul>
+                            <li>🎯 <strong>Personalized</strong>: Foods specific to your preferences</li>
+                            <li>📝 <strong>Editable</strong>: Can be customized by administrators</li>
+                            <li>🔗 <strong>Backend sync</strong>: Synchronized across your devices</li>
+                            <li>📊 <strong>Usage tracking</strong>: Learns from your food choices</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="data-source">
+                        <h4>🌐 Open Food Facts</h4>
+                        <p><strong>Global food database</strong> - Millions of products from around the world including Swiss brands.</p>
+                        <ul>
+                            <li>🇨🇭 <strong>Swiss products</strong>: Migros, Coop, Denner, and local brands</li>
+                            <li>🌍 <strong>International coverage</strong>: Products from Europe and beyond</li>
+                            <li>📊 <strong>Rich data</strong>: Detailed nutrition facts, ingredients, allergens</li>
+                            <li>🆓 <strong>Community-driven</strong>: Free, open-source database</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="attribution-note">
+                        <h4>💡 How to Use</h4>
+                        <p>
+                            <strong>Toggle databases on/off</strong> to customize your search experience. 
+                            Disable databases you don't need to see more focused results.
+                        </p>
+                        <p>
+                            <strong>Tip:</strong> Keep "Favorites" and "Offline Cache" enabled for the fastest, 
+                            most relevant results. Enable "Open Food Facts" for the broadest product coverage.
+                        </p>
+                        <p>
+                            <strong>Your settings are saved automatically</strong> and remembered for future sessions.
                         </p>
                     </div>
                 </div>
