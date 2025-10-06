@@ -184,7 +184,7 @@ class CalorieTracker {
         }
     }
 
-    // Search local foods in backend database
+    // Search Pios Food DB in backend database
     async searchLocalFoods(query, limit = 10) {
         try {
             const response = await this.apiCall(`/foods/search?q=${encodeURIComponent(query)}`);
@@ -302,13 +302,13 @@ class CalorieTracker {
         // 2. Search backend (hybrid: local + external foods) if online and enabled
         if (this.isOnline && navigator.onLine && !CONFIG.DEVELOPMENT_MODE) {
             try {
-                // Search local foods first if enabled
+                // Search Pios Food DB first if enabled
                 if (preferences.localFoods) {
                     const localResults = await this.searchLocalFoods(query, 5);
                     results.push(...localResults);
-                    console.log('🏠 Local foods search enabled, found:', localResults.length);
+                    console.log('🏠 Pios Food DB search enabled, found:', localResults.length);
                 } else {
-                    console.log('🏠 Local foods search disabled');
+                    console.log('🏠 Pios Food DB search disabled');
                 }
                 
                 // Search external foods (Open Food Facts via backend) if enabled
@@ -1026,13 +1026,13 @@ class CalorieTracker {
             if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
                 console.log('🌐 Attempting backend search...');
                 try {
-                    // Search local foods in backend database if enabled
+                    // Search Pios Food DB in backend database if enabled
                     if (preferences.localFoods) {
                         const localResults = await this.searchLocalFoods(input, 3);
                         matches.push(...localResults);
                         console.log('🏠 Found local results:', localResults.length);
                     } else {
-                        console.log('🏠 Local foods search disabled');
+                        console.log('🏠 Pios Food DB search disabled');
                     }
 
                     // Search external foods (cached + Open Food Facts with Swiss priority) if enabled
@@ -1158,7 +1158,7 @@ class CalorieTracker {
         // Create database sources indicator
         const searchedDatabases = [];
         if (preferences.favorites) searchedDatabases.push('⭐ Favorites');
-        if (preferences.localFoods) searchedDatabases.push('🏠 Local Foods');
+        if (preferences.localFoods) searchedDatabases.push('🏠 Pios Food DB');
         if (preferences.openFoodFacts) searchedDatabases.push('🌐 Open Food Facts');
         
         const databaseInfo = searchedDatabases.length > 0 ? `
@@ -1188,7 +1188,7 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return '🌐';
         if (source && source.includes('⭐')) return '⭐';
         if (source === 'Local Database') return '🏪';
-        if (source === 'Local Foods') return '🏠';
+        if (source === 'Pios Food DB') return '🏠';
         return '💾';
     }
 
@@ -1206,15 +1206,15 @@ class CalorieTracker {
         if (source === 'Open Food Facts') return 'Open Food Facts';
         if (source && source.includes('⭐')) return source.replace('⭐ ', '');
         if (source === 'Local Database') return 'Local Database';
-        if (source === 'Local Foods') return 'Local Foods';
+        if (source === 'Pios Food DB') return 'Pios Food DB';
         return source || 'Database';
     }
 
     getSourceTooltip(source) {
         if (source === 'Open Food Facts') return 'Global food database with Swiss products (Migros, Coop, etc.)';
         if (source && source.includes('⭐')) return 'Your favorite food from search history';
-        if (source === 'Local Database') return 'Local food database';
-        if (source === 'Local Foods') return 'Custom foods from your account or Pios Food DB';
+        if (source === 'Local Database') return 'Local database';
+        if (source === 'Pios Food DB') return 'Custom foods from your account or Pios Food DB';
         return source || 'Food database';
     }
 
@@ -2625,7 +2625,7 @@ class CalorieTracker {
                     </div>
                     
                     <div class="data-source">
-                        <h4>🏠 Local Foods</h4>
+                        <h4>🏠 Pios Food DB</h4>
                         <p><strong>Custom database entries</strong> - Foods added by admins or imported from your account.</p>
                         <ul>
                             <li>🎯 <strong>Personalized</strong>: Foods specific to your preferences</li>
