@@ -2881,7 +2881,7 @@ class CalorieTracker {
         }
     }
 
-    // Edit food (placeholder - would need a proper edit modal)
+    // Edit food
     async editFood(foodId) {
         try {
             // Find the food item
@@ -2892,10 +2892,14 @@ class CalorieTracker {
                 return;
             }
             
-            // Populate the edit form
+            logger.debug('Editing food:', food);
+            
+            // Populate the edit form - handle both property names
+            const calorieValue = food.calories_per_100g || food.calories || 0;
+            
             document.getElementById('editAdminFoodId').value = food.id;
             document.getElementById('editAdminFoodName').value = food.name;
-            document.getElementById('editAdminFoodCalories').value = parseFloat(food.calories_per_100g);
+            document.getElementById('editAdminFoodCalories').value = Math.round(calorieValue);
             
             // Show the modal
             const modal = document.getElementById('editAdminFoodModal');
@@ -2903,6 +2907,8 @@ class CalorieTracker {
             
             // Focus on first input
             setTimeout(() => document.getElementById('editAdminFoodName').focus(), 100);
+            
+            logger.info('Edit modal opened for food:', food.name);
             
         } catch (error) {
             logger.error('Failed to open edit modal:', error);
@@ -2926,26 +2932,34 @@ class CalorieTracker {
         const name = document.getElementById('editAdminFoodName').value.trim();
         const calories = parseFloat(document.getElementById('editAdminFoodCalories').value);
         
+        logger.debug('Form submission - Food ID:', foodId);
+        logger.debug('Form submission - Name:', name);
+        logger.debug('Form submission - Calories:', calories);
+        
         // Validate
         if (!name) {
             this.showMessage('Food name is required', 'error');
             return;
         }
         
-        if (!calories || calories < 0) {
+        if (!calories || calories < 0 || isNaN(calories)) {
             this.showMessage('Calories must be 0 or greater', 'error');
             return;
         }
         
         try {
             // Update via API
+            logger.info('Updating food via API:', { foodId, name, calories });
+            
             const response = await this.apiCall(`/admin/foods/${foodId}`, 'PUT', {
                 name: name,
                 calories_per_100g: calories
             });
             
+            logger.debug('API response:', response);
+            
             if (response.success) {
-                this.showMessage('Food updated successfully', 'success');
+                this.showMessage('Food updated successfully! ✅', 'success');
                 this.closeEditAdminFoodModal();
                 
                 // Refresh the foods list

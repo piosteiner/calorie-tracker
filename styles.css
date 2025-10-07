@@ -1037,14 +1037,15 @@ body {
 .modal-content-edit,
 .modal-content-confirm {
     background: var(--card-bg);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 500px;
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 520px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     animation: modalSlideIn 0.3s ease;
+    border: 1px solid var(--border-color);
 }
 
 .modal-content-confirm {
@@ -1066,7 +1067,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     padding-bottom: 16px;
     border-bottom: 2px solid var(--border-color);
 }
@@ -1074,7 +1075,11 @@ body {
 .modal-header h3 {
     margin: 0;
     color: var(--text-primary);
-    font-size: 1.3rem;
+    font-size: 1.4rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .btn-close {
@@ -1099,7 +1104,7 @@ body {
 
 /* Form Groups */
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .form-row {
@@ -1111,21 +1116,21 @@ body {
 
 .form-group label {
     display: block;
-    margin-bottom: 6px;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
     font-weight: 600;
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
-    padding: 10px 12px;
+    padding: 12px 14px;
     background: var(--input-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 1rem;
     transition: all 0.2s ease;
     font-family: inherit;
 }
@@ -1134,12 +1139,26 @@ body {
 .form-group select:focus {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+    box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.15);
+    background: var(--bg-card);
 }
 
 .form-group input:hover,
 .form-group select:hover {
-    border-color: var(--accent-primary);
+    border-color: var(--accent-primary-light);
+}
+
+.form-group input::placeholder {
+    color: var(--text-tertiary);
+    opacity: 0.7;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
 
 /* Modal Actions */
@@ -1147,7 +1166,40 @@ body {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 24px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-actions .btn {
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.modal-actions .btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, #8b82ff 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+}
+
+.modal-actions .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(108, 99, 255, 0.4);
+}
+
+.modal-actions .btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.modal-actions .btn-secondary:hover {
+    background: var(--hover-bg);
+    border-color: var(--accent-primary-light);
 }
 
 .btn-danger {
