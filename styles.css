@@ -1807,6 +1807,56 @@ body {
     background: linear-gradient(135deg, rgba(124, 139, 240, 0.1) 0%, rgba(139, 91, 166, 0.1) 100%);
 }
 
+/* Dark mode - Food Suggestions Dropdown */
+[data-theme="dark"] .food-name {
+    color: var(--accent-primary); /* Use the blue accent color */
+}
+
+[data-theme="dark"] .food-name mark {
+    background: rgba(124, 139, 240, 0.2);
+    color: var(--accent-primary);
+}
+
+[data-theme="dark"] .food-source {
+    background: rgba(124, 139, 240, 0.15);
+    color: var(--accent-primary);
+}
+
+[data-theme="dark"] .food-source[title*="Open Food Facts"] {
+    background: rgba(76, 175, 80, 0.15);
+    color: #81c784;
+}
+
+[data-theme="dark"] .food-source[title*="Favorite"] {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffd54f;
+}
+
+[data-theme="dark"] .food-details {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .food-calories {
+    color: #81c784;
+}
+
+[data-theme="dark"] .suggestion-item.enhanced:hover {
+    background: rgba(124, 139, 240, 0.1);
+    border-left-color: var(--accent-primary);
+}
+
+[data-theme="dark"] .suggestion-item.enhanced.keyboard-selected {
+    background: rgba(124, 139, 240, 0.15);
+    border-left-color: var(--accent-primary);
+    box-shadow: 0 2px 8px rgba(124, 139, 240, 0.3);
+}
+
+[data-theme="dark"] .suggestions-info {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-top-color: var(--border-primary);
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
     .toggle-grid {
