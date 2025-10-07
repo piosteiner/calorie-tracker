@@ -1482,6 +1482,78 @@ body {
     padding: 20px;
 }
 
+/* Inline Editing for Admin Table */
+.editable-cell {
+    cursor: text;
+    position: relative;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    padding: 12px 15px !important;
+}
+
+.editable-cell:hover {
+    background: var(--bg-secondary);
+    outline: 1px solid var(--border-color);
+}
+
+.editable-cell:focus {
+    outline: 2px solid var(--accent-primary);
+    background: var(--bg-card);
+    cursor: text;
+}
+
+.editable-cell.editing {
+    background: #fffbf0;
+    outline: 2px solid var(--accent-warning);
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1);
+}
+
+.editable-cell.saving {
+    background: #f0f8ff;
+    outline: 2px solid var(--accent-info);
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.editable-cell.saved {
+    background: #f0fff4;
+    outline: 2px solid var(--accent-success);
+    animation: savedPulse 1.5s ease;
+}
+
+@keyframes savedPulse {
+    0%, 100% {
+        background: var(--bg-card);
+        outline-color: transparent;
+    }
+    50% {
+        background: #f0fff4;
+        outline-color: var(--accent-success);
+    }
+}
+
+/* Edit hint - show on hover */
+.editable-cell::after {
+    content: '✏️';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    font-size: 12px;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.editable-cell:hover::after {
+    opacity: 0.4;
+}
+
+.editable-cell:focus::after,
+.editable-cell.editing::after {
+    display: none;
+}
+
 /* Admin Forms */
 .admin-add-food {
     background: var(--bg-secondary);

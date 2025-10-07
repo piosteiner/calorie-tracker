@@ -262,16 +262,6 @@ class CalorieTracker {
                 this.handleEditFoodLogSubmit();
             });
         }
-
-        // Edit Admin Food form
-        const editAdminFoodForm = document.getElementById('editAdminFoodForm');
-        if (editAdminFoodForm) {
-            editAdminFoodForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleEditAdminFoodSubmit();
-            });
-        }
-
         // Food name input for suggestions
         document.getElementById('foodName').addEventListener('input', (e) => {
             this.debouncedFoodSearch(e.target.value);
@@ -297,6 +287,9 @@ class CalorieTracker {
         
         // Initialize event delegation for data-action attributes
         this.initEventDelegation();
+        
+        // Initialize inline editing for admin food table
+        this.initInlineEditing();
     }
 
     // Initialize event delegation for all data-action elements
@@ -434,12 +427,7 @@ class CalorieTracker {
                     
                 case 'edit-food':
                     e.preventDefault();
-                    this.editFood(parseInt(target.dataset.foodId));
-                    break;
-                    
-                case 'close-edit-admin-food-modal':
-                    e.preventDefault();
-                    this.closeEditAdminFoodModal();
+                    // Inline editing is now used - this case can be removed
                     break;
                     
                 case 'close-modal':
@@ -2790,7 +2778,7 @@ class CalorieTracker {
         foodsList.innerHTML = this.adminData.foods.map(food => {
             const isSelected = this.adminData.selectedFoodIds.has(String(food.id));
             return `
-            <tr>
+            <tr data-food-id="${food.id}">
                 <td class="checkbox-column">
                     <input type="checkbox" 
                            class="food-checkbox" 
@@ -2798,11 +2786,20 @@ class CalorieTracker {
                            ${isSelected ? 'checked' : ''}
                            data-action="toggle-food-selection">
                 </td>
-                <td>${food.name}</td>
-                <td>${Math.round(food.calories)}</td>
+                <td class="editable-cell" 
+                    contenteditable="true" 
+                    data-field="name" 
+                    data-food-id="${food.id}"
+                    data-original-value="${this.escapeHtml(food.name)}"
+                    spellcheck="false">${this.escapeHtml(food.name)}</td>
+                <td class="editable-cell" 
+                    contenteditable="true" 
+                    data-field="calories" 
+                    data-food-id="${food.id}"
+                    data-original-value="${Math.round(food.calories)}"
+                    inputmode="numeric">${Math.round(food.calories)}</td>
                 <td>${food.usage_count || 0}</td>
                 <td>
-                    <button class="btn btn-small" data-action="edit-food" data-food-id="${food.id}">Edit</button>
                     <button class="btn btn-small btn-danger" data-action="delete-food" data-food-id="${food.id}">Delete</button>
                 </td>
             </tr>
@@ -2881,98 +2878,207 @@ class CalorieTracker {
         }
     }
 
-    // Edit food
-    async editFood(foodId) {
-        try {
-            // Find the food item
-            const food = this.adminData.foods.find(f => f.id == foodId);
-            
-            if (!food) {
-                this.showMessage('Food not found', 'error');
+    // =============================================================================
+    // INLINE EDITING FOR ADMIN FOOD TABLE
+    // =============================================================================
+
+    /**
+     * Initialize inline editing for admin food table cells
+     */
+    initInlineEditing() {
+        // Use event delegation on the table body
+        document.addEventListener('focusin', (e) => {
+            if (e.target.classList.contains('editable-cell')) {
+                this.handleCellFocusIn(e.target);
+            }
+        });
+
+        document.addEventListener('focusout', (e) => {
+            if (e.target.classList.contains('editable-cell')) {
+                this.handleCellFocusOut(e.target);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.classList.contains('editable-cell')) {
+                this.handleCellKeydown(e);
+            }
+        });
+
+        document.addEventListener('input', (e) => {
+            if (e.target.classList.contains('editable-cell')) {
+                this.handleCellInput(e.target);
+            }
+        });
+
+        logger.info('Inline editing initialized for admin food table');
+    }
+
+    /**
+     * Handle cell focus in - store original value and add editing indicator
+     */
+    handleCellFocusIn(cell) {
+        cell.classList.add('editing');
+        
+        // Select all text for easy replacement
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(cell);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        logger.debug('Cell editing started:', cell.dataset.field);
+    }
+
+    /**
+     * Handle cell focus out - save if changed
+     */
+    async handleCellFocusOut(cell) {
+        cell.classList.remove('editing');
+        
+        const newValue = cell.textContent.trim();
+        const originalValue = cell.dataset.originalValue;
+        const field = cell.dataset.field;
+        const foodId = cell.dataset.foodId;
+        
+        // Check if value changed
+        if (newValue === originalValue) {
+            logger.debug('No change detected, skipping save');
+            return;
+        }
+        
+        // Validate based on field type
+        if (field === 'calories') {
+            const calories = parseFloat(newValue);
+            if (isNaN(calories) || calories < 0) {
+                this.showMessage('Calories must be a number ≥ 0', 'error');
+                cell.textContent = originalValue; // Revert
                 return;
             }
-            
-            logger.debug('Editing food:', food);
-            
-            // Populate the edit form - handle both property names
-            const calorieValue = food.calories_per_100g || food.calories || 0;
-            
-            document.getElementById('editAdminFoodId').value = food.id;
-            document.getElementById('editAdminFoodName').value = food.name;
-            document.getElementById('editAdminFoodCalories').value = Math.round(calorieValue);
-            
-            // Show the modal
-            const modal = document.getElementById('editAdminFoodModal');
-            modal.style.display = 'flex';
-            
-            // Focus on first input
-            setTimeout(() => document.getElementById('editAdminFoodName').focus(), 100);
-            
-            logger.info('Edit modal opened for food:', food.name);
-            
-        } catch (error) {
-            logger.error('Failed to open edit modal:', error);
-            this.showMessage('Failed to open edit form', 'error');
+        }
+        
+        if (field === 'name' && !newValue) {
+            this.showMessage('Food name cannot be empty', 'error');
+            cell.textContent = originalValue; // Revert
+            return;
+        }
+        
+        // Save the change
+        await this.saveInlineEdit(foodId, field, newValue, cell);
+    }
+
+    /**
+     * Handle keyboard shortcuts during editing
+     */
+    handleCellKeydown(e) {
+        const cell = e.target;
+        
+        // Enter - Save and move to next row
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            cell.blur(); // Trigger save via focusout
+        }
+        
+        // Escape - Cancel and revert
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            const originalValue = cell.dataset.originalValue;
+            cell.textContent = originalValue;
+            cell.blur();
+            logger.debug('Edit cancelled');
+        }
+        
+        // For calories field, only allow numbers
+        if (cell.dataset.field === 'calories') {
+            const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape'];
+            if (!allowedKeys.includes(e.key) && (e.key < '0' || e.key > '9') && e.key !== '.') {
+                e.preventDefault();
+            }
         }
     }
 
     /**
-     * Close edit admin food modal
+     * Handle input to provide live feedback
      */
-    closeEditAdminFoodModal() {
-        const modal = document.getElementById('editAdminFoodModal');
-        modal.style.display = 'none';
+    handleCellInput(cell) {
+        const field = cell.dataset.field;
+        
+        // For calories, enforce numeric only
+        if (field === 'calories') {
+            const value = cell.textContent;
+            const numericOnly = value.replace(/[^\d]/g, '');
+            if (value !== numericOnly) {
+                cell.textContent = numericOnly;
+                // Move cursor to end
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(cell);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        }
     }
 
     /**
-     * Handle edit admin food form submission
+     * Save inline edit to backend
      */
-    async handleEditAdminFoodSubmit() {
-        const foodId = document.getElementById('editAdminFoodId').value;
-        const name = document.getElementById('editAdminFoodName').value.trim();
-        const calories = parseFloat(document.getElementById('editAdminFoodCalories').value);
-        
-        logger.debug('Form submission - Food ID:', foodId);
-        logger.debug('Form submission - Name:', name);
-        logger.debug('Form submission - Calories:', calories);
-        
-        // Validate
-        if (!name) {
-            this.showMessage('Food name is required', 'error');
-            return;
-        }
-        
-        if (!calories || calories < 0 || isNaN(calories)) {
-            this.showMessage('Calories must be 0 or greater', 'error');
-            return;
-        }
-        
+    async saveInlineEdit(foodId, field, newValue, cell) {
         try {
-            // Update via API
-            logger.info('Updating food via API:', { foodId, name, calories });
+            logger.info(`Saving inline edit: ${field} = ${newValue} for food ${foodId}`);
             
-            const response = await this.apiCall(`/admin/foods/${foodId}`, 'PUT', {
-                name: name,
-                calories_per_100g: calories
-            });
+            // Show loading indicator
+            cell.classList.add('saving');
+            const originalContent = cell.textContent;
             
-            logger.debug('API response:', response);
+            // Prepare update data
+            const updateData = {};
+            if (field === 'name') {
+                updateData.name = newValue;
+            } else if (field === 'calories') {
+                updateData.calories_per_100g = parseFloat(newValue);
+            }
+            
+            // Call API
+            const response = await this.apiCall(`/admin/foods/${foodId}`, 'PUT', updateData);
             
             if (response.success) {
-                this.showMessage('Food updated successfully! ✅', 'success');
-                this.closeEditAdminFoodModal();
+                // Update stored value
+                cell.dataset.originalValue = newValue;
+                cell.classList.remove('saving');
+                cell.classList.add('saved');
                 
-                // Refresh the foods list
-                await this.loadPiosFoodDB();
+                // Update local data
+                const food = this.adminData.foods.find(f => f.id == foodId);
+                if (food) {
+                    if (field === 'name') food.name = newValue;
+                    if (field === 'calories') {
+                        food.calories = parseFloat(newValue);
+                        food.calories_per_100g = parseFloat(newValue);
+                    }
+                }
+                
+                // Remove saved indicator after animation
+                setTimeout(() => cell.classList.remove('saved'), 1500);
+                
+                logger.info('Inline edit saved successfully');
             } else {
-                this.showMessage(response.message || 'Failed to update food', 'error');
+                throw new Error(response.message || 'Failed to update');
             }
             
         } catch (error) {
-            logger.error('Failed to update food:', error);
-            this.showMessage(error.message || 'Failed to update food', 'error');
+            logger.error('Failed to save inline edit:', error);
+            this.showMessage(`Failed to update ${field}: ${error.message}`, 'error');
+            
+            // Revert to original value
+            cell.textContent = cell.dataset.originalValue;
+            cell.classList.remove('saving');
         }
     }
+
+    // =============================================================================
+    // ADMIN FOOD MANAGEMENT (DELETE)
+    // =============================================================================
 
     // Delete food
     async deleteFood(foodId) {
