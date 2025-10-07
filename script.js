@@ -257,7 +257,7 @@ class CalorieTracker {
                 return response.foods.map(food => ({
                     id: food.id,
                     name: food.name,
-                    calories: food.calories_per_unit || food.calories,
+                    calories: food.calories_per_100g || food.calories,
                     unit: 'g', // All foods now use grams
                     brand: food.brand || '',
                     source: 'Local Database',
@@ -1409,7 +1409,7 @@ class CalorieTracker {
                 if (foods.length > 0) {
                     // Found in database - use foodId
                     const food = foods[0]; // Use first match
-                    calories = this.calculateCalories(food.calories_per_unit, quantity, unit, food.default_unit);
+                    calories = this.calculateCalories(food.calories_per_100g, quantity, unit, food.default_unit);
                     
                     logData = {
                         foodId: food.id,
@@ -1423,7 +1423,7 @@ class CalorieTracker {
                     // Show custom modal for calories since we don't have food data
                     try {
                         const customCalories = await this.showCalorieInputModal(foodName);
-                        calories = customCalories * quantity;
+                        calories = this.calculateCalories(customCalories, quantity, unit, 'g');
                         
                         logData = {
                             name: foodName,
@@ -1662,7 +1662,7 @@ class CalorieTracker {
                         <span class="food-source" title="${this.getSourceTooltip(food.source)}">${sourceIcon} ${sourceText}</span>
                     </div>
                     <div class="food-details">
-                        <span class="food-calories">${Math.round(food.calories)} cal/100g</span>
+                        <span class="food-calories">${Math.round(food.calories)} kcal/100g</span>
                         ${nutritionText ? `<span class="food-nutrition">${nutritionText}</span>` : ''}
                     </div>
                 </div>
@@ -1776,7 +1776,7 @@ class CalorieTracker {
         
         let nutritionHTML = `
             <div class="nutrition-preview">
-                <strong>${food.name}</strong> (${Math.round(food.calories)} cal/100g)
+                <strong>${food.name}</strong> (${Math.round(food.calories)} kcal/100g)
         `;
         
         if (food.protein || food.carbs || food.fat) {
@@ -2228,7 +2228,7 @@ class CalorieTracker {
         detailsDiv.innerHTML = `
             <div class="day-details-content">
                 <div class="details-header">
-                    <span class="details-total">Total: ${Math.round(totalCalories).toLocaleString()} calories</span>
+                    <span class="details-total">Total: ${Math.round(totalCalories).toLocaleString()} kcal</span>
                     <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">
                         + Add Item
                     </button>
@@ -2241,7 +2241,7 @@ class CalorieTracker {
                             <div class="food-item-content">
                                 <span class="food-item-name">${this.escapeHtml(log.food_name)}</span>
                                 <span class="food-item-details">${log.quantity} ${log.unit}</span>
-                                <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} cal</span>
+                                <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} kcal</span>
                             </div>
                             <div class="food-item-actions">
                                 <button class="btn-icon btn-edit" data-action="edit-food-log" data-log-id="${log.id}" data-date="${date}" title="Edit">
@@ -2545,7 +2545,7 @@ class CalorieTracker {
                     const calsStat = dayCard.querySelector('.day-stats .calories');
                     const mealsStat = dayCard.querySelector('.day-stats .meals');
                     if (calsStat) {
-                        calsStat.textContent = `${Math.round(response.totalCalories).toLocaleString()} cal`;
+                        calsStat.textContent = `${Math.round(response.totalCalories).toLocaleString()} kcal`;
                     }
                     if (mealsStat) {
                         const count = response.logs.length;
