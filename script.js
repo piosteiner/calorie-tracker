@@ -1390,7 +1390,7 @@ class CalorieTracker {
             
             const foodName = foodNameInput.value.trim();
             const quantity = parseFloat(quantityInput.value);
-            const unit = document.getElementById('unit').value;
+            const unit = 'g'; // Always use grams since unit selector removed
 
             // Check if we have enhanced food data from selection
             if (this.selectedFoodData) {
@@ -1422,7 +1422,7 @@ class CalorieTracker {
                     // Not found in database - use custom food name
                     // Show custom modal for calories since we don't have food data
                     try {
-                        const customCalories = await this.showCalorieInputModal(foodName, unit);
+                        const customCalories = await this.showCalorieInputModal(foodName);
                         calories = customCalories * quantity;
                         
                         logData = {
@@ -1443,7 +1443,7 @@ class CalorieTracker {
                 const logResponse = await this.apiCall('/logs', 'POST', logData, {
                     showLoading: true,
                     showSuccess: true,
-                    successMessage: `Successfully logged ${quantity}${unit} of ${foodName} (${Math.round(calories)} cal)`
+                    successMessage: `Successfully logged ${quantity}g of ${foodName} (${Math.round(calories)} cal)`
                 });
 
                 const foodEntry = {
@@ -1463,7 +1463,7 @@ class CalorieTracker {
                 
                 // Reset form
                 form.reset();
-                document.getElementById('quantity').value = 1;
+                document.getElementById('quantity').value = 100;
 
             } catch (error) {
                 // Error notification is handled by apiCall
@@ -1512,13 +1512,14 @@ class CalorieTracker {
             this.saveToStorage();
             this.addToFavorites(foodData);
             
-            this.showMessage(`Added ${foodData.name} (${quantity}g, ${calories} cal)`, 'success');
+            this.notifications.success(`Added ${foodData.name} (${quantity}g, ${calories} cal)`);
             document.getElementById('foodForm').reset();
+            document.getElementById('quantity').value = 100;
             this.selectedFoodData = null;
 
         } catch (error) {
             logger.error('Error adding enhanced food:', error);
-            this.showMessage('Error adding food. Please try again.', 'error');
+            this.notifications.error('Error adding food. Please try again.');
         }
     }
 
@@ -4512,7 +4513,7 @@ class CalorieTracker {
     }
 
     // Show calorie input modal for manual food entry
-    showCalorieInputModal(foodName, unit) {
+    showCalorieInputModal(foodName) {
         return new Promise((resolve, reject) => {
             const modal = document.createElement('div');
             modal.className = 'calorie-input-modal';
@@ -4529,7 +4530,7 @@ class CalorieTracker {
                             <div class="food-unit">Not found in database - requires manual entry</div>
                         </div>
                         <div class="input-group">
-                            <label for="calorie-input">Calories per ${unit}:</label>
+                            <label for="calorie-input">Calories per 100g:</label>
                             <input 
                                 type="number" 
                                 id="calorie-input" 
