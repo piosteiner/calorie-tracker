@@ -1915,11 +1915,11 @@ class CalorieTracker {
         try {
             if (isNew) {
                 // Create new entry
-                await this.createFoodLog(foodData);
+                await this.createFoodLogEntry(foodData);
                 this.showMessage('Food log entry added successfully', 'success');
             } else {
                 // Update existing entry
-                await this.updateFoodLog(logId, foodData);
+                await this.updateFoodLogEntry(logId, foodData);
                 this.showMessage('Food log entry updated successfully', 'success');
             }
             
@@ -1983,7 +1983,7 @@ class CalorieTracker {
         const { logId, foodName, date } = this.currentDeleteContext;
         
         try {
-            await this.deleteFoodLog(logId);
+            await this.deleteFoodLogEntry(logId);
             
             this.showMessage(`"${foodName}" deleted successfully`, 'success');
             
@@ -2069,7 +2069,7 @@ class CalorieTracker {
     /**
      * Create new food log entry via API
      */
-    async createFoodLog(foodData) {
+    async createFoodLogEntry(foodData) {
         const response = await this.apiCall('/logs', 'POST', {
             name: foodData.name,
             quantity: foodData.quantity,
@@ -2088,7 +2088,7 @@ class CalorieTracker {
     /**
      * Update existing food log entry via API
      */
-    async updateFoodLog(logId, foodData) {
+    async updateFoodLogEntry(logId, foodData) {
         const response = await this.apiCall(`/logs/${logId}`, 'PUT', {
             name: foodData.name,
             quantity: foodData.quantity,
@@ -2107,7 +2107,7 @@ class CalorieTracker {
     /**
      * Delete food log entry via API
      */
-    async deleteFoodLog(logId) {
+    async deleteFoodLogEntry(logId) {
         const response = await this.apiCall(`/logs/${logId}`, 'DELETE');
         
         if (!response.success) {

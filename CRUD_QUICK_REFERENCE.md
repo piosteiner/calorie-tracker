@@ -52,9 +52,9 @@ this.currentDeleteContext = null; // { logId, foodName, date }
 7. `confirmDeleteFoodLog()` - Execute deletion
 8. `refreshDayDetails(date)` - Refresh after changes
 9. `validateFoodLogData(data)` - Client-side validation
-10. `createFoodLog(foodData)` - POST /api/logs
-11. `updateFoodLog(logId, foodData)` - PUT /api/logs/:id
-12. `deleteFoodLog(logId)` - DELETE /api/logs/:id
+10. `createFoodLogEntry(foodData)` - POST /api/logs
+11. `updateFoodLogEntry(logId, foodData)` - PUT /api/logs/:id
+12. `deleteFoodLogEntry(logId)` - DELETE /api/logs/:id
 
 **Updated method:**
 - `renderDayDetails()` - Now includes Edit/Delete buttons and "+ Add Item"
@@ -236,7 +236,7 @@ console.log('Errors:', errors);
 ### Test API Calls
 ```javascript
 // Create
-await app.createFoodLog({
+await app.createFoodLogEntry({
   name: 'Test Food',
   quantity: 100,
   unit: 'g',
@@ -245,7 +245,7 @@ await app.createFoodLog({
 });
 
 // Update
-await app.updateFoodLog(11, {
+await app.updateFoodLogEntry(11, {
   name: 'Updated Food',
   quantity: 150,
   unit: 'g',
@@ -254,7 +254,7 @@ await app.updateFoodLog(11, {
 });
 
 // Delete
-await app.deleteFoodLog(11);
+await app.deleteFoodLogEntry(11);
 ```
 
 ---
