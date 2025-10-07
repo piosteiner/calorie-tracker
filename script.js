@@ -3006,13 +3006,15 @@ class CalorieTracker {
         caloriesCell.classList.add('saving');
         
         try {
-            logger.info('Saving changes for food:', foodId, { newName, newCalories });
-            
             // Prepare update data
             const updateData = {
                 name: newName,
                 calories_per_100g: parseFloat(newCalories)
             };
+            
+            logger.info('Saving changes for food:', foodId);
+            logger.debug('Update data:', updateData);
+            logger.debug('API endpoint:', `/admin/foods/${foodId}`);
             
             // Call API
             const response = await this.apiCall(`/admin/foods/${foodId}`, 'PUT', updateData);
@@ -3056,7 +3058,21 @@ class CalorieTracker {
             
         } catch (error) {
             logger.error('Failed to save food:', error);
-            this.showMessage(`Failed to save: ${error.message}`, 'error');
+            
+            // Show detailed error message
+            let errorMsg = 'Failed to save';
+            if (error.data) {
+                // If backend returned detailed error info
+                errorMsg = error.data.error || error.data.message || errorMsg;
+                if (error.data.details) {
+                    logger.error('Error details:', error.data.details);
+                    errorMsg += `: ${JSON.stringify(error.data.details)}`;
+                }
+            } else {
+                errorMsg = error.message || errorMsg;
+            }
+            
+            this.showMessage(errorMsg, 'error');
             
             // Remove saving state
             nameCell.classList.remove('saving');
