@@ -1148,7 +1148,7 @@ class CalorieTracker {
                         <span class="food-source" title="${this.getSourceTooltip(food.source)}">${sourceIcon} ${sourceText}</span>
                     </div>
                     <div class="food-details">
-                        <span class="food-calories">${food.calories} cal/100g</span>
+                        <span class="food-calories">${Math.round(food.calories)} cal/100g</span>
                         ${nutritionText ? `<span class="food-nutrition">${nutritionText}</span>` : ''}
                     </div>
                 </div>
@@ -1262,7 +1262,7 @@ class CalorieTracker {
         
         let nutritionHTML = `
             <div class="nutrition-preview">
-                <strong>${food.name}</strong> (${food.calories} cal/100g)
+                <strong>${food.name}</strong> (${Math.round(food.calories)} cal/100g)
         `;
         
         if (food.protein || food.carbs || food.fat) {
@@ -1672,7 +1672,7 @@ class CalorieTracker {
             const date = day.log_date.split('T')[0]; // Extract YYYY-MM-DD
             const dateObj = new Date(day.log_date);
             const displayDate = this.formatHistoryDate(dateObj);
-            const calories = parseFloat(day.total_calories || 0);
+            const calories = Math.round(parseFloat(day.total_calories || 0));
             const mealsCount = parseInt(day.meals_count || 0);
 
             return `
@@ -1714,7 +1714,7 @@ class CalorieTracker {
         detailsDiv.innerHTML = `
             <div class="day-details-content">
                 <div class="details-header">
-                    <span class="details-total">Total: ${totalCalories.toLocaleString()} calories</span>
+                    <span class="details-total">Total: ${Math.round(totalCalories).toLocaleString()} calories</span>
                     <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">
                         + Add Item
                     </button>
@@ -1727,7 +1727,7 @@ class CalorieTracker {
                             <div class="food-item-content">
                                 <span class="food-item-name">${this.escapeHtml(log.food_name)}</span>
                                 <span class="food-item-details">${log.quantity} ${log.unit}</span>
-                                <span class="food-item-calories">${parseFloat(log.calories).toLocaleString()} cal</span>
+                                <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} cal</span>
                             </div>
                             <div class="food-item-actions">
                                 <button class="btn-icon btn-edit" data-action="edit-food-log" data-log-id="${log.id}" data-date="${date}" title="Edit">
@@ -2031,7 +2031,7 @@ class CalorieTracker {
                     const calsStat = dayCard.querySelector('.day-stats .calories');
                     const mealsStat = dayCard.querySelector('.day-stats .meals');
                     if (calsStat) {
-                        calsStat.textContent = `${response.totalCalories.toLocaleString()} cal`;
+                        calsStat.textContent = `${Math.round(response.totalCalories).toLocaleString()} cal`;
                     }
                     if (mealsStat) {
                         const count = response.logs.length;
@@ -2799,7 +2799,7 @@ class CalorieTracker {
                            data-action="toggle-food-selection">
                 </td>
                 <td>${food.name}</td>
-                <td>${food.calories}</td>
+                <td>${Math.round(food.calories)}</td>
                 <td>${food.usage_count || 0}</td>
                 <td>
                     <button class="btn btn-small" data-action="edit-food" data-food-id="${food.id}">Edit</button>
@@ -2834,7 +2834,7 @@ class CalorieTracker {
                 // Attempt to save to backend database
                 const response = await this.apiCall('/admin/foods', 'POST', {
                     name,
-                    calories_per_unit: calories
+                    calories_per_100g: calories
                 });
 
                 this.showMessage('Food added successfully to Pios Food DB', 'success');
