@@ -425,9 +425,19 @@ class CalorieTracker {
                     this.selectEnhancedFood(target.dataset.foodData);
                     break;
                     
-                case 'edit-food':
+                case 'toggle-edit-mode':
                     e.preventDefault();
-                    // Inline editing is now used - this case can be removed
+                    this.toggleEditMode(parseInt(target.dataset.foodId));
+                    break;
+                    
+                case 'save-inline-edit':
+                    e.preventDefault();
+                    this.saveRowEdit(parseInt(target.dataset.foodId));
+                    break;
+                    
+                case 'cancel-inline-edit':
+                    e.preventDefault();
+                    this.cancelRowEdit(parseInt(target.dataset.foodId));
                     break;
                     
                 case 'close-modal':
@@ -2787,19 +2797,18 @@ class CalorieTracker {
                            data-action="toggle-food-selection">
                 </td>
                 <td class="editable-cell" 
-                    contenteditable="true" 
                     data-field="name" 
                     data-food-id="${food.id}"
-                    data-original-value="${this.escapeHtml(food.name)}"
-                    spellcheck="false">${this.escapeHtml(food.name)}</td>
+                    data-original-value="${this.escapeHtml(food.name)}">${this.escapeHtml(food.name)}</td>
                 <td class="editable-cell" 
-                    contenteditable="true" 
                     data-field="calories" 
                     data-food-id="${food.id}"
-                    data-original-value="${Math.round(food.calories)}"
-                    inputmode="numeric">${Math.round(food.calories)}</td>
+                    data-original-value="${Math.round(food.calories)}">${Math.round(food.calories)}</td>
                 <td>${food.usage_count || 0}</td>
-                <td>
+                <td class="action-buttons">
+                    <button class="btn btn-small btn-edit" data-action="toggle-edit-mode" data-food-id="${food.id}">Edit</button>
+                    <button class="btn btn-small btn-success btn-save" data-action="save-inline-edit" data-food-id="${food.id}" style="display:none;">Save</button>
+                    <button class="btn btn-small btn-secondary btn-cancel" data-action="cancel-inline-edit" data-food-id="${food.id}" style="display:none;">Cancel</button>
                     <button class="btn btn-small btn-danger" data-action="delete-food" data-food-id="${food.id}">Delete</button>
                 </td>
             </tr>
@@ -2886,32 +2895,221 @@ class CalorieTracker {
      * Initialize inline editing for admin food table cells
      */
     initInlineEditing() {
-        // Use event delegation on the table body
-        document.addEventListener('focusin', (e) => {
-            if (e.target.classList.contains('editable-cell')) {
-                this.handleCellFocusIn(e.target);
-            }
-        });
-
-        document.addEventListener('focusout', (e) => {
-            if (e.target.classList.contains('editable-cell')) {
-                this.handleCellFocusOut(e.target);
-            }
-        });
-
+        // Handle Enter key to save
         document.addEventListener('keydown', (e) => {
-            if (e.target.classList.contains('editable-cell')) {
-                this.handleCellKeydown(e);
-            }
-        });
-
-        document.addEventListener('input', (e) => {
-            if (e.target.classList.contains('editable-cell')) {
-                this.handleCellInput(e.target);
+            if (e.target.classList.contains('editable-cell') && 
+                e.target.hasAttribute('contenteditable') &&
+                e.target.getAttribute('contenteditable') === 'true') {
+                
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    const foodId = parseInt(e.target.closest('tr').dataset.foodId);
+                    this.saveRowEdit(foodId);
+                }
+                
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    const foodId = parseInt(e.target.closest('tr').dataset.foodId);
+                    this.cancelRowEdit(foodId);
+                }
+                
+                // For calories field, only allow numbers
+                if (e.target.dataset.field === 'calories') {
+                    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape'];
+                    if (!allowedKeys.includes(e.key) && (e.key < '0' || e.key > '9')) {
+                        e.preventDefault();
+                    }
+                }
             }
         });
 
         logger.info('Inline editing initialized for admin food table');
+    }
+
+    /**
+     * Toggle edit mode for a food row
+     */
+    toggleEditMode(foodId) {
+        const row = document.querySelector(`tr[data-food-id="${foodId}"]`);
+        if (!row) return;
+        
+        const nameCell = row.querySelector('[data-field="name"]');
+        const caloriesCell = row.querySelector('[data-field="calories"]');
+        
+        // Enable contenteditable
+        nameCell.contentEditable = 'true';
+        caloriesCell.contentEditable = 'true';
+        nameCell.classList.add('editing');
+        caloriesCell.classList.add('editing');
+        
+        // Toggle button visibility
+        const editBtn = row.querySelector('[data-action="toggle-edit-mode"]');
+        const saveBtn = row.querySelector('[data-action="save-inline-edit"]');
+        const cancelBtn = row.querySelector('[data-action="cancel-inline-edit"]');
+        const deleteBtn = row.querySelector('[data-action="delete-food"]');
+        
+        editBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+        saveBtn.style.display = 'inline-block';
+        cancelBtn.style.display = 'inline-block';
+        
+        // Focus on name field and select text
+        nameCell.focus();
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(nameCell);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        logger.info('Edit mode enabled for food:', foodId);
+    }
+
+    /**
+     * Save inline edits for a row
+     */
+    async saveRowEdit(foodId) {
+        const row = document.querySelector(`tr[data-food-id="${foodId}"]`);
+        if (!row) return;
+        
+        const nameCell = row.querySelector('[data-field="name"]');
+        const caloriesCell = row.querySelector('[data-field="calories"]');
+        
+        const newName = nameCell.textContent.trim();
+        const newCalories = caloriesCell.textContent.trim();
+        const originalName = nameCell.dataset.originalValue;
+        const originalCalories = caloriesCell.dataset.originalValue;
+        
+        // Validate
+        if (!newName) {
+            this.showMessage('Food name cannot be empty', 'error');
+            return;
+        }
+        
+        const caloriesNum = parseFloat(newCalories);
+        if (isNaN(caloriesNum) || caloriesNum < 0) {
+            this.showMessage('Calories must be a number ≥ 0', 'error');
+            return;
+        }
+        
+        // Check if anything changed
+        const nameChanged = newName !== originalName;
+        const caloriesChanged = newCalories !== originalCalories;
+        
+        if (!nameChanged && !caloriesChanged) {
+            logger.info('No changes detected, disabling edit mode');
+            this.disableEditMode(foodId);
+            return;
+        }
+        
+        // Show saving state
+        nameCell.classList.add('saving');
+        caloriesCell.classList.add('saving');
+        
+        try {
+            logger.info('Saving changes for food:', foodId, { newName, newCalories });
+            
+            // Prepare update data
+            const updateData = {
+                name: newName,
+                calories_per_100g: parseFloat(newCalories)
+            };
+            
+            // Call API
+            const response = await this.apiCall(`/admin/foods/${foodId}`, 'PUT', updateData);
+            
+            logger.debug('Save response:', response);
+            
+            if (response.success) {
+                // Update original values
+                nameCell.dataset.originalValue = newName;
+                caloriesCell.dataset.originalValue = newCalories;
+                
+                // Update local cache
+                const food = this.adminData.foods.find(f => f.id == foodId);
+                if (food) {
+                    food.name = newName;
+                    food.calories = parseFloat(newCalories);
+                    food.calories_per_100g = parseFloat(newCalories);
+                }
+                
+                // Show success feedback
+                nameCell.classList.remove('saving');
+                caloriesCell.classList.remove('saving');
+                nameCell.classList.add('saved');
+                caloriesCell.classList.add('saved');
+                
+                setTimeout(() => {
+                    nameCell.classList.remove('saved');
+                    caloriesCell.classList.remove('saved');
+                }, 1500);
+                
+                this.showMessage('Food updated successfully! ✅', 'success');
+                
+                // Disable edit mode
+                this.disableEditMode(foodId);
+                
+                logger.info('Food saved successfully');
+                
+            } else {
+                throw new Error(response.message || 'Failed to update food');
+            }
+            
+        } catch (error) {
+            logger.error('Failed to save food:', error);
+            this.showMessage(`Failed to save: ${error.message}`, 'error');
+            
+            // Remove saving state
+            nameCell.classList.remove('saving');
+            caloriesCell.classList.remove('saving');
+        }
+    }
+
+    /**
+     * Cancel inline edits and revert changes
+     */
+    cancelRowEdit(foodId) {
+        const row = document.querySelector(`tr[data-food-id="${foodId}"]`);
+        if (!row) return;
+        
+        const nameCell = row.querySelector('[data-field="name"]');
+        const caloriesCell = row.querySelector('[data-field="calories"]');
+        
+        // Revert to original values
+        nameCell.textContent = nameCell.dataset.originalValue;
+        caloriesCell.textContent = caloriesCell.dataset.originalValue;
+        
+        // Disable edit mode
+        this.disableEditMode(foodId);
+        
+        logger.info('Edit cancelled for food:', foodId);
+    }
+
+    /**
+     * Disable edit mode for a row
+     */
+    disableEditMode(foodId) {
+        const row = document.querySelector(`tr[data-food-id="${foodId}"]`);
+        if (!row) return;
+        
+        const nameCell = row.querySelector('[data-field="name"]');
+        const caloriesCell = row.querySelector('[data-field="calories"]');
+        
+        // Disable contenteditable
+        nameCell.contentEditable = 'false';
+        caloriesCell.contentEditable = 'false';
+        nameCell.classList.remove('editing');
+        caloriesCell.classList.remove('editing');
+        
+        // Toggle button visibility
+        const editBtn = row.querySelector('[data-action="toggle-edit-mode"]');
+        const saveBtn = row.querySelector('[data-action="save-inline-edit"]');
+        const cancelBtn = row.querySelector('[data-action="cancel-inline-edit"]');
+        const deleteBtn = row.querySelector('[data-action="delete-food"]');
+        
+        editBtn.style.display = 'inline-block';
+        deleteBtn.style.display = 'inline-block';
+        saveBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
     }
 
     /**

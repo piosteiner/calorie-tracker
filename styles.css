@@ -1484,19 +1484,23 @@ body {
 
 /* Inline Editing for Admin Table */
 .editable-cell {
-    cursor: text;
     position: relative;
     transition: all 0.2s ease;
     border-radius: 4px;
     padding: 12px 15px !important;
 }
 
-.editable-cell:hover {
+/* Only show edit cursor and hover when in edit mode */
+.editable-cell[contenteditable="true"] {
+    cursor: text;
+}
+
+.editable-cell[contenteditable="true"]:hover {
     background: var(--bg-secondary);
     outline: 1px solid var(--border-color);
 }
 
-.editable-cell:focus {
+.editable-cell[contenteditable="true"]:focus {
     outline: 2px solid var(--accent-primary);
     background: var(--bg-card);
     cursor: text;
@@ -1532,25 +1536,31 @@ body {
     }
 }
 
-/* Edit hint - show on hover */
+/* Action buttons styling */
+.action-buttons {
+    white-space: nowrap;
+}
+
+.btn-edit {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #8b82ff;
+}
+
+.btn-success {
+    background: var(--accent-success);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #27ae60;
+}
+
+/* Remove the edit hint since we have explicit Edit button */
 .editable-cell::after {
-    content: '✏️';
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0;
-    font-size: 12px;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-}
-
-.editable-cell:hover::after {
-    opacity: 0.4;
-}
-
-.editable-cell:focus::after,
-.editable-cell.editing::after {
     display: none;
 }
 
