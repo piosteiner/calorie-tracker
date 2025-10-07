@@ -28,7 +28,7 @@ class CalorieTracker {
         
         this.loadCachedFoods();
         
-        this.init();
+        // Don't call init() here - will be called after DOM is ready
     }
 
     // Search Pios Food DB in backend database
@@ -2926,10 +2926,12 @@ if (document.readyState === 'loading') {
     // DOM is still loading
     document.addEventListener('DOMContentLoaded', () => {
         app = new CalorieTracker();
+        app.init(); // Call init() after DOM is ready
         window.app = app;
     });
 } else {
     // DOM is already loaded
     app = new CalorieTracker();
+    app.init(); // Call init() after DOM is ready
     window.app = app;
 }
