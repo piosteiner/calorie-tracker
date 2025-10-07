@@ -154,6 +154,26 @@
                     </div>
                 </div>
 
+                <!-- Food Log History -->
+                <div class="history-card">
+                    <div class="card-header-with-action">
+                        <h3>📅 Food Log History</h3>
+                        <button id="toggleHistoryBtn" class="btn btn-secondary" data-action="toggle-history">
+                            <span id="historyBtnText">Show History</span>
+                        </button>
+                    </div>
+                    
+                    <div id="historyContent" class="history-content" style="display: none;">
+                        <div id="historyList" class="history-list">
+                            <p class="loading">Loading your food log history...</p>
+                        </div>
+                        
+                        <button id="loadMoreHistoryBtn" class="btn btn-secondary load-more-btn" style="display: none;" data-action="load-more-history">
+                            Load More Days
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Admin Panel -->
                 <div id="adminPanel" class="admin-panel" style="display: none;">
                     <div class="admin-card">

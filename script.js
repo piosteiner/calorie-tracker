@@ -20,6 +20,16 @@ class CalorieTracker {
             selectedFoodIds: new Set() // Track selected food IDs for bulk operations
         };
         
+        // History properties
+        this.historyData = {
+            days: [], // Array of day summaries
+            expandedDays: new Set(), // Track which days are expanded
+            currentOffset: 0,
+            limit: 30,
+            hasMore: false,
+            isExpanded: false // Track if history section is visible
+        };
+        
         // Hybrid storage properties
         this.syncQueue = []; // Queue for pending sync operations
         this.lastSyncTime = null;
@@ -285,6 +295,22 @@ class CalorieTracker {
                 case 'show-database-toggle-info':
                     e.preventDefault();
                     this.showDatabaseToggleInfo();
+                    break;
+                
+                // History view
+                case 'toggle-history':
+                    e.preventDefault();
+                    this.toggleHistory();
+                    break;
+                
+                case 'load-more-history':
+                    e.preventDefault();
+                    this.loadMoreHistory();
+                    break;
+                
+                case 'view-day-details':
+                    e.preventDefault();
+                    this.viewDayDetails(target.dataset.date);
                     break;
                 
                 // Admin section navigation
@@ -1324,20 +1350,40 @@ class CalorieTracker {
 
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
+        
+        // Handle multi-line messages by converting \n to <br> or using innerHTML
+        if (message.includes('\n')) {
+            // Split by newlines and create proper HTML structure
+            const lines = message.split('\n');
+            messageDiv.innerHTML = lines.map(line => 
+                line.trim() ? `<div>${this.escapeHtml(line)}</div>` : '<br>'
+            ).join('');
+        } else {
+            messageDiv.textContent = message;
+        }
 
         // Add to appropriate container
         const container = document.querySelector('.active .container');
         if (container) {
             container.insertBefore(messageDiv, container.firstChild);
             
-            // Auto-remove after 3 seconds
+            // Auto-remove after 5 seconds for errors (longer to read), 3 seconds for others
+            const timeout = type === 'error' || type === 'warning' ? 5000 : 3000;
             setTimeout(() => {
                 if (messageDiv.parentNode) {
                     messageDiv.remove();
                 }
-            }, 3000);
+            }, timeout);
         }
+    }
+    
+    /**
+     * Escape HTML to prevent XSS when using innerHTML
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // =============================================================================
@@ -1421,6 +1467,280 @@ class CalorieTracker {
             overlay.addEventListener('click', handleOverlayClick);
             document.addEventListener('keydown', handleEscapeKey);
         });
+    }
+
+    // =============================================================================
+    // FOOD LOG HISTORY
+    // =============================================================================
+
+    /**
+     * Toggle the history section visibility
+     */
+    async toggleHistory() {
+        const historyContent = document.getElementById('historyContent');
+        const historyBtnText = document.getElementById('historyBtnText');
+        
+        this.historyData.isExpanded = !this.historyData.isExpanded;
+        
+        if (this.historyData.isExpanded) {
+            historyContent.style.display = 'block';
+            historyBtnText.textContent = 'Hide History';
+            
+            // Load history if not already loaded
+            if (this.historyData.days.length === 0) {
+                await this.loadHistory();
+            }
+        } else {
+            historyContent.style.display = 'none';
+            historyBtnText.textContent = 'Show History';
+        }
+    }
+
+    /**
+     * Load food log history from backend
+     */
+    async loadHistory() {
+        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
+            this.showDemoHistory();
+            return;
+        }
+
+        try {
+            const response = await this.apiCall(
+                `/logs/history?limit=${this.historyData.limit}&offset=${this.historyData.currentOffset}`
+            );
+
+            if (response.success) {
+                this.historyData.days = response.history;
+                this.historyData.hasMore = response.pagination.hasMore;
+                this.renderHistory();
+                
+                // Show/hide load more button
+                const loadMoreBtn = document.getElementById('loadMoreHistoryBtn');
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = this.historyData.hasMore ? 'block' : 'none';
+                }
+            }
+        } catch (error) {
+            logger.error('Failed to load history:', error);
+            this.showMessage('Failed to load history. Showing demo data.', 'warning');
+            this.showDemoHistory();
+        }
+    }
+
+    /**
+     * Load more historical days (pagination)
+     */
+    async loadMoreHistory() {
+        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
+            this.showMessage('Load more not available in demo mode', 'info');
+            return;
+        }
+
+        try {
+            const newOffset = this.historyData.currentOffset + this.historyData.limit;
+            const response = await this.apiCall(
+                `/logs/history?limit=${this.historyData.limit}&offset=${newOffset}`
+            );
+
+            if (response.success) {
+                // Append new days to existing
+                this.historyData.days = [...this.historyData.days, ...response.history];
+                this.historyData.currentOffset = newOffset;
+                this.historyData.hasMore = response.pagination.hasMore;
+                this.renderHistory();
+                
+                // Show/hide load more button
+                const loadMoreBtn = document.getElementById('loadMoreHistoryBtn');
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = this.historyData.hasMore ? 'block' : 'none';
+                }
+                
+                this.showMessage(`Loaded ${response.history.length} more days`, 'success');
+            }
+        } catch (error) {
+            logger.error('Failed to load more history:', error);
+            this.showMessage('Failed to load more days', 'error');
+        }
+    }
+
+    /**
+     * View detailed logs for a specific day
+     */
+    async viewDayDetails(date) {
+        const dayCard = document.querySelector(`[data-date="${date}"]`).closest('.history-day-card');
+        const detailsDiv = dayCard.querySelector('.day-details');
+        
+        // Toggle expansion
+        if (this.historyData.expandedDays.has(date)) {
+            this.historyData.expandedDays.delete(date);
+            detailsDiv.style.display = 'none';
+            dayCard.classList.remove('expanded');
+            return;
+        }
+
+        // Load details if not already loaded
+        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
+            this.showDemoDayDetails(dayCard, date);
+            return;
+        }
+
+        try {
+            const response = await this.apiCall(`/logs?date=${date}`);
+
+            if (response.success && response.logs) {
+                this.historyData.expandedDays.add(date);
+                this.renderDayDetails(dayCard, response.logs, response.totalCalories);
+                dayCard.classList.add('expanded');
+            }
+        } catch (error) {
+            logger.error('Failed to load day details:', error);
+            this.showMessage('Failed to load day details', 'error');
+        }
+    }
+
+    /**
+     * Render the history list
+     */
+    renderHistory() {
+        const historyList = document.getElementById('historyList');
+        
+        if (this.historyData.days.length === 0) {
+            historyList.innerHTML = '<p class="empty-message">No food log history found. Start logging your meals!</p>';
+            return;
+        }
+
+        historyList.innerHTML = this.historyData.days.map(day => {
+            const date = day.log_date.split('T')[0]; // Extract YYYY-MM-DD
+            const dateObj = new Date(day.log_date);
+            const displayDate = this.formatHistoryDate(dateObj);
+            const calories = parseFloat(day.total_calories || 0);
+            const mealsCount = parseInt(day.meals_count || 0);
+
+            return `
+                <div class="history-day-card" data-date="${date}">
+                    <div class="day-summary">
+                        <div class="day-info">
+                            <h4>📅 ${displayDate}</h4>
+                            <p class="day-stats">
+                                <span class="calories">${calories.toLocaleString()} cal</span>
+                                <span class="separator">•</span>
+                                <span class="meals">${mealsCount} meal${mealsCount !== 1 ? 's' : ''}</span>
+                            </p>
+                        </div>
+                        <button class="btn btn-view-details" data-action="view-day-details" data-date="${date}">
+                            <span class="expand-icon">▶</span>
+                            <span class="expand-text">View Details</span>
+                        </button>
+                    </div>
+                    <div class="day-details" style="display: none;">
+                        <p class="loading">Loading details...</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Render detailed food logs for a specific day
+     */
+    renderDayDetails(dayCard, logs, totalCalories) {
+        const detailsDiv = dayCard.querySelector('.day-details');
+        const expandIcon = dayCard.querySelector('.expand-icon');
+        const expandText = dayCard.querySelector('.expand-text');
+        
+        expandIcon.textContent = '▼';
+        expandText.textContent = 'Hide Details';
+        
+        detailsDiv.innerHTML = `
+            <div class="day-details-content">
+                <div class="details-header">
+                    <span class="details-total">Total: ${totalCalories.toLocaleString()} calories</span>
+                </div>
+                <div class="food-items">
+                    ${logs.map(log => `
+                        <div class="food-item-row">
+                            <span class="food-item-name">${this.escapeHtml(log.food_name)}</span>
+                            <span class="food-item-details">${log.quantity} ${log.unit}</span>
+                            <span class="food-item-calories">${parseFloat(log.calories).toLocaleString()} cal</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        detailsDiv.style.display = 'block';
+    }
+
+    /**
+     * Format date for history display
+     */
+    formatHistoryDate(date) {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Normalize dates to compare only date parts
+        const dateStr = date.toDateString();
+        const todayStr = today.toDateString();
+        const yesterdayStr = yesterday.toDateString();
+        
+        if (dateStr === todayStr) {
+            return 'Today';
+        } else if (dateStr === yesterdayStr) {
+            return 'Yesterday';
+        } else {
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+            });
+        }
+    }
+
+    /**
+     * Show demo history data (for offline/development mode)
+     */
+    showDemoHistory() {
+        this.historyData.days = [
+            {
+                log_date: new Date().toISOString(),
+                meals_count: 3,
+                total_calories: '2150'
+            },
+            {
+                log_date: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+                meals_count: 2,
+                total_calories: '1850'
+            },
+            {
+                log_date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+                meals_count: 4,
+                total_calories: '2200'
+            }
+        ];
+        this.historyData.hasMore = false;
+        this.renderHistory();
+        
+        const loadMoreBtn = document.getElementById('loadMoreHistoryBtn');
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = 'none';
+        }
+    }
+
+    /**
+     * Show demo day details (for offline/development mode)
+     */
+    showDemoDayDetails(dayCard, date) {
+        const demoLogs = [
+            { food_name: 'Apple', quantity: '100', unit: 'g', calories: '95' },
+            { food_name: 'Chicken Breast', quantity: '200', unit: 'g', calories: '330' },
+            { food_name: 'Rice', quantity: '150', unit: 'g', calories: '195' }
+        ];
+        
+        this.historyData.expandedDays.add(date);
+        this.renderDayDetails(dayCard, demoLogs, 620);
+        dayCard.classList.add('expanded');
     }
 
     // =============================================================================
