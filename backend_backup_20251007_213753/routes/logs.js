@@ -364,15 +364,18 @@ router.get('/history', [
         // Get all dates with logs, grouped by date with summaries
         const history = await db.query(`
             SELECT 
-                log_date,
+                fl.log_date,
                 COUNT(*) as meals_count,
-                SUM(calories) as total_calories,
-                MIN(logged_at) as first_log_time,
-                MAX(logged_at) as last_log_time
-            FROM food_logs 
-            WHERE user_id = ?
-            GROUP BY log_date
-            ORDER BY log_date DESC
+                SUM(fl.calories) as total_calories,
+                MIN(fl.logged_at) as first_log_time,
+                MAX(fl.logged_at) as last_log_time,
+                COALESCE(dg.goal_calories, u.daily_calorie_goal) as daily_goal
+            FROM food_logs fl
+            LEFT JOIN daily_goals dg ON fl.user_id = dg.user_id AND fl.log_date = dg.goal_date
+            LEFT JOIN users u ON fl.user_id = u.id
+            WHERE fl.user_id = ?
+            GROUP BY fl.log_date, dg.goal_calories, u.daily_calorie_goal
+            ORDER BY fl.log_date DESC
             LIMIT ${limit} OFFSET ${offset}
         `, [req.user.id]);
 

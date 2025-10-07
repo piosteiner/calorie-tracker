@@ -161,7 +161,7 @@ router.put('/goal', [
     }
 });
 
-// Set daily calorie goal for specific date
+// Set daily calorie goal for specific date (per-day goals)
 router.post('/daily-goal', [
     body('date').isISO8601().toDate().withMessage('Valid date is required'),
     body('goal').isInt({ min: 500, max: 10000 }).withMessage('Goal must be between 500-10000 calories')
@@ -178,36 +178,26 @@ router.post('/daily-goal', [
         const { date, goal } = req.body;
         const userId = req.user.id;
 
-        // Check if goal exists for this date
-        const existingGoal = await db.query(
-            'SELECT id FROM daily_goals WHERE user_id = ? AND goal_date = ?',
-            [userId, date]
-        );
-
-        if (existingGoal.length > 0) {
-            // Update existing goal
-            await db.query(
-                'UPDATE daily_goals SET goal_calories = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND goal_date = ?',
-                [goal, userId, date]
-            );
-        } else {
-            // Insert new goal
-            await db.query(
-                'INSERT INTO daily_goals (user_id, goal_date, goal_calories) VALUES (?, ?, ?)',
-                [userId, date, goal]
-            );
-        }
+        // Use INSERT ... ON DUPLICATE KEY UPDATE for upsert behavior
+        await db.query(`
+            INSERT INTO daily_goals (user_id, goal_date, goal_calories) 
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                goal_calories = VALUES(goal_calories),
+                updated_at = CURRENT_TIMESTAMP
+        `, [userId, date, goal]);
 
         res.json({
             success: true,
-            message: 'Daily goal saved successfully',
+            message: `Daily goal for ${date} saved successfully`,
             goal,
             date
         });
     } catch (error) {
         console.error('Save daily goal error:', error);
         res.status(500).json({
-            error: 'Failed to save daily goal'
+            error: 'Failed to save daily goal',
+            details: error.message
         });
     }
 });
@@ -219,12 +209,13 @@ router.get('/daily-goal/:date', async (req, res) => {
         const userId = req.user.id;
 
         // Get specific daily goal or fall back to user's default goal
+        // Using UNION ALL to get either the specific goal or the default
         const dailyGoal = await db.query(`
-            SELECT dg.goal_calories as daily_goal
+            SELECT dg.goal_calories as daily_goal, 'specific' as source
             FROM daily_goals dg 
             WHERE dg.user_id = ? AND dg.goal_date = ?
             UNION ALL
-            SELECT u.daily_calorie_goal as daily_goal
+            SELECT u.daily_calorie_goal as daily_goal, 'default' as source
             FROM users u 
             WHERE u.id = ? AND NOT EXISTS (
                 SELECT 1 FROM daily_goals WHERE user_id = ? AND goal_date = ?
@@ -233,11 +224,13 @@ router.get('/daily-goal/:date', async (req, res) => {
         `, [userId, date, userId, userId, date]);
 
         const goal = dailyGoal.length > 0 ? dailyGoal[0].daily_goal : 2000;
+        const source = dailyGoal.length > 0 ? dailyGoal[0].source : 'fallback';
 
         res.json({
             success: true,
             goal,
-            date
+            date,
+            source // 'specific', 'default', or 'fallback'
         });
     } catch (error) {
         console.error('Get daily goal error:', error);
