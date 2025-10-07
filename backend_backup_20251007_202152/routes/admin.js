@@ -159,7 +159,7 @@ router.get('/foods', async (req, res) => {
       FROM foods f
       LEFT JOIN food_logs fl ON f.id = fl.food_id
       GROUP BY f.id
-      ORDER BY usage_count DESC, f.created_at DESC
+      ORDER BY REPLACE(REPLACE(REPLACE(UPPER(f.name), 'Ä', 'AE'), 'Ö', 'OE'), 'Ü', 'UE') ASC
     `);
     
     res.json({
@@ -387,7 +387,7 @@ router.get('/foods-enhanced', async (req, res) => {
       sql += ' WHERE ' + conditions.join(' AND ');
     }
 
-    sql += ' ORDER BY f.created_at DESC LIMIT ?';
+    sql += ' ORDER BY REPLACE(REPLACE(REPLACE(UPPER(f.name), \'Ä\', \'AE\'), \'Ö\', \'OE\'), \'Ü\', \'UE\') ASC LIMIT ?';
     params.push(parseInt(limit));
 
     const foods = await db.query(sql, params);

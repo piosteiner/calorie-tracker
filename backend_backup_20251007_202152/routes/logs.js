@@ -116,8 +116,16 @@ router.post('/', [
         
         res.status(201).json({
             success: true,
-            message: 'Food log entry created',
-            logId: result.insertId
+            message: `Successfully logged ${quantity}${unit} of ${foodName} (${calories} cal)`,
+            logId: result.insertId,
+            entry: {
+                id: result.insertId,
+                foodName: foodName,
+                quantity: quantity,
+                unit: unit,
+                calories: calories,
+                logDate: logDate
+            }
         });
     } catch (error) {
         console.error('Create food log error:', error);
@@ -230,7 +238,7 @@ router.put('/:id', [
 
         res.json({
             success: true,
-            message: 'Food log entry updated',
+            message: `Successfully updated ${updatedLog[0].food_name || 'food entry'}`,
             log: updatedLog[0]
         });
     } catch (error) {

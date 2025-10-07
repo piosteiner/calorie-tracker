@@ -1,4 +1,4 @@
-name,calories_per_unit,default_unit,category,brand,protein_per_100g,carbs_per_100g,fat_per_100g,fiber_per_100g,sodium_per_100g,sugar_per_100g,description,barcode
+name,calories_per_100g,default_unit,category,brand,protein_per_100g,carbs_per_100g,fat_per_100g,fiber_per_100g,sodium_per_100g,sugar_per_100g,description,barcode
 "Swiss Apple",52,100g,Fruits,"Local Farm",0.3,13.8,0.2,2.4,1,10.4,"Fresh Swiss apple from local farms",
 "Emmental Cheese",382,100g,Dairy,"Swiss",25,0.7,31,0,714,0.7,"Traditional Swiss Emmental cheese",7610095072050
 "Rösti",150,100g,Grains,"Findus",2.8,22,5.2,2.1,420,1.2,"Traditional Swiss potato dish",7610095004659
