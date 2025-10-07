@@ -1443,7 +1443,7 @@ class CalorieTracker {
                 const logResponse = await this.apiCall('/logs', 'POST', logData, {
                     showLoading: true,
                     showSuccess: true,
-                    successMessage: `Successfully logged ${quantity}g of ${foodName} (${Math.round(calories)} cal)`
+                    successMessage: `Successfully logged ${quantity}g of ${foodName} (${Math.round(calories)} kcal)`
                 });
 
                 const foodEntry = {
@@ -1512,7 +1512,7 @@ class CalorieTracker {
             this.saveToStorage();
             this.addToFavorites(foodData);
             
-            this.notifications.success(`Added ${foodData.name} (${quantity}g, ${calories} cal)`);
+            this.notifications.success(`Added ${foodData.name} (${quantity}g, ${calories} kcal)`);
             document.getElementById('foodForm').reset();
             document.getElementById('quantity').value = 100;
             this.selectedFoodData = null;
@@ -2576,7 +2576,7 @@ class CalorieTracker {
         // Unit is always 'g' now, so no validation needed
         
         if (data.calories === undefined || data.calories < 0) {
-            errors.push('Calories must be 0 or greater');
+            errors.push('kcal must be 0 or greater');
         }
         
         if (!data.logDate) {
@@ -3576,7 +3576,7 @@ class CalorieTracker {
         
         const caloriesNum = parseFloat(newCalories);
         if (isNaN(caloriesNum) || caloriesNum < 0) {
-            this.notifications.error('Calories must be a number ≥ 0');
+            this.notifications.error('kcal must be a number ≥ 0');
             caloriesCell.focus();
             return;
         }
@@ -3729,7 +3729,7 @@ class CalorieTracker {
         if (field === 'calories') {
             const calories = parseFloat(newValue);
             if (isNaN(calories) || calories < 0) {
-                this.showMessage('Calories must be a number ≥ 0', 'error');
+                this.showMessage('kcal must be a number ≥ 0', 'error');
                 cell.textContent = originalValue; // Revert
                 return;
             }
@@ -4528,18 +4528,18 @@ class CalorieTracker {
                             <div class="food-unit">Not found in database - requires manual entry</div>
                         </div>
                         <div class="input-group">
-                            <label for="calorie-input">Calories per 100g:</label>
+                            <label for="calorie-input">kcal per 100g:</label>
                             <input 
                                 type="number" 
                                 id="calorie-input" 
-                                placeholder="Enter calories..." 
+                                placeholder="Enter kcal..." 
                                 min="0" 
                                 max="9999"
                                 step="0.1"
                                 autocomplete="off"
                             >
                             <div class="error-message" id="calorie-error">
-                                Please enter a valid calorie value (0-9999)
+                                Please enter a valid kcal value (0-9999)
                             </div>
                         </div>
                         <div class="modal-actions">
