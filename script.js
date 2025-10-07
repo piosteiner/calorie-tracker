@@ -445,9 +445,14 @@ class CalorieTracker {
         
         const settings = { ...defaults, ...preferences };
         
-        document.getElementById('toggleFavorites').checked = settings.favorites;
-        document.getElementById('toggleLocalFoods').checked = settings.localFoods;
-        document.getElementById('toggleOpenFoodFacts').checked = settings.openFoodFacts;
+        // Safely set checkboxes only if they exist
+        const toggleFavorites = document.getElementById('toggleFavorites');
+        const toggleLocalFoods = document.getElementById('toggleLocalFoods');
+        const toggleOpenFoodFacts = document.getElementById('toggleOpenFoodFacts');
+        
+        if (toggleFavorites) toggleFavorites.checked = settings.favorites;
+        if (toggleLocalFoods) toggleLocalFoods.checked = settings.localFoods;
+        if (toggleOpenFoodFacts) toggleOpenFoodFacts.checked = settings.openFoodFacts;
     }
 
     // Save database toggle preferences to localStorage
