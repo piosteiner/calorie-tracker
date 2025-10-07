@@ -1456,7 +1456,7 @@ class CalorieTracker {
                 };
 
                 this.foodLog.push(foodEntry);
-                this.dailyCalories += calories;
+                this.dailyCalories += parseFloat(calories);
                 
                 this.updateDashboard();
                 this.updateFoodLog();
@@ -1534,11 +1534,11 @@ class CalorieTracker {
                     name: log.food_name,
                     quantity: log.quantity,
                     unit: log.unit,
-                    calories: log.calories,
-                    timestamp: new Date(log.logged_at).toLocaleTimeString()
+                    calories: parseFloat(log.calories),
+                    timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
                 }));
                 
-                this.dailyCalories = this.foodLog.reduce((sum, food) => sum + food.calories, 0);
+                this.dailyCalories = this.foodLog.reduce((sum, food) => sum + parseFloat(food.calories), 0);
                 this.updateDashboard();
                 this.updateFoodLog();
                 
@@ -1840,9 +1840,9 @@ class CalorieTracker {
             <div class="food-item">
                 <div class="food-info">
                     <div class="food-name">${this.capitalizeFirst(food.name)} ${food.offline ? '(Offline)' : ''}</div>
-                    <div class="food-details">${food.quantity} ${food.unit} • ${food.timestamp}</div>
+                    <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit} • ${food.timestamp}</div>
                 </div>
-                <div class="food-calories">${food.calories} kcal</div>
+                <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
                 <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${food.name}" data-date="${new Date().toISOString().split('T')[0]}">×</button>
             </div>
         `).reverse().join('');
@@ -1855,7 +1855,7 @@ class CalorieTracker {
         const deletedFood = this.foodLog[foodIndex];
 
         // Always delete locally first (instant feedback)
-        this.dailyCalories -= deletedFood.calories;
+        this.dailyCalories -= parseFloat(deletedFood.calories);
         this.foodLog.splice(foodIndex, 1);
         
         // Add to sync queue for server deletion
@@ -2240,7 +2240,7 @@ class CalorieTracker {
                         <div class="food-item-row editable" data-log-id="${log.id}">
                             <div class="food-item-content">
                                 <span class="food-item-name">${this.escapeHtml(log.food_name)}</span>
-                                <span class="food-item-details">${log.quantity} ${log.unit}</span>
+                                <span class="food-item-details">${Math.round(parseFloat(log.quantity))} ${log.unit}</span>
                                 <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} kcal</span>
                             </div>
                             <div class="food-item-actions">
@@ -2510,6 +2510,25 @@ class CalorieTracker {
         
         const { logId, foodName, date } = this.currentDeleteContext;
         
+        // Find and immediately remove the UI element for instant feedback
+        const logElement = document.querySelector(`[data-log-id="${logId}"]`);
+        let removedElement = null;
+        let parentElement = null;
+        let nextSibling = null;
+        
+        if (logElement) {
+            // Store reference for potential restoration
+            parentElement = logElement.parentElement;
+            nextSibling = logElement.nextElementSibling;
+            removedElement = logElement.cloneNode(true);
+            
+            // Immediately remove from UI
+            logElement.remove();
+            
+            // Update day totals immediately if possible
+            this.updateDayTotalAfterDeletion(date, logElement);
+        }
+        
         try {
             await this.deleteFoodLogEntry(logId);
             
@@ -2518,14 +2537,68 @@ class CalorieTracker {
             // Close modal
             this.closeDeleteConfirmModal();
             
-            // Refresh the day view
+            // Refresh the day view to ensure data consistency
             if (this.historyData.expandedDays.has(date)) {
                 await this.refreshDayDetails(date);
             }
             
         } catch (error) {
             logger.error('Failed to delete food log:', error);
+            
+            // Restore the UI element if API call failed
+            if (removedElement && parentElement) {
+                if (nextSibling) {
+                    parentElement.insertBefore(removedElement, nextSibling);
+                } else {
+                    parentElement.appendChild(removedElement);
+                }
+            }
+            
             this.showMessage(error.message || 'Failed to delete food log entry', 'error');
+        }
+    }
+
+    /**
+     * Update day totals immediately after deletion for instant UI feedback
+     */
+    updateDayTotalAfterDeletion(date, logElement) {
+        try {
+            // Extract calories from the deleted element
+            const caloriesElement = logElement.querySelector('.food-item-calories');
+            if (!caloriesElement) return;
+            
+            const caloriesText = caloriesElement.textContent || '';
+            const calories = parseInt(caloriesText.replace(/[^\d]/g, '')) || 0;
+            
+            // Find the day card and update totals
+            const dayCard = document.querySelector(`[data-date="${date}"]`);
+            if (dayCard) {
+                // Update day stats in overview
+                const caloriesSpan = dayCard.querySelector('.day-stats .calories');
+                if (caloriesSpan) {
+                    const currentTotal = parseInt(caloriesSpan.textContent.replace(/[^\d]/g, '')) || 0;
+                    const newTotal = Math.max(0, currentTotal - calories);
+                    caloriesSpan.textContent = `${newTotal.toLocaleString()} kcal`;
+                }
+                
+                // Update detailed view total if expanded
+                const detailsTotal = dayCard.querySelector('.details-total');
+                if (detailsTotal) {
+                    const currentDetailTotal = parseInt(detailsTotal.textContent.replace(/[^\d]/g, '')) || 0;
+                    const newDetailTotal = Math.max(0, currentDetailTotal - calories);
+                    detailsTotal.textContent = `Total: ${newDetailTotal.toLocaleString()} kcal`;
+                }
+                
+                // Update meals count
+                const mealsSpan = dayCard.querySelector('.day-stats .meals');
+                if (mealsSpan) {
+                    const currentMeals = parseInt(mealsSpan.textContent.replace(/[^\d]/g, '')) || 0;
+                    const newMeals = Math.max(0, currentMeals - 1);
+                    mealsSpan.textContent = `${newMeals} meal${newMeals !== 1 ? 's' : ''}`;
+                }
+            }
+        } catch (error) {
+            logger.warn('Failed to update day totals immediately:', error);
         }
     }
 
@@ -3097,15 +3170,15 @@ class CalorieTracker {
         // Handle new backend response format
         if (serverData && serverData.success && serverData.logs) {
             const logs = serverData.logs;
-            const totalCalories = serverData.totalCalories || logs.reduce((total, log) => total + log.calories, 0);
+            const totalCalories = serverData.totalCalories || logs.reduce((total, log) => total + parseFloat(log.calories), 0);
             
             const serverFoodLog = logs.map(log => ({
                 id: log.id,
                 name: log.food_name || log.name,
                 quantity: log.quantity,
                 unit: log.unit,
-                calories: log.calories,
-                timestamp: new Date(log.created_at).toLocaleTimeString(),
+                calories: parseFloat(log.calories),
+                timestamp: log.created_at ? new Date(log.created_at).toLocaleTimeString() : new Date().toLocaleTimeString(),
                 serverId: log.id // Track server ID for syncing
             }));
 
