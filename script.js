@@ -625,14 +625,20 @@ class CalorieTracker {
                 logger.error(`API Error (${response.status}):`, errorData.error || errorData.message);
             }
             
-            throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+            // Create an error object with both message and full data
+            const error = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+            error.statusCode = response.status;
+            error.data = errorData; // Preserve full error data including details
+            throw error;
         }
 
         const result = await response.json();
         
         // Handle new backend response format
         if (result.success === false) {
-            throw new Error(result.message || result.error || 'API request failed');
+            const error = new Error(result.message || result.error || 'API request failed');
+            error.data = result; // Preserve full response including details
+            throw error;
         }
         
         return result;
@@ -1499,6 +1505,7 @@ class CalorieTracker {
         const selectedIds = Array.from(this.adminData.selectedFoodIds);
         let successCount = 0;
         let failCount = 0;
+        const failedFoods = []; // Track foods that couldn't be deleted
 
         // Show progress message
         this.showMessage(`Deleting ${count} foods...`, 'info');
@@ -1509,19 +1516,34 @@ class CalorieTracker {
                 await this.apiCall(`/admin/foods/${foodId}`, 'DELETE');
                 successCount++;
             } catch (error) {
-                logger.info('Backend delete failed for', foodId, '- trying local:', error.message);
+                failCount++;
                 
-                // Fallback to local array deletion
-                if (this.adminData.foods) {
-                    const foodIndex = this.adminData.foods.findIndex(food => food.id == foodId);
-                    if (foodIndex !== -1) {
-                        this.adminData.foods.splice(foodIndex, 1);
-                        successCount++;
-                    } else {
-                        failCount++;
-                    }
+                // Get food name for error reporting
+                const food = this.adminData.foods?.find(f => f.id == foodId);
+                const foodName = food ? food.name : `ID ${foodId}`;
+                
+                // Check if this is a validation error (food in use)
+                if (error.data && error.data.details?.reason === 'FOOD_IN_USE') {
+                    const usageCount = error.data.details.usageCount;
+                    failedFoods.push(`"${foodName}" (logged ${usageCount} time${usageCount > 1 ? 's' : ''})`);
+                    logger.warn(`Cannot delete food ${foodId}: Used in ${usageCount} food log entries`);
                 } else {
-                    failCount++;
+                    // Other errors - try local fallback for connection issues only
+                    logger.info('Backend delete failed for', foodId, '- trying local:', error.message);
+                    
+                    if (this.adminData.foods && !error.data) {
+                        // Only fallback for connection errors, not validation errors
+                        const foodIndex = this.adminData.foods.findIndex(food => food.id == foodId);
+                        if (foodIndex !== -1) {
+                            this.adminData.foods.splice(foodIndex, 1);
+                            successCount++;
+                            failCount--;
+                        } else {
+                            failedFoods.push(`"${foodName}" (not found)`);
+                        }
+                    } else {
+                        failedFoods.push(`"${foodName}" (${error.message})`);
+                    }
                 }
             }
         }
@@ -1530,15 +1552,24 @@ class CalorieTracker {
         this.adminData.selectedFoodIds.clear();
         document.getElementById('selectAllFoods').checked = false;
         
-        // Show result message
-        if (successCount > 0) {
+        // Show detailed result message
+        if (successCount > 0 && failCount === 0) {
             this.showMessage(
-                `Successfully deleted ${successCount} food${successCount > 1 ? 's' : ''}` +
-                (failCount > 0 ? ` (${failCount} failed)` : ''),
-                failCount > 0 ? 'warning' : 'success'
+                `Successfully deleted ${successCount} food${successCount > 1 ? 's' : ''}`,
+                'success'
+            );
+        } else if (successCount > 0 && failCount > 0) {
+            this.showMessage(
+                `Deleted ${successCount} food${successCount > 1 ? 's' : ''}, but ${failCount} failed.\n\n` +
+                `Failed foods:\n${failedFoods.join('\n')}`,
+                'warning'
             );
         } else {
-            this.showMessage('Failed to delete foods', 'error');
+            this.showMessage(
+                `Failed to delete all ${failCount} food${failCount > 1 ? 's' : ''}.\n\n` +
+                `Failed foods:\n${failedFoods.join('\n')}`,
+                'error'
+            );
         }
 
         // Refresh the list
@@ -2174,9 +2205,27 @@ class CalorieTracker {
             this.showMessage('Food deleted successfully from Pios Food DB', 'success');
             this.loadPiosFoodDB(); // Refresh the foods list from backend
         } catch (error) {
+            // Check if this is a backend error with detailed information
+            if (error.data && error.data.message) {
+                // Display the detailed error message from the backend
+                const message = error.data.message;
+                const usageCount = error.data.details?.usageCount;
+                
+                if (usageCount !== undefined) {
+                    // Show detailed error with usage count
+                    this.showMessage(message, 'error');
+                    logger.warn(`Cannot delete food ${foodId}: Used in ${usageCount} food log entries`);
+                } else {
+                    // Show the backend error message
+                    this.showMessage(message, 'error');
+                    logger.warn(`Cannot delete food ${foodId}:`, error.data);
+                }
+                return; // Don't try local fallback for backend validation errors
+            }
+            
             logger.info('Backend delete failed, using local demo mode:', error.message);
             
-            // Fallback to local array deletion
+            // Fallback to local array deletion (only for connection errors)
             if (this.adminData.foods) {
                 const foodIndex = this.adminData.foods.findIndex(food => food.id == foodId);
                 if (foodIndex !== -1) {
