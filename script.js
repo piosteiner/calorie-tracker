@@ -489,6 +489,9 @@ class CalorieTracker {
         // Initialize database search toggles
         this.initDatabaseToggles();
         
+        // Initialize goal editing functionality
+        this.initGoalEditing();
+        
         // Initialize event delegation for data-action attributes
         this.initEventDelegation();
         
@@ -716,6 +719,84 @@ class CalorieTracker {
                 });
             }
         });
+    }
+
+    initGoalEditing() {
+        const goalDisplay = document.getElementById('calorieGoal');
+        const goalInput = document.getElementById('calorieGoalInput');
+        
+        // Click to edit goal
+        goalDisplay.addEventListener('click', () => {
+            this.startGoalEditing();
+        });
+        
+        // Save on Enter or blur
+        goalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.saveGoalEdit();
+            } else if (e.key === 'Escape') {
+                this.cancelGoalEdit();
+            }
+        });
+        
+        goalInput.addEventListener('blur', () => {
+            this.saveGoalEdit();
+        });
+    }
+
+    startGoalEditing() {
+        const goalDisplay = document.getElementById('calorieGoal');
+        const goalInput = document.getElementById('calorieGoalInput');
+        
+        goalInput.value = this.calorieGoal;
+        goalDisplay.style.display = 'none';
+        goalInput.style.display = 'block';
+        goalInput.focus();
+        goalInput.select();
+    }
+
+    cancelGoalEdit() {
+        const goalDisplay = document.getElementById('calorieGoal');
+        const goalInput = document.getElementById('calorieGoalInput');
+        
+        goalDisplay.style.display = 'block';
+        goalInput.style.display = 'none';
+    }
+
+    async saveGoalEdit() {
+        const goalDisplay = document.getElementById('calorieGoal');
+        const goalInput = document.getElementById('calorieGoalInput');
+        const newGoal = parseInt(goalInput.value);
+        
+        // Validate goal
+        if (!newGoal || newGoal < 500 || newGoal > 10000) {
+            this.notifications.error('Please enter a valid goal between 500 and 10000 calories');
+            return;
+        }
+        
+        // Update local goal
+        this.calorieGoal = newGoal;
+        goalDisplay.textContent = newGoal;
+        
+        // Save to backend for current date
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            await this.apiCall('/user/daily-goal', 'POST', {
+                date: today,
+                goal: newGoal
+            });
+            
+            this.notifications.success(`Daily goal updated to ${newGoal} kcal`);
+        } catch (error) {
+            logger.warn('Failed to save goal to server:', error);
+            // Still allow local update for offline functionality
+        }
+        
+        // Hide input and show display
+        this.cancelGoalEdit();
+        
+        // Update progress bar
+        this.updateDashboard();
     }
 
     // Load database toggle preferences from localStorage
@@ -1527,9 +1608,19 @@ class CalorieTracker {
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                const response = await this.apiCall(`/logs?date=${today}`);
                 
-                this.foodLog = response.logs.map(log => ({
+                // Load both food logs and daily goal
+                const [logsResponse, goalResponse] = await Promise.all([
+                    this.apiCall(`/logs?date=${today}`),
+                    this.apiCall(`/user/daily-goal/${today}`).catch(() => ({ goal: this.calorieGoal }))
+                ]);
+                
+                // Update goal if found
+                if (goalResponse && goalResponse.goal) {
+                    this.calorieGoal = goalResponse.goal;
+                }
+                
+                this.foodLog = logsResponse.logs.map(log => ({
                     id: log.id,
                     name: log.food_name,
                     quantity: log.quantity,
@@ -1823,6 +1914,7 @@ class CalorieTracker {
     updateDashboard() {
         document.getElementById('totalCalories').textContent = this.dailyCalories;
         document.getElementById('mealsCount').textContent = this.foodLog.length;
+        document.getElementById('calorieGoal').textContent = this.calorieGoal;
         
         const progressPercent = Math.min((this.dailyCalories / this.calorieGoal) * 100, 100);
         document.getElementById('calorieProgress').style.width = progressPercent + '%';
@@ -2188,6 +2280,8 @@ class CalorieTracker {
             const displayDate = this.formatHistoryDate(dateObj);
             const calories = Math.round(parseFloat(day.total_calories || 0));
             const mealsCount = parseInt(day.meals_count || 0);
+            const dailyGoal = Math.round(parseFloat(day.daily_goal || 2000));
+            const goalPercent = Math.round((calories / dailyGoal) * 100);
 
             return `
                 <div class="history-day-card" data-date="${date}">
@@ -2196,6 +2290,8 @@ class CalorieTracker {
                             <h4>📅 ${displayDate}</h4>
                             <p class="day-stats">
                                 <span class="calories">${calories.toLocaleString()} kcal</span>
+                                <span class="separator">•</span>
+                                <span class="goal">Goal: ${dailyGoal.toLocaleString()} kcal (${goalPercent}%)</span>
                                 <span class="separator">•</span>
                                 <span class="meals">${mealsCount} meal${mealsCount !== 1 ? 's' : ''}</span>
                             </p>

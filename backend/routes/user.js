@@ -161,4 +161,90 @@ router.put('/goal', [
     }
 });
 
+// Set daily calorie goal for specific date
+router.post('/daily-goal', [
+    body('date').isISO8601().toDate().withMessage('Valid date is required'),
+    body('goal').isInt({ min: 500, max: 10000 }).withMessage('Goal must be between 500-10000 calories')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: errors.array()
+            });
+        }
+
+        const { date, goal } = req.body;
+        const userId = req.user.id;
+
+        // Check if goal exists for this date
+        const existingGoal = await db.query(
+            'SELECT id FROM daily_goals WHERE user_id = ? AND goal_date = ?',
+            [userId, date]
+        );
+
+        if (existingGoal.length > 0) {
+            // Update existing goal
+            await db.query(
+                'UPDATE daily_goals SET goal_calories = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND goal_date = ?',
+                [goal, userId, date]
+            );
+        } else {
+            // Insert new goal
+            await db.query(
+                'INSERT INTO daily_goals (user_id, goal_date, goal_calories) VALUES (?, ?, ?)',
+                [userId, date, goal]
+            );
+        }
+
+        res.json({
+            success: true,
+            message: 'Daily goal saved successfully',
+            goal,
+            date
+        });
+    } catch (error) {
+        console.error('Save daily goal error:', error);
+        res.status(500).json({
+            error: 'Failed to save daily goal'
+        });
+    }
+});
+
+// Get daily calorie goal for specific date
+router.get('/daily-goal/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const userId = req.user.id;
+
+        // Get specific daily goal or fall back to user's default goal
+        const dailyGoal = await db.query(`
+            SELECT dg.goal_calories as daily_goal
+            FROM daily_goals dg 
+            WHERE dg.user_id = ? AND dg.goal_date = ?
+            UNION ALL
+            SELECT u.daily_calorie_goal as daily_goal
+            FROM users u 
+            WHERE u.id = ? AND NOT EXISTS (
+                SELECT 1 FROM daily_goals WHERE user_id = ? AND goal_date = ?
+            )
+            LIMIT 1
+        `, [userId, date, userId, userId, date]);
+
+        const goal = dailyGoal.length > 0 ? dailyGoal[0].daily_goal : 2000;
+
+        res.json({
+            success: true,
+            goal,
+            date
+        });
+    } catch (error) {
+        console.error('Get daily goal error:', error);
+        res.status(500).json({
+            error: 'Failed to get daily goal'
+        });
+    }
+});
+
 module.exports = router;

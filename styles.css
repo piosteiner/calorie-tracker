@@ -419,6 +419,35 @@ body {
     color: var(--accent-primary);
 }
 
+.editable-goal {
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 2px 4px;
+    transition: background-color 0.2s ease;
+}
+
+.editable-goal:hover {
+    background-color: var(--bg-secondary);
+}
+
+.goal-input {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--accent-primary);
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-primary);
+    border-radius: 4px;
+    padding: 2px 8px;
+    text-align: center;
+    width: 100px;
+}
+
+.goal-input:focus {
+    outline: none;
+    border-color: var(--accent-secondary);
+    background: var(--bg-primary);
+}
+
 .stat-label {
     color: var(--text-secondary);
     font-size: 0.9rem;
