@@ -2070,15 +2070,12 @@ class CalorieTracker {
      * Create new food log entry via API
      */
     async createFoodLog(foodData) {
-        const response = await this.apiCall('/logs', {
-            method: 'POST',
-            body: JSON.stringify({
-                name: foodData.name,
-                quantity: foodData.quantity,
-                unit: foodData.unit,
-                calories: foodData.calories,
-                logDate: foodData.logDate
-            })
+        const response = await this.apiCall('/logs', 'POST', {
+            name: foodData.name,
+            quantity: foodData.quantity,
+            unit: foodData.unit,
+            calories: foodData.calories,
+            logDate: foodData.logDate
         });
         
         if (!response.success) {
@@ -2092,15 +2089,12 @@ class CalorieTracker {
      * Update existing food log entry via API
      */
     async updateFoodLog(logId, foodData) {
-        const response = await this.apiCall(`/logs/${logId}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-                name: foodData.name,
-                quantity: foodData.quantity,
-                unit: foodData.unit,
-                calories: foodData.calories,
-                logDate: foodData.logDate
-            })
+        const response = await this.apiCall(`/logs/${logId}`, 'PUT', {
+            name: foodData.name,
+            quantity: foodData.quantity,
+            unit: foodData.unit,
+            calories: foodData.calories,
+            logDate: foodData.logDate
         });
         
         if (!response.success) {
@@ -2114,9 +2108,7 @@ class CalorieTracker {
      * Delete food log entry via API
      */
     async deleteFoodLog(logId) {
-        const response = await this.apiCall(`/logs/${logId}`, {
-            method: 'DELETE'
-        });
+        const response = await this.apiCall(`/logs/${logId}`, 'DELETE');
         
         if (!response.success) {
             throw new Error(response.error || 'Failed to delete food log');
