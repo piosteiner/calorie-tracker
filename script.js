@@ -1842,8 +1842,8 @@ class CalorieTracker {
                     <div class="food-name">${this.capitalizeFirst(food.name)} ${food.offline ? '(Offline)' : ''}</div>
                     <div class="food-details">${food.quantity} ${food.unit} • ${food.timestamp}</div>
                 </div>
-                <div class="food-calories">${food.calories} cal</div>
-                <button class="delete-btn" data-action="delete-food" data-food-id="${food.id}">×</button>
+                <div class="food-calories">${food.calories} kcal</div>
+                <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${food.name}" data-date="${new Date().toISOString().split('T')[0]}">×</button>
             </div>
         `).reverse().join('');
     }
@@ -2195,7 +2195,7 @@ class CalorieTracker {
                         <div class="day-info">
                             <h4>📅 ${displayDate}</h4>
                             <p class="day-stats">
-                                <span class="calories">${calories.toLocaleString()} cal</span>
+                                <span class="calories">${calories.toLocaleString()} kcal</span>
                                 <span class="separator">•</span>
                                 <span class="meals">${mealsCount} meal${mealsCount !== 1 ? 's' : ''}</span>
                             </p>
