@@ -1349,10 +1349,17 @@ class CalorieTracker {
     showConfirmation(title, message, confirmText = 'Confirm', confirmType = 'primary') {
         return new Promise((resolve) => {
             const modal = document.getElementById('confirmationModal');
+            const overlay = document.getElementById('confirmationOverlay');
             const titleEl = document.getElementById('confirmationTitle');
             const messageEl = document.getElementById('confirmationMessage');
             const confirmBtn = document.getElementById('confirmationConfirmBtn');
             const cancelBtn = document.getElementById('confirmationCancelBtn');
+
+            if (!modal || !overlay) {
+                logger.error('Confirmation modal elements not found');
+                resolve(false);
+                return;
+            }
 
             // Set content
             titleEl.textContent = title;
@@ -1384,12 +1391,20 @@ class CalorieTracker {
                 document.body.style.overflow = '';
                 confirmBtn.removeEventListener('click', handleConfirm);
                 cancelBtn.removeEventListener('click', handleCancel);
-                modal.removeEventListener('click', handleOverlayClick);
+                overlay.removeEventListener('click', handleOverlayClick);
+                document.removeEventListener('keydown', handleEscapeKey);
             };
 
-            // Handle clicking overlay
+            // Handle clicking overlay (clicking outside modal)
             const handleOverlayClick = (e) => {
-                if (e.target.classList.contains('modal-overlay')) {
+                if (e.target === overlay) {
+                    handleCancel();
+                }
+            };
+
+            // Handle Escape key
+            const handleEscapeKey = (e) => {
+                if (e.key === 'Escape') {
                     handleCancel();
                 }
             };
@@ -1397,7 +1412,8 @@ class CalorieTracker {
             // Attach event listeners
             confirmBtn.addEventListener('click', handleConfirm);
             cancelBtn.addEventListener('click', handleCancel);
-            modal.addEventListener('click', handleOverlayClick);
+            overlay.addEventListener('click', handleOverlayClick);
+            document.addEventListener('keydown', handleEscapeKey);
         });
     }
 
