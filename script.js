@@ -1,5 +1,206 @@
 // Calorie Tracker App JavaScript
 
+// =============================================================================
+// TOAST NOTIFICATION SYSTEM
+// =============================================================================
+
+class NotificationSystem {
+    constructor() {
+        this.container = null;
+        this.notifications = new Map(); // Track active notifications
+        this.notificationCounter = 0;
+        this.init();
+    }
+
+    init() {
+        // Create notification container if it doesn't exist
+        if (!document.getElementById('toast-container')) {
+            this.container = document.createElement('div');
+            this.container.id = 'toast-container';
+            this.container.className = 'toast-container';
+            document.body.appendChild(this.container);
+        } else {
+            this.container = document.getElementById('toast-container');
+        }
+    }
+
+    // Main notification method
+    show(message, type = 'info', options = {}) {
+        const id = ++this.notificationCounter;
+        const config = {
+            title: this.getDefaultTitle(type),
+            duration: this.getDefaultDuration(type),
+            closable: true,
+            ...options
+        };
+
+        const notification = this.createNotificationElement(id, message, type, config);
+        
+        // Add to container
+        this.container.appendChild(notification);
+        this.notifications.set(id, notification);
+
+        // Show with animation
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+
+        // Auto-dismiss if duration is set
+        if (config.duration > 0) {
+            setTimeout(() => {
+                this.hide(id);
+            }, config.duration);
+        }
+
+        return id;
+    }
+
+    // Convenience methods
+    success(message, options = {}) {
+        return this.show(message, 'success', options);
+    }
+
+    error(message, options = {}) {
+        return this.show(message, 'error', { duration: 6000, ...options });
+    }
+
+    warning(message, options = {}) {
+        return this.show(message, 'warning', { duration: 5000, ...options });
+    }
+
+    info(message, options = {}) {
+        return this.show(message, 'info', options);
+    }
+
+    // Hide specific notification
+    hide(id) {
+        const notification = this.notifications.get(id);
+        if (!notification) return;
+
+        notification.classList.add('hide');
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+            this.notifications.delete(id);
+        }, 300);
+    }
+
+    // Clear all notifications
+    clear() {
+        this.notifications.forEach((_, id) => this.hide(id));
+    }
+
+    // Create notification DOM element
+    createNotificationElement(id, message, type, config) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.setAttribute('data-notification-id', id);
+
+        // Add progress bar for auto-dismiss
+        if (config.duration > 0) {
+            toast.style.setProperty('--duration', `${config.duration}ms`);
+        }
+
+        toast.innerHTML = `
+            <div class="toast-icon">${this.getIcon(type)}</div>
+            <div class="toast-content">
+                ${config.title ? `<div class="toast-title">${this.escapeHtml(config.title)}</div>` : ''}
+                <div class="toast-message">${this.escapeHtml(message)}</div>
+            </div>
+            ${config.closable ? '<button class="toast-close" type="button">&times;</button>' : ''}
+            ${config.duration > 0 ? '<div class="toast-progress"></div>' : ''}
+        `;
+
+        // Add close button listener
+        if (config.closable) {
+            const closeBtn = toast.querySelector('.toast-close');
+            closeBtn.addEventListener('click', () => this.hide(id));
+        }
+
+        return toast;
+    }
+
+    // Get appropriate icon for notification type
+    getIcon(type) {
+        const icons = {
+            success: '✓',
+            error: '✕',
+            warning: '⚠',
+            info: 'ℹ'
+        };
+        return icons[type] || icons.info;
+    }
+
+    // Get default title for notification type
+    getDefaultTitle(type) {
+        const titles = {
+            success: 'Success',
+            error: 'Error',
+            warning: 'Warning',
+            info: 'Info'
+        };
+        return titles[type] || titles.info;
+    }
+
+    // Get default duration for notification type
+    getDefaultDuration(type) {
+        const durations = {
+            success: 4000,
+            error: 6000,
+            warning: 5000,
+            info: 4000
+        };
+        return durations[type] || 4000;
+    }
+
+    // Escape HTML to prevent XSS
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Show API operation feedback
+    showApiResult(response, operation = 'Operation') {
+        if (response.success) {
+            const message = response.message || `${operation} completed successfully`;
+            this.success(message);
+        } else {
+            const message = this.formatErrorMessage(response.message || `${operation} failed`);
+            this.error(message);
+        }
+    }
+
+    // Format error messages to be user-friendly
+    formatErrorMessage(message) {
+        const errorMappings = {
+            'Network request failed': 'Network error. Please check your connection and try again.',
+            'Unauthorized': 'Session expired. Please log in again.',
+            'Forbidden': 'You don\'t have permission to perform this action.',
+            'Not Found': 'The requested resource was not found.',
+            'Too Many Requests': 'Too many requests. Please wait a moment and try again.',
+            'Internal Server Error': 'Server error. Please try again later.',
+            'Bad Gateway': 'Server temporarily unavailable. Please try again later.',
+            'Service Unavailable': 'Service temporarily unavailable. Please try again later.'
+        };
+
+        // Check for exact matches
+        for (const [key, value] of Object.entries(errorMappings)) {
+            if (message.includes(key)) {
+                return value;
+            }
+        }
+
+        return message; // Return original message if no mapping found
+    }
+}
+
+// =============================================================================
+// MAIN CALORIE TRACKER CLASS
+// =============================================================================
+
 class CalorieTracker {
     constructor() {
         this.currentUser = null;
@@ -8,6 +209,9 @@ class CalorieTracker {
         this.foodLog = [];
         this.calorieGoal = CONFIG.DEFAULT_CALORIE_GOAL;
         this.isOnline = navigator.onLine;
+        
+        // Initialize notification system
+        this.notifications = new NotificationSystem();
         
         // Admin properties
         this.isAdmin = false;
@@ -203,14 +407,14 @@ class CalorieTracker {
         // Check online status
         window.addEventListener('online', () => {
             this.isOnline = true;
-            this.showMessage('Connection restored', 'success');
+            this.notifications.success('Connection restored');
             // Try to process pending sync queue when back online
             setTimeout(() => this.processSyncQueue(), 1000);
         });
         
         window.addEventListener('offline', () => {
             this.isOnline = false;
-            this.showMessage('Working offline', 'warning');
+            this.notifications.warning('Working offline');
         });
         
         // Initialize sync status
@@ -677,53 +881,321 @@ class CalorieTracker {
         this.showSection('login');
     }
 
-    async apiCall(endpoint, method = 'GET', data = null) {
-        if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
-            throw new Error('API not available in development/offline mode');
+    async apiCall(endpoint, method = 'GET', data = null, options = {}) {
+        const {
+            showLoading = false,
+            showSuccess = false,
+            showError = true,
+            loadingMessage = 'Saving...',
+            successMessage = null,
+            silent = false
+        } = options;
+
+        // Show loading notification for non-GET requests
+        let loadingNotificationId = null;
+        if (showLoading && method !== 'GET' && !silent) {
+            loadingNotificationId = this.notifications.info(loadingMessage, { duration: 0 });
         }
 
-        const options = {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
+        try {
+            if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
+                throw new Error('API not available in development/offline mode');
             }
+
+            const fetchOptions = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            if (this.authToken) {
+                fetchOptions.headers.Authorization = `Bearer ${this.authToken}`;
+            }
+
+            if (data) {
+                fetchOptions.body = JSON.stringify(data);
+            }
+
+            const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, fetchOptions);
+            
+            // Hide loading notification
+            if (loadingNotificationId) {
+                this.notifications.hide(loadingNotificationId);
+            }
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+                
+                // Don't log auth errors as they're expected when not logged in
+                if (response.status !== 401 || endpoint !== '/auth/verify') {
+                    logger.error(`API Error (${response.status}):`, errorData.error || errorData.message);
+                    
+                    // Show error notification for non-silent calls
+                    if (showError && !silent) {
+                        const errorMessage = this.getHttpErrorMessage(response.status, errorData);
+                        this.notifications.error(errorMessage);
+                    }
+                }
+                
+                // Create an error object with both message and full data
+                const error = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+                error.statusCode = response.status;
+                error.data = errorData; // Preserve full error data including details
+                throw error;
+            }
+
+            const result = await response.json();
+            
+            // Handle new backend response format
+            if (result.success === false) {
+                if (showError && !silent) {
+                    this.notifications.error(result.message || 'Operation failed');
+                }
+                
+                const error = new Error(result.message || result.error || 'API request failed');
+                error.data = result; // Preserve full response including details
+                throw error;
+            }
+            
+            // Show success notification for successful operations
+            if (showSuccess && !silent && (method === 'POST' || method === 'PUT' || method === 'DELETE')) {
+                const message = successMessage || result.message || this.getDefaultSuccessMessage(method, endpoint);
+                this.notifications.success(message);
+            }
+            
+            return result;
+            
+        } catch (error) {
+            // Hide loading notification on error
+            if (loadingNotificationId) {
+                this.notifications.hide(loadingNotificationId);
+            }
+            
+            // Handle network errors
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                if (showError && !silent) {
+                    this.notifications.error('Network error. Please check your connection and try again.');
+                }
+                error.message = 'Network request failed';
+            }
+            
+            throw error;
+        }
+    }
+
+    // Get user-friendly HTTP error messages
+    getHttpErrorMessage(statusCode, errorData) {
+        const statusMessages = {
+            400: 'Invalid request. Please check your input.',
+            401: 'Session expired. Please log in again.',
+            403: 'You don\'t have permission to perform this action.',
+            404: 'The requested resource was not found.',
+            429: 'Too many requests. Please wait a moment and try again.',
+            500: 'Server error. Please try again later.',
+            502: 'Server temporarily unavailable. Please try again later.',
+            503: 'Service temporarily unavailable. Please try again later.'
         };
 
-        if (this.authToken) {
-            options.headers.Authorization = `Bearer ${this.authToken}`;
-        }
+        return errorData.message || statusMessages[statusCode] || 'An unexpected error occurred.';
+    }
 
-        if (data) {
-            options.body = JSON.stringify(data);
-        }
+    // Generate default success messages based on operation
+    getDefaultSuccessMessage(method, endpoint) {
+        const operation = this.getOperationName(method, endpoint);
+        return `${operation} completed successfully`;
+    }
 
-        const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, options);
+    // Extract operation name from method and endpoint
+    getOperationName(method, endpoint) {
+        if (endpoint.includes('/logs')) {
+            if (method === 'POST') return 'Food logged';
+            if (method === 'PUT') return 'Log updated';
+            if (method === 'DELETE') return 'Log deleted';
+        }
         
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-            
-            // Don't log auth errors as they're expected when not logged in
-            if (response.status !== 401 || endpoint !== '/auth/verify') {
-                logger.error(`API Error (${response.status}):`, errorData.error || errorData.message);
+        if (endpoint.includes('/foods')) {
+            if (method === 'POST') return 'Food added';
+            if (method === 'PUT') return 'Food updated';
+            if (method === 'DELETE') return 'Food deleted';
+        }
+        
+        if (endpoint.includes('/auth')) {
+            if (method === 'POST' && endpoint.includes('login')) return 'Logged in';
+            if (method === 'POST' && endpoint.includes('logout')) return 'Logged out';
+        }
+        
+        const operations = {
+            'POST': 'Created',
+            'PUT': 'Updated',
+            'DELETE': 'Deleted'
+        };
+        
+        return operations[method] || 'Operation';
+    }
+
+    // =============================================================================
+    // FORM UTILITY METHODS
+    // =============================================================================
+
+    // Add loading state to button
+    setButtonLoading(button, loading = true, originalText = null) {
+        if (!button) return;
+        
+        if (loading) {
+            button.dataset.originalText = originalText || button.textContent;
+            button.classList.add('loading');
+            button.disabled = true;
+        } else {
+            button.classList.remove('loading');
+            button.disabled = false;
+            if (button.dataset.originalText) {
+                button.textContent = button.dataset.originalText;
+                delete button.dataset.originalText;
+            }
+        }
+    }
+
+    // Add loading state to form
+    setFormLoading(form, loading = true) {
+        if (!form) return;
+        
+        if (loading) {
+            form.classList.add('form-loading');
+            // Disable all form inputs
+            form.querySelectorAll('input, button, select, textarea').forEach(element => {
+                if (!element.disabled) {
+                    element.dataset.wasEnabled = 'true';
+                    element.disabled = true;
+                }
+            });
+        } else {
+            form.classList.remove('form-loading');
+            // Re-enable previously enabled inputs
+            form.querySelectorAll('[data-was-enabled="true"]').forEach(element => {
+                element.disabled = false;
+                delete element.dataset.wasEnabled;
+            });
+        }
+    }
+
+    // Show field validation error
+    showFieldError(fieldElement, message) {
+        if (!fieldElement) return;
+        
+        const formField = fieldElement.closest('.form-field, .input-group, .form-group');
+        if (!formField) return;
+        
+        // Add invalid class
+        formField.classList.add('invalid');
+        
+        // Remove existing error message
+        const existingError = formField.querySelector('.field-error');
+        if (existingError) {
+            existingError.remove();
+        }
+        
+        // Add new error message
+        const errorElement = document.createElement('div');
+        errorElement.className = 'field-error';
+        errorElement.textContent = message;
+        fieldElement.parentNode.appendChild(errorElement);
+        
+        // Clear error when user starts typing
+        const clearError = () => {
+            this.clearFieldError(fieldElement);
+            fieldElement.removeEventListener('input', clearError);
+            fieldElement.removeEventListener('change', clearError);
+        };
+        
+        fieldElement.addEventListener('input', clearError);
+        fieldElement.addEventListener('change', clearError);
+    }
+
+    // Clear field validation error
+    clearFieldError(fieldElement) {
+        if (!fieldElement) return;
+        
+        const formField = fieldElement.closest('.form-field, .input-group, .form-group');
+        if (!formField) return;
+        
+        formField.classList.remove('invalid');
+        
+        const errorElement = formField.querySelector('.field-error');
+        if (errorElement) {
+            errorElement.remove();
+        }
+    }
+
+    // Clear all form errors
+    clearFormErrors(form) {
+        if (!form) return;
+        
+        form.querySelectorAll('.invalid').forEach(field => {
+            field.classList.remove('invalid');
+        });
+        
+        form.querySelectorAll('.field-error').forEach(error => {
+            error.remove();
+        });
+    }
+
+    // Validate form fields
+    validateField(fieldElement, rules = {}) {
+        if (!fieldElement) return { valid: true };
+        
+        const value = fieldElement.value.trim();
+        const {
+            required = false,
+            minLength = null,
+            maxLength = null,
+            pattern = null,
+            min = null,
+            max = null,
+            type = null
+        } = rules;
+        
+        // Required validation
+        if (required && !value) {
+            return { valid: false, message: 'This field is required' };
+        }
+        
+        // Skip other validations if field is empty and not required
+        if (!value && !required) {
+            return { valid: true };
+        }
+        
+        // Length validations
+        if (minLength !== null && value.length < minLength) {
+            return { valid: false, message: `Must be at least ${minLength} characters` };
+        }
+        
+        if (maxLength !== null && value.length > maxLength) {
+            return { valid: false, message: `Must be no more than ${maxLength} characters` };
+        }
+        
+        // Pattern validation
+        if (pattern && !pattern.test(value)) {
+            return { valid: false, message: 'Invalid format' };
+        }
+        
+        // Number validations
+        if (type === 'number') {
+            const num = parseFloat(value);
+            if (isNaN(num)) {
+                return { valid: false, message: 'Must be a valid number' };
             }
             
-            // Create an error object with both message and full data
-            const error = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
-            error.statusCode = response.status;
-            error.data = errorData; // Preserve full error data including details
-            throw error;
-        }
-
-        const result = await response.json();
-        
-        // Handle new backend response format
-        if (result.success === false) {
-            const error = new Error(result.message || result.error || 'API request failed');
-            error.data = result; // Preserve full response including details
-            throw error;
+            if (min !== null && num < min) {
+                return { valid: false, message: `Must be at least ${min}` };
+            }
+            
+            if (max !== null && num > max) {
+                return { valid: false, message: `Must be no more than ${max}` };
+            }
         }
         
-        return result;
+        return { valid: true };
     }
 
     showSection(sectionName) {
@@ -868,18 +1340,56 @@ class CalorieTracker {
         
         this.showSection('login');
         document.getElementById('loginForm').reset();
-        this.showMessage('Logged out successfully', 'success');
+        this.notifications.success('Logged out successfully');
     }
 
     async handleAddFood() {
+        const form = document.getElementById('foodForm');
+        const submitButton = form.querySelector('[type="submit"]') || form.querySelector('button');
+        
+        // Clear any existing form errors
+        this.clearFormErrors(form);
+        
         try {
-            // Validate inputs using Validators utility
-            const foodInput = Validators.validateFoodName(
-                document.getElementById('foodName').value
-            );
-            const quantity = Validators.validateQuantity(
-                document.getElementById('quantity').value
-            );
+            // Validate inputs
+            const foodNameInput = document.getElementById('foodName');
+            const quantityInput = document.getElementById('quantity');
+            
+            let hasErrors = false;
+            
+            // Validate food name
+            const foodValidation = this.validateField(foodNameInput, {
+                required: true,
+                minLength: 1,
+                maxLength: 100
+            });
+            
+            if (!foodValidation.valid) {
+                this.showFieldError(foodNameInput, foodValidation.message);
+                hasErrors = true;
+            }
+            
+            // Validate quantity
+            const quantityValidation = this.validateField(quantityInput, {
+                required: true,
+                type: 'number',
+                min: 0.1,
+                max: 10000
+            });
+            
+            if (!quantityValidation.valid) {
+                this.showFieldError(quantityInput, quantityValidation.message);
+                hasErrors = true;
+            }
+            
+            if (hasErrors) return;
+            
+            // Set loading state
+            this.setButtonLoading(submitButton, true);
+            this.setFormLoading(form, true);
+            
+            const foodName = foodNameInput.value.trim();
+            const quantity = parseFloat(quantityInput.value);
             const unit = document.getElementById('unit').value;
 
             // Check if we have enhanced food data from selection
@@ -887,9 +1397,6 @@ class CalorieTracker {
                 await this.handleAddEnhancedFood(this.selectedFoodData, quantity, unit);
                 return;
             }
-
-            // Original logic for manual input
-            const foodName = foodInput.toLowerCase();
 
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
@@ -927,13 +1434,17 @@ class CalorieTracker {
                         };
                     } catch (error) {
                         // User cancelled calorie input
-                        this.showMessage('Food entry cancelled.', 'info');
+                        this.notifications.info('Food entry cancelled');
                         return;
                     }
                 }
 
-                // Add to backend
-                const logResponse = await this.apiCall('/logs', 'POST', logData);
+                // Add to backend with notifications
+                const logResponse = await this.apiCall('/logs', 'POST', logData, {
+                    showLoading: true,
+                    showSuccess: true,
+                    successMessage: `Successfully logged ${quantity}${unit} of ${foodName} (${Math.round(calories)} cal)`
+                });
 
                 const foodEntry = {
                     id: logResponse.logId,
@@ -950,21 +1461,25 @@ class CalorieTracker {
                 this.updateDashboard();
                 this.updateFoodLog();
                 
-                document.getElementById('foodForm').reset();
+                // Reset form
+                form.reset();
                 document.getElementById('quantity').value = 1;
-                
-                this.showMessage(`Added ${foodName}! +${calories} calories`, 'success');
 
             } catch (error) {
-                this.showMessage(`Error adding food: ${error.message}`, 'error');
+                // Error notification is handled by apiCall
+                logger.error('Error adding food:', error);
             }
         } else {
-            // Offline mode - suggest using search functionality instead
-            this.showMessage('Please use the food search to find and add foods when offline', 'error');
+            // Offline mode
+            this.notifications.warning('Please use the food search to find and add foods when offline');
         }
-        } catch (validationError) {
-            // Validation failed - show user-friendly error message
-            this.showMessage(validationError.message, 'error');
+        } catch (error) {
+            logger.error('Form validation error:', error);
+            this.notifications.error('Please check your input and try again');
+        } finally {
+            // Always clear loading states
+            this.setButtonLoading(submitButton, false);
+            this.setFormLoading(form, false);
         }
     }
 
@@ -2748,6 +3263,10 @@ class CalorieTracker {
             // Try to load from backend first
             const response = await this.apiCall('/admin/foods');
             this.adminData.foods = response.foods;
+            
+            // Sort alphabetically with umlaut handling (client-side)
+            this.sortFoodsAlphabetically();
+            
             logger.info('Loaded foods from backend:', this.adminData.foods);
             this.updatePiosFoodDBDisplay();
         } catch (error) {
@@ -2757,6 +3276,10 @@ class CalorieTracker {
             if (!this.adminData.foods) {
                 this.adminData.foods = [];
             }
+            
+            // Sort alphabetically with umlaut handling (client-side)
+            this.sortFoodsAlphabetically();
+            
             logger.info('Using local demo foods data:', this.adminData.foods);
             this.updatePiosFoodDBDisplay();
             
@@ -2765,6 +3288,27 @@ class CalorieTracker {
                 this.showMessage('Using local demo data (Backend unavailable)', 'warning');
             }
         }
+    }
+
+    // Sort foods alphabetically with German umlaut handling
+    sortFoodsAlphabetically() {
+        if (!this.adminData.foods || this.adminData.foods.length === 0) {
+            return;
+        }
+        
+        this.adminData.foods.sort((a, b) => {
+            // Convert umlauts for proper German alphabetical sorting
+            const nameA = a.name.toLowerCase()
+                .replace(/ä/g, 'ae')
+                .replace(/ö/g, 'oe')
+                .replace(/ü/g, 'ue');
+            const nameB = b.name.toLowerCase()
+                .replace(/ä/g, 'ae')
+                .replace(/ö/g, 'oe')
+                .replace(/ü/g, 'ue');
+            
+            return nameA.localeCompare(nameB);
+        });
     }
 
     // Update foods display
@@ -2826,25 +3370,66 @@ class CalorieTracker {
 
     // Handle Pios Food DB add form submission
     async handleAddPiosFoodDB() {
+        const form = document.getElementById('piosFoodDBForm');
+        const submitButton = form.querySelector('[type="submit"]') || form.querySelector('button');
+        
+        // Clear any existing form errors
+        this.clearFormErrors(form);
+        
         try {
-            // Validate inputs using Validators utility
-            const name = Validators.validateFoodName(
-                document.getElementById('piosFoodDBName').value
-            );
-            const calories = Validators.validateCalories(
-                document.getElementById('piosFoodDBCalories').value
-            );
+            // Validate inputs
+            const nameInput = document.getElementById('piosFoodDBName');
+            const caloriesInput = document.getElementById('piosFoodDBCalories');
+            
+            let hasErrors = false;
+            
+            // Validate food name
+            const nameValidation = this.validateField(nameInput, {
+                required: true,
+                minLength: 1,
+                maxLength: 100
+            });
+            
+            if (!nameValidation.valid) {
+                this.showFieldError(nameInput, nameValidation.message);
+                hasErrors = true;
+            }
+            
+            // Validate calories
+            const caloriesValidation = this.validateField(caloriesInput, {
+                required: true,
+                type: 'number',
+                min: 0,
+                max: 10000
+            });
+            
+            if (!caloriesValidation.valid) {
+                this.showFieldError(caloriesInput, caloriesValidation.message);
+                hasErrors = true;
+            }
+            
+            if (hasErrors) return;
+            
+            // Set loading state
+            this.setButtonLoading(submitButton, true);
+            this.setFormLoading(form, true);
+            
+            const name = nameInput.value.trim();
+            const calories = parseFloat(caloriesInput.value);
 
             // Try to save to backend first, fall back to local demo data if needed
             try {
-                // Attempt to save to backend database
-                const response = await this.apiCall('/admin/foods', 'POST', {
+                // Attempt to save to backend database with enhanced notifications
+                await this.apiCall('/admin/foods', 'POST', {
                     name,
                     calories_per_100g: calories
+                }, {
+                    showLoading: true,
+                    showSuccess: true,
+                    successMessage: `${name} has been successfully added to your food database`
                 });
 
-                this.showMessage('Food added successfully to Pios Food DB', 'success');
-                document.getElementById('piosFoodDBForm').reset();
+                form.reset();
                 this.loadPiosFoodDB(); // Refresh the foods list from backend
                 return;
                 
@@ -2875,15 +3460,19 @@ class CalorieTracker {
             // Add to the demo foods array
             this.adminData.foods.push(newFood);
             
-            this.showMessage(`Added "${name}" locally (Backend unavailable - Demo mode)`, 'warning');
-            document.getElementById('piosFoodDBForm').reset();
+            this.notifications.warning(`Added "${name}" locally (Backend unavailable - Demo mode)`);
+            form.reset();
             
             // Update the display to show the new food
             this.updatePiosFoodDBDisplay();
         }
-        } catch (validationError) {
-            // Validation failed - show user-friendly error message
-            this.showMessage(validationError.message, 'error');
+        } catch (error) {
+            logger.error('Form validation error:', error);
+            this.notifications.error('Please check your input and try again');
+        } finally {
+            // Always clear loading states
+            this.setButtonLoading(submitButton, false);
+            this.setFormLoading(form, false);
         }
     }
 
@@ -2981,13 +3570,15 @@ class CalorieTracker {
         
         // Validate
         if (!newName) {
-            this.showMessage('Food name cannot be empty', 'error');
+            this.notifications.error('Food name cannot be empty');
+            nameCell.focus();
             return;
         }
         
         const caloriesNum = parseFloat(newCalories);
         if (isNaN(caloriesNum) || caloriesNum < 0) {
-            this.showMessage('Calories must be a number ≥ 0', 'error');
+            this.notifications.error('Calories must be a number ≥ 0');
+            caloriesCell.focus();
             return;
         }
         
@@ -3012,67 +3603,41 @@ class CalorieTracker {
                 calories_per_100g: parseFloat(newCalories)
             };
             
-            logger.info('Saving changes for food:', foodId);
-            logger.debug('Update data:', updateData);
-            logger.debug('API endpoint:', `/admin/foods/${foodId}`);
+            // Call API with enhanced notifications
+            await this.apiCall(`/admin/foods/${foodId}`, 'PUT', updateData, {
+                showSuccess: true,
+                successMessage: `${newName} has been successfully updated`
+            });
             
-            // Call API
-            const response = await this.apiCall(`/admin/foods/${foodId}`, 'PUT', updateData);
+            // Update original values
+            nameCell.dataset.originalValue = newName;
+            caloriesCell.dataset.originalValue = newCalories;
             
-            logger.debug('Save response:', response);
-            
-            if (response.success) {
-                // Update original values
-                nameCell.dataset.originalValue = newName;
-                caloriesCell.dataset.originalValue = newCalories;
-                
-                // Update local cache
-                const food = this.adminData.foods.find(f => f.id == foodId);
-                if (food) {
-                    food.name = newName;
-                    food.calories = parseFloat(newCalories);
-                    food.calories_per_100g = parseFloat(newCalories);
-                }
-                
-                // Show success feedback
-                nameCell.classList.remove('saving');
-                caloriesCell.classList.remove('saving');
-                nameCell.classList.add('saved');
-                caloriesCell.classList.add('saved');
-                
-                setTimeout(() => {
-                    nameCell.classList.remove('saved');
-                    caloriesCell.classList.remove('saved');
-                }, 1500);
-                
-                this.showMessage('Food updated successfully! ✅', 'success');
-                
-                // Disable edit mode
-                this.disableEditMode(foodId);
-                
-                logger.info('Food saved successfully');
-                
-            } else {
-                throw new Error(response.message || 'Failed to update food');
+            // Update local cache
+            const food = this.adminData.foods.find(f => f.id == foodId);
+            if (food) {
+                food.name = newName;
+                food.calories = parseFloat(newCalories);
+                food.calories_per_100g = parseFloat(newCalories);
             }
+            
+            // Show visual success feedback
+            nameCell.classList.remove('saving');
+            caloriesCell.classList.remove('saving');
+            nameCell.classList.add('saved');
+            caloriesCell.classList.add('saved');
+            
+            setTimeout(() => {
+                nameCell.classList.remove('saved');
+                caloriesCell.classList.remove('saved');
+            }, 1500);
+            
+            // Disable edit mode
+            this.disableEditMode(foodId);
             
         } catch (error) {
+            // Error notification is handled by apiCall
             logger.error('Failed to save food:', error);
-            
-            // Show detailed error message
-            let errorMsg = 'Failed to save';
-            if (error.data) {
-                // If backend returned detailed error info
-                errorMsg = error.data.error || error.data.message || errorMsg;
-                if (error.data.details) {
-                    logger.error('Error details:', error.data.details);
-                    errorMsg += `: ${JSON.stringify(error.data.details)}`;
-                }
-            } else {
-                errorMsg = error.message || errorMsg;
-            }
-            
-            this.showMessage(errorMsg, 'error');
             
             // Remove saving state
             nameCell.classList.remove('saving');
