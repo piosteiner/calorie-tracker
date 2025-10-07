@@ -30,6 +30,10 @@ class CalorieTracker {
             isExpanded: false // Track if history section is visible
         };
         
+        // CRUD operation context
+        this.currentEditContext = null; // { date, logId, isNew }
+        this.currentDeleteContext = null; // { logId, foodName, date }
+        
         // Hybrid storage properties
         this.syncQueue = []; // Queue for pending sync operations
         this.lastSyncTime = null;
@@ -250,6 +254,15 @@ class CalorieTracker {
             });
         }
 
+        // Edit Food Log form
+        const editFoodLogForm = document.getElementById('editFoodLogForm');
+        if (editFoodLogForm) {
+            editFoodLogForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleEditFoodLogSubmit();
+            });
+        }
+
         // Food name input for suggestions
         document.getElementById('foodName').addEventListener('input', (e) => {
             this.debouncedFoodSearch(e.target.value);
@@ -311,6 +324,37 @@ class CalorieTracker {
                 case 'view-day-details':
                     e.preventDefault();
                     this.viewDayDetails(target.dataset.date);
+                    break;
+                
+                // Food Log CRUD operations
+                case 'add-food-log':
+                    e.preventDefault();
+                    this.openAddFoodLogModal(target.dataset.date);
+                    break;
+                
+                case 'edit-food-log':
+                    e.preventDefault();
+                    this.openEditFoodLogModal(target.dataset.logId, target.dataset.date);
+                    break;
+                
+                case 'delete-food-log':
+                    e.preventDefault();
+                    this.openDeleteConfirmModal(target.dataset.logId, target.dataset.foodName, target.dataset.date);
+                    break;
+                
+                case 'close-edit-modal':
+                    e.preventDefault();
+                    this.closeEditFoodLogModal();
+                    break;
+                
+                case 'close-delete-modal':
+                    e.preventDefault();
+                    this.closeDeleteConfirmModal();
+                    break;
+                
+                case 'confirm-delete-log':
+                    e.preventDefault();
+                    this.confirmDeleteFoodLog();
                     break;
                 
                 // Admin section navigation
@@ -1648,6 +1692,7 @@ class CalorieTracker {
         const detailsDiv = dayCard.querySelector('.day-details');
         const expandIcon = dayCard.querySelector('.expand-icon');
         const expandText = dayCard.querySelector('.expand-text');
+        const date = dayCard.getAttribute('data-date');
         
         expandIcon.textContent = '▼';
         expandText.textContent = 'Hide Details';
@@ -1656,13 +1701,28 @@ class CalorieTracker {
             <div class="day-details-content">
                 <div class="details-header">
                     <span class="details-total">Total: ${totalCalories.toLocaleString()} calories</span>
+                    <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">
+                        + Add Item
+                    </button>
                 </div>
                 <div class="food-items">
-                    ${logs.map(log => `
-                        <div class="food-item-row">
-                            <span class="food-item-name">${this.escapeHtml(log.food_name)}</span>
-                            <span class="food-item-details">${log.quantity} ${log.unit}</span>
-                            <span class="food-item-calories">${parseFloat(log.calories).toLocaleString()} cal</span>
+                    ${logs.length === 0 
+                        ? '<p class="empty-message">No food logged for this day</p>'
+                        : logs.map(log => `
+                        <div class="food-item-row editable" data-log-id="${log.id}">
+                            <div class="food-item-content">
+                                <span class="food-item-name">${this.escapeHtml(log.food_name)}</span>
+                                <span class="food-item-details">${log.quantity} ${log.unit}</span>
+                                <span class="food-item-calories">${parseFloat(log.calories).toLocaleString()} cal</span>
+                            </div>
+                            <div class="food-item-actions">
+                                <button class="btn-icon btn-edit" data-action="edit-food-log" data-log-id="${log.id}" data-date="${date}" title="Edit">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon btn-delete" data-action="delete-food-log" data-log-id="${log.id}" data-food-name="${this.escapeHtml(log.food_name)}" data-date="${date}" title="Delete">
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -1741,6 +1801,328 @@ class CalorieTracker {
         this.historyData.expandedDays.add(date);
         this.renderDayDetails(dayCard, demoLogs, 620);
         dayCard.classList.add('expanded');
+    }
+
+    // =============================================================================
+    // FOOD LOG CRUD OPERATIONS
+    // =============================================================================
+
+    /**
+     * Open modal to add new food log entry
+     */
+    openAddFoodLogModal(date) {
+        // Store current context
+        this.currentEditContext = { date, logId: null, isNew: true };
+        
+        // Reset form
+        document.getElementById('editFoodLogId').value = '';
+        document.getElementById('editFoodName').value = '';
+        document.getElementById('editFoodQuantity').value = '';
+        document.getElementById('editFoodUnit').value = 'g';
+        document.getElementById('editFoodCalories').value = '';
+        document.getElementById('editFoodDate').value = date;
+        
+        // Update modal title
+        document.getElementById('editModalTitle').textContent = 'Add Food Log Entry';
+        
+        // Show modal
+        const modal = document.getElementById('editFoodLogModal');
+        modal.style.display = 'flex';
+        
+        // Focus on first input
+        setTimeout(() => document.getElementById('editFoodName').focus(), 100);
+    }
+
+    /**
+     * Open modal to edit existing food log entry
+     */
+    async openEditFoodLogModal(logId, date) {
+        try {
+            // Store current context
+            this.currentEditContext = { date, logId, isNew: false };
+            
+            // Fetch current logs for this date
+            const response = await this.apiCall(`/logs?date=${date}`);
+            
+            if (!response.success || !response.logs) {
+                throw new Error('Failed to load food log data');
+            }
+            
+            // Find the specific log
+            const log = response.logs.find(l => l.id == logId);
+            
+            if (!log) {
+                throw new Error('Food log not found');
+            }
+            
+            // Populate form with existing data
+            document.getElementById('editFoodLogId').value = log.id;
+            document.getElementById('editFoodName').value = log.food_name;
+            document.getElementById('editFoodQuantity').value = parseFloat(log.quantity);
+            document.getElementById('editFoodUnit').value = log.unit;
+            document.getElementById('editFoodCalories').value = parseFloat(log.calories);
+            document.getElementById('editFoodDate').value = log.log_date.split('T')[0];
+            
+            // Update modal title
+            document.getElementById('editModalTitle').textContent = 'Edit Food Log Entry';
+            
+            // Show modal
+            const modal = document.getElementById('editFoodLogModal');
+            modal.style.display = 'flex';
+            
+            // Focus on first input
+            setTimeout(() => document.getElementById('editFoodName').focus(), 100);
+            
+        } catch (error) {
+            logger.error('Failed to open edit modal:', error);
+            this.showMessage(error.message || 'Failed to load food log data', 'error');
+        }
+    }
+
+    /**
+     * Close edit/add modal
+     */
+    closeEditFoodLogModal() {
+        const modal = document.getElementById('editFoodLogModal');
+        modal.style.display = 'none';
+        this.currentEditContext = null;
+    }
+
+    /**
+     * Handle edit/add form submission
+     */
+    async handleEditFoodLogSubmit() {
+        if (!this.currentEditContext) return;
+        
+        const { date, logId, isNew } = this.currentEditContext;
+        
+        // Get form data
+        const foodData = {
+            name: document.getElementById('editFoodName').value.trim(),
+            quantity: parseFloat(document.getElementById('editFoodQuantity').value),
+            unit: document.getElementById('editFoodUnit').value,
+            calories: parseFloat(document.getElementById('editFoodCalories').value),
+            logDate: document.getElementById('editFoodDate').value
+        };
+        
+        // Validate data
+        const errors = this.validateFoodLogData(foodData);
+        if (errors.length > 0) {
+            this.showMessage(errors.join('\n'), 'error');
+            return;
+        }
+        
+        try {
+            if (isNew) {
+                // Create new entry
+                await this.createFoodLog(foodData);
+                this.showMessage('Food log entry added successfully', 'success');
+            } else {
+                // Update existing entry
+                await this.updateFoodLog(logId, foodData);
+                this.showMessage('Food log entry updated successfully', 'success');
+            }
+            
+            // Close modal
+            this.closeEditFoodLogModal();
+            
+            // Refresh the day view if still expanded
+            const originalDate = date;
+            const newDate = foodData.logDate;
+            
+            // Refresh original date
+            if (this.historyData.expandedDays.has(originalDate)) {
+                await this.refreshDayDetails(originalDate);
+            }
+            
+            // Refresh new date if moved
+            if (newDate !== originalDate && this.historyData.expandedDays.has(newDate)) {
+                await this.refreshDayDetails(newDate);
+            }
+            
+            // Optionally reload history list to update totals
+            // await this.loadHistory();
+            
+        } catch (error) {
+            logger.error('Failed to save food log:', error);
+            this.showMessage(error.message || 'Failed to save food log entry', 'error');
+        }
+    }
+
+    /**
+     * Open delete confirmation modal
+     */
+    openDeleteConfirmModal(logId, foodName, date) {
+        // Store delete context
+        this.currentDeleteContext = { logId, foodName, date };
+        
+        // Update confirmation message
+        const message = `Are you sure you want to delete "<strong>${this.escapeHtml(foodName)}</strong>"?`;
+        document.getElementById('deleteConfirmMessage').innerHTML = message;
+        
+        // Show modal
+        const modal = document.getElementById('deleteFoodLogModal');
+        modal.style.display = 'flex';
+    }
+
+    /**
+     * Close delete confirmation modal
+     */
+    closeDeleteConfirmModal() {
+        const modal = document.getElementById('deleteFoodLogModal');
+        modal.style.display = 'none';
+        this.currentDeleteContext = null;
+    }
+
+    /**
+     * Confirm and execute food log deletion
+     */
+    async confirmDeleteFoodLog() {
+        if (!this.currentDeleteContext) return;
+        
+        const { logId, foodName, date } = this.currentDeleteContext;
+        
+        try {
+            await this.deleteFoodLog(logId);
+            
+            this.showMessage(`"${foodName}" deleted successfully`, 'success');
+            
+            // Close modal
+            this.closeDeleteConfirmModal();
+            
+            // Refresh the day view
+            if (this.historyData.expandedDays.has(date)) {
+                await this.refreshDayDetails(date);
+            }
+            
+        } catch (error) {
+            logger.error('Failed to delete food log:', error);
+            this.showMessage(error.message || 'Failed to delete food log entry', 'error');
+        }
+    }
+
+    /**
+     * Refresh day details after CRUD operation
+     */
+    async refreshDayDetails(date) {
+        try {
+            const response = await this.apiCall(`/logs?date=${date}`);
+            
+            if (response.success && response.logs) {
+                const dayCard = document.querySelector(`[data-date="${date}"]`)?.closest('.history-day-card');
+                if (dayCard) {
+                    this.renderDayDetails(dayCard, response.logs, response.totalCalories);
+                    
+                    // Update day summary
+                    const calsStat = dayCard.querySelector('.day-stats .calories');
+                    const mealsStat = dayCard.querySelector('.day-stats .meals');
+                    if (calsStat) {
+                        calsStat.textContent = `${response.totalCalories.toLocaleString()} cal`;
+                    }
+                    if (mealsStat) {
+                        const count = response.logs.length;
+                        mealsStat.textContent = `${count} meal${count !== 1 ? 's' : ''}`;
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('Failed to refresh day details:', error);
+            this.showMessage('Failed to refresh day details', 'error');
+        }
+    }
+
+    /**
+     * Validate food log data
+     */
+    validateFoodLogData(data) {
+        const errors = [];
+        
+        if (!data.name || data.name.trim().length === 0) {
+            errors.push('Food name is required');
+        }
+        
+        if (!data.quantity || data.quantity <= 0) {
+            errors.push('Quantity must be greater than 0');
+        }
+        
+        if (!data.unit || data.unit.trim().length === 0) {
+            errors.push('Unit is required');
+        }
+        
+        if (data.calories === undefined || data.calories < 0) {
+            errors.push('Calories must be 0 or greater');
+        }
+        
+        if (!data.logDate) {
+            errors.push('Date is required');
+        } else {
+            // Validate date format
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(data.logDate)) {
+                errors.push('Invalid date format (use YYYY-MM-DD)');
+            }
+        }
+        
+        return errors;
+    }
+
+    /**
+     * Create new food log entry via API
+     */
+    async createFoodLog(foodData) {
+        const response = await this.apiCall('/logs', {
+            method: 'POST',
+            body: JSON.stringify({
+                name: foodData.name,
+                quantity: foodData.quantity,
+                unit: foodData.unit,
+                calories: foodData.calories,
+                logDate: foodData.logDate
+            })
+        });
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to create food log');
+        }
+        
+        return response;
+    }
+
+    /**
+     * Update existing food log entry via API
+     */
+    async updateFoodLog(logId, foodData) {
+        const response = await this.apiCall(`/logs/${logId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                name: foodData.name,
+                quantity: foodData.quantity,
+                unit: foodData.unit,
+                calories: foodData.calories,
+                logDate: foodData.logDate
+            })
+        });
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to update food log');
+        }
+        
+        return response;
+    }
+
+    /**
+     * Delete food log entry via API
+     */
+    async deleteFoodLog(logId) {
+        const response = await this.apiCall(`/logs/${logId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to delete food log');
+        }
+        
+        return response;
     }
 
     // =============================================================================
