@@ -263,6 +263,15 @@ class CalorieTracker {
             });
         }
 
+        // Edit Admin Food form
+        const editAdminFoodForm = document.getElementById('editAdminFoodForm');
+        if (editAdminFoodForm) {
+            editAdminFoodForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleEditAdminFoodSubmit();
+            });
+        }
+
         // Food name input for suggestions
         document.getElementById('foodName').addEventListener('input', (e) => {
             this.debouncedFoodSearch(e.target.value);
@@ -426,6 +435,11 @@ class CalorieTracker {
                 case 'edit-food':
                     e.preventDefault();
                     this.editFood(parseInt(target.dataset.foodId));
+                    break;
+                    
+                case 'close-edit-admin-food-modal':
+                    e.preventDefault();
+                    this.closeEditAdminFoodModal();
                     break;
                     
                 case 'close-modal':
@@ -2869,14 +2883,81 @@ class CalorieTracker {
 
     // Edit food (placeholder - would need a proper edit modal)
     async editFood(foodId) {
-        // For demo mode, just show message
-        if (this.currentUser && this.currentUser.username === 'admin') {
-            this.showMessage(`Edit food functionality would open for food ID ${foodId} (Demo mode)`, 'info');
+        try {
+            // Find the food item
+            const food = this.adminData.foods.find(f => f.id == foodId);
+            
+            if (!food) {
+                this.showMessage('Food not found', 'error');
+                return;
+            }
+            
+            // Populate the edit form
+            document.getElementById('editAdminFoodId').value = food.id;
+            document.getElementById('editAdminFoodName').value = food.name;
+            document.getElementById('editAdminFoodCalories').value = parseFloat(food.calories_per_100g);
+            
+            // Show the modal
+            const modal = document.getElementById('editAdminFoodModal');
+            modal.style.display = 'flex';
+            
+            // Focus on first input
+            setTimeout(() => document.getElementById('editAdminFoodName').focus(), 100);
+            
+        } catch (error) {
+            logger.error('Failed to open edit modal:', error);
+            this.showMessage('Failed to open edit form', 'error');
+        }
+    }
+
+    /**
+     * Close edit admin food modal
+     */
+    closeEditAdminFoodModal() {
+        const modal = document.getElementById('editAdminFoodModal');
+        modal.style.display = 'none';
+    }
+
+    /**
+     * Handle edit admin food form submission
+     */
+    async handleEditAdminFoodSubmit() {
+        const foodId = document.getElementById('editAdminFoodId').value;
+        const name = document.getElementById('editAdminFoodName').value.trim();
+        const calories = parseFloat(document.getElementById('editAdminFoodCalories').value);
+        
+        // Validate
+        if (!name) {
+            this.showMessage('Food name is required', 'error');
             return;
         }
-
-        // In production, this would open an edit modal with the food details
-        this.showMessage('Edit food functionality not implemented yet', 'info');
+        
+        if (!calories || calories < 0) {
+            this.showMessage('Calories must be 0 or greater', 'error');
+            return;
+        }
+        
+        try {
+            // Update via API
+            const response = await this.apiCall(`/admin/foods/${foodId}`, 'PUT', {
+                name: name,
+                calories_per_100g: calories
+            });
+            
+            if (response.success) {
+                this.showMessage('Food updated successfully', 'success');
+                this.closeEditAdminFoodModal();
+                
+                // Refresh the foods list
+                await this.loadPiosFoodDB();
+            } else {
+                this.showMessage(response.message || 'Failed to update food', 'error');
+            }
+            
+        } catch (error) {
+            logger.error('Failed to update food:', error);
+            this.showMessage(error.message || 'Failed to update food', 'error');
+        }
     }
 
     // Delete food
