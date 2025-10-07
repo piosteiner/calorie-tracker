@@ -5,6 +5,8 @@
 
 class Logger {
     constructor() {
+        // Access CONFIG from window if available, otherwise use default
+        const CONFIG = typeof window !== 'undefined' && window.CONFIG ? window.CONFIG : { DEVELOPMENT_MODE: false };
         this.isDevelopment = CONFIG.DEVELOPMENT_MODE || false;
         this.levels = {
             ERROR: 'error',
@@ -94,11 +96,16 @@ class Logger {
 // Create singleton instance
 const logger = new Logger();
 
-// Export for use throughout app
+// Make available as global variable for non-module scripts
 if (typeof window !== 'undefined') {
     window.logger = logger;
 }
 
+// Export for ES6 modules
+export default logger;
+export { logger, Logger };
+
+// CommonJS export (for Node.js compatibility)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = logger;
 }

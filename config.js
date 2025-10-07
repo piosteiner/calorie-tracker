@@ -50,7 +50,16 @@ const CONFIG = {
     OFFLINE_STORAGE_KEY: 'calorieTrackerOffline'
 };
 
-// Export for use in other files
+// Make available as global variable for non-module scripts
+if (typeof window !== 'undefined') {
+    window.CONFIG = CONFIG;
+}
+
+// Export for ES6 modules
+export default CONFIG;
+export { CONFIG };
+
+// CommonJS export (for Node.js compatibility)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = CONFIG;
 }
