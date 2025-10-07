@@ -208,11 +208,7 @@ class AdminFoodsController {
             if (usage[0].count > 0) {
                 return res.status(400).json({
                     success: false,
-                    message: `Cannot delete this food because it has been logged ${usage[0].count} time${usage[0].count > 1 ? 's' : ''} by users. To delete this food, you must first remove all associated food log entries.`,
-                    details: {
-                        usageCount: usage[0].count,
-                        reason: 'FOOD_IN_USE'
-                    }
+                    message: `Cannot delete food that has been logged ${usage[0].count} times`
                 });
             }
 

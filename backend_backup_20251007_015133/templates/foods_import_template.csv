@@ -1,0 +1,7 @@
+name,calories_per_unit,default_unit,category,brand,protein_per_100g,carbs_per_100g,fat_per_100g,fiber_per_100g,sodium_per_100g,sugar_per_100g,description,barcode
+"Swiss Apple",52,100g,Fruits,"Local Farm",0.3,13.8,0.2,2.4,1,10.4,"Fresh Swiss apple from local farms",
+"Emmental Cheese",382,100g,Dairy,"Swiss",25,0.7,31,0,714,0.7,"Traditional Swiss Emmental cheese",7610095072050
+"Rösti",150,100g,Grains,"Findus",2.8,22,5.2,2.1,420,1.2,"Traditional Swiss potato dish",7610095004659
+"Birchermüesli",89,100g,Grains,"Familia",3.2,16.8,1.8,2.8,48,12.5,"Swiss-style muesli with dried fruits",7610700604144
+"Bundnerfleisch",300,100g,Proteins,"Bündner",55,2,8,0,2800,0,"Air-dried beef from Graubünden",
+"Rivella Blue",20,330ml,Beverages,"Rivella",0,4.8,0,0,5,4.8,"Swiss herbal soft drink - blue variant",7610632611043
