@@ -452,10 +452,14 @@ class CalorieTracker {
 
     // Save database toggle preferences to localStorage
     saveDatabaseTogglePreferences() {
+        const toggleFavorites = document.getElementById('toggleFavorites');
+        const toggleLocalFoods = document.getElementById('toggleLocalFoods');
+        const toggleOpenFoodFacts = document.getElementById('toggleOpenFoodFacts');
+        
         const preferences = {
-            favorites: document.getElementById('toggleFavorites').checked,
-            localFoods: document.getElementById('toggleLocalFoods').checked,
-            openFoodFacts: document.getElementById('toggleOpenFoodFacts').checked
+            favorites: toggleFavorites ? toggleFavorites.checked : true,
+            localFoods: toggleLocalFoods ? toggleLocalFoods.checked : true,
+            openFoodFacts: toggleOpenFoodFacts ? toggleOpenFoodFacts.checked : true
         };
         
         localStorage.setItem('databaseTogglePreferences', JSON.stringify(preferences));
@@ -463,9 +467,12 @@ class CalorieTracker {
 
     // Get current database toggle preferences
     getDatabaseTogglePreferences() {
+        const toggleFavorites = document.getElementById('toggleFavorites');
+        const toggleLocalFoods = document.getElementById('toggleLocalFoods');
+        
         return {
-            favorites: document.getElementById('toggleFavorites').checked,
-            localFoods: document.getElementById('toggleLocalFoods').checked
+            favorites: toggleFavorites ? toggleFavorites.checked : true,
+            localFoods: toggleLocalFoods ? toggleLocalFoods.checked : true
         };
     }
 
