@@ -62,7 +62,7 @@ class AdminFoodsController {
                 ${whereClause}
             `, params);
 
-            // Get foods with pagination
+            // Get foods with pagination - sorted alphabetically with umlaut handling
             const foods = await db.query(`
                 SELECT 
                     f.*,
@@ -74,7 +74,7 @@ class AdminFoodsController {
                 LEFT JOIN food_categories fc ON f.category_id = fc.id
                 LEFT JOIN users u ON f.created_by = u.id
                 ${whereClause}
-                ORDER BY f.updated_at DESC
+                ORDER BY REPLACE(REPLACE(REPLACE(UPPER(f.name), 'Ä', 'AE'), 'Ö', 'OE'), 'Ü', 'UE') ASC
                 LIMIT ? OFFSET ?
             `, [...params, parseInt(limit), parseInt(offset)]);
 
@@ -135,8 +135,13 @@ class AdminFoodsController {
 
             res.json({
                 success: true,
-                message: 'Food created successfully',
-                foodId: result.insertId
+                message: `"${name}" has been successfully added to your food database`,
+                foodId: result.insertId,
+                food: {
+                    id: result.insertId,
+                    name: name,
+                    calories_per_100g: calories_per_100g
+                }
             });
 
         } catch (error) {
@@ -186,7 +191,12 @@ class AdminFoodsController {
 
             res.json({
                 success: true,
-                message: 'Food updated successfully'
+                message: `"${name}" has been successfully updated`,
+                food: {
+                    id: foodId,
+                    name: name,
+                    calories_per_100g: calories_per_100g
+                }
             });
 
         } catch (error) {

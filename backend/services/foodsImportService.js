@@ -5,7 +5,7 @@ const db = require('../database');
 class FoodsImportService {
     constructor() {
         this.validColumns = [
-            'name', 'calories_per_unit', 'default_unit', 'category',
+            'name', 'calories_per_100g', 'default_unit', 'category',
             'brand', 'protein_per_100g', 'carbs_per_100g', 'fat_per_100g',
             'fiber_per_100g', 'sodium_per_100g', 'sugar_per_100g',
             'description', 'barcode'
@@ -32,8 +32,8 @@ class FoodsImportService {
             console.log('CSV Headers:', headers);
 
             // Validate required columns
-            if (!headers.includes('name') || !headers.includes('calories_per_unit') || !headers.includes('default_unit')) {
-                throw new Error('CSV must contain at least: name, calories_per_unit, default_unit columns');
+            if (!headers.includes('name') || !headers.includes('calories_per_100g') || !headers.includes('default_unit')) {
+                throw new Error('CSV must contain at least: name, calories_per_100g, default_unit columns');
             }
 
             // Process each data row
@@ -57,7 +57,7 @@ class FoodsImportService {
                     });
 
                     // Validate required fields
-                    if (!foodData.name || !foodData.calories_per_unit || !foodData.default_unit) {
+                    if (!foodData.name || !foodData.calories_per_100g || !foodData.default_unit) {
                         results.errors.push(`Row ${i + 1}: Missing required fields`);
                         results.skipped++;
                         continue;
@@ -125,7 +125,7 @@ class FoodsImportService {
         
         const sql = `
             INSERT INTO foods (
-                name, calories_per_unit, default_unit, category_id, brand,
+                name, calories_per_100g, default_unit, category_id, brand,
                 protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                 sodium_per_100g, sugar_per_100g, description, barcode,
                 source, is_verified, created_by
@@ -134,7 +134,7 @@ class FoodsImportService {
 
         const values = [
             foodData.name,
-            parseFloat(foodData.calories_per_unit) || 0,
+            parseFloat(foodData.calories_per_100g) || 0,
             foodData.default_unit,
             categoryId,
             foodData.brand || null,
@@ -160,7 +160,7 @@ class FoodsImportService {
         
         const sql = `
             UPDATE foods SET
-                calories_per_unit = ?, default_unit = ?, category_id = ?, brand = ?,
+                calories_per_100g = ?, default_unit = ?, category_id = ?, brand = ?,
                 protein_per_100g = ?, carbs_per_100g = ?, fat_per_100g = ?, fiber_per_100g = ?,
                 sodium_per_100g = ?, sugar_per_100g = ?, description = ?, barcode = ?,
                 updated_at = CURRENT_TIMESTAMP
@@ -168,7 +168,7 @@ class FoodsImportService {
         `;
 
         const values = [
-            parseFloat(foodData.calories_per_unit) || 0,
+            parseFloat(foodData.calories_per_100g) || 0,
             foodData.default_unit,
             categoryId,
             foodData.brand || null,
@@ -239,7 +239,7 @@ class FoodsImportService {
             for (const foodData of foods) {
                 try {
                     // Validate required fields
-                    if (!foodData.name || !foodData.calories_per_unit || !foodData.default_unit) {
+                    if (!foodData.name || !foodData.calories_per_100g || !foodData.default_unit) {
                         results.errors.push(`Food "${foodData.name || 'unnamed'}": Missing required fields`);
                         results.skipped++;
                         continue;
