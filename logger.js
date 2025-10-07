@@ -96,16 +96,16 @@ class Logger {
 // Create singleton instance
 const logger = new Logger();
 
-// Make available as global variable for non-module scripts
+// Make available as global variable
 if (typeof window !== 'undefined') {
     window.logger = logger;
 }
-
-// Export for ES6 modules
-export default logger;
-export { logger, Logger };
 
 // CommonJS export (for Node.js compatibility)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = logger;
 }
+
+// Note: To use as ES6 module, load this file with type="module" and uncomment below:
+// export default logger;
+// export { logger, Logger };
