@@ -2387,7 +2387,7 @@ class CalorieTracker {
             document.getElementById('editFoodLogId').value = log.id;
             document.getElementById('editFoodName').value = log.food_name;
             document.getElementById('editFoodQuantity').value = parseFloat(log.quantity);
-            document.getElementById('editFoodUnit').value = log.unit;
+            // Unit is always 'g' now, so no need to populate unit field
             document.getElementById('editFoodCalories').value = parseFloat(log.calories);
             document.getElementById('editFoodDate').value = log.log_date.split('T')[0];
             
@@ -2428,7 +2428,7 @@ class CalorieTracker {
         const foodData = {
             name: document.getElementById('editFoodName').value.trim(),
             quantity: parseFloat(document.getElementById('editFoodQuantity').value),
-            unit: document.getElementById('editFoodUnit').value,
+            unit: 'g', // Always use grams since unit selector removed
             calories: parseFloat(document.getElementById('editFoodCalories').value),
             logDate: document.getElementById('editFoodDate').value
         };
@@ -2573,9 +2573,7 @@ class CalorieTracker {
             errors.push('Quantity must be greater than 0');
         }
         
-        if (!data.unit || data.unit.trim().length === 0) {
-            errors.push('Unit is required');
-        }
+        // Unit is always 'g' now, so no validation needed
         
         if (data.calories === undefined || data.calories < 0) {
             errors.push('Calories must be 0 or greater');
