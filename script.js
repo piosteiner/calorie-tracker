@@ -2919,8 +2919,17 @@ class CalorieTracker {
     }
 }
 
-// Initialize the app
-const app = new CalorieTracker();
+// Initialize the app when DOM is ready
+let app;
 
-// Global functions for onclick handlers
-window.app = app;
+if (document.readyState === 'loading') {
+    // DOM is still loading
+    document.addEventListener('DOMContentLoaded', () => {
+        app = new CalorieTracker();
+        window.app = app;
+    });
+} else {
+    // DOM is already loaded
+    app = new CalorieTracker();
+    window.app = app;
+}
