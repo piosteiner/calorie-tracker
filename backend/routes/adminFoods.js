@@ -36,10 +36,11 @@ router.get('/foods', [
 // Create new food
 router.post('/foods', [
     body('name').trim().isLength({ min: 1, max: 100 }).withMessage('Name is required (1-100 characters)'),
-    body('calories_per_100g').isFloat({ min: 0 }).withMessage('Calories per 100g must be a positive number'),
+    body('calories_per_100g').isInt({ min: 0 }).withMessage('Calories per 100g must be a positive whole number (kcal)'),
     // default_unit is automatically set to '100g' in the controller
     body('category_id').optional().isInt({ min: 1 }).withMessage('Category ID must be a positive integer'),
     body('brand').optional().trim().isLength({ max: 100 }).withMessage('Brand must be max 100 characters'),
+    body('distributor').optional().trim().isLength({ max: 100 }).withMessage('Distributor must be max 100 characters'),
     body('protein_per_100g').optional().isFloat({ min: 0 }).withMessage('Protein must be a positive number'),
     body('carbs_per_100g').optional().isFloat({ min: 0 }).withMessage('Carbs must be a positive number'),
     body('fat_per_100g').optional().isFloat({ min: 0 }).withMessage('Fat must be a positive number'),
@@ -74,10 +75,11 @@ router.post('/foods', [
 router.put('/foods/:foodId', [
     param('foodId').isInt({ min: 1 }).withMessage('Food ID must be a positive integer'),
     body('name').trim().isLength({ min: 1, max: 100 }).withMessage('Name is required (1-100 characters)'),
-    body('calories_per_100g').isFloat({ min: 0 }).withMessage('Calories per 100g must be a positive number'),
+    body('calories_per_100g').isInt({ min: 0 }).withMessage('Calories per 100g must be a positive whole number (kcal)'),
     // default_unit is automatically set to '100g' in the controller
     body('category_id').optional().isInt({ min: 1 }).withMessage('Category ID must be a positive integer'),
     body('brand').optional().trim().isLength({ max: 100 }).withMessage('Brand must be max 100 characters'),
+    body('distributor').optional().trim().isLength({ max: 100 }).withMessage('Distributor must be max 100 characters'),
     body('protein_per_100g').optional().isFloat({ min: 0 }).withMessage('Protein must be a positive number'),
     body('carbs_per_100g').optional().isFloat({ min: 0 }).withMessage('Carbs must be a positive number'),
     body('fat_per_100g').optional().isFloat({ min: 0 }).withMessage('Fat must be a positive number'),

@@ -22,9 +22,20 @@ CREATE TABLE IF NOT EXISTS daily_goals (
     INDEX idx_user_id (user_id),
     INDEX idx_goal_date (goal_date),
     INDEX idx_user_date (user_id, goal_date)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Show table structure
 DESCRIBE daily_goals;
 
-COMMIT;
+-- Example queries for reference:
+
+-- Get daily goal for a specific date (with fallback to default)
+-- SELECT COALESCE(dg.goal_calories, u.daily_calorie_goal) as daily_goal
+-- FROM users u
+-- LEFT JOIN daily_goals dg ON u.id = dg.user_id AND dg.goal_date = '2025-10-07'
+-- WHERE u.id = 1;
+
+-- Set or update daily goal
+-- INSERT INTO daily_goals (user_id, goal_date, goal_calories)
+-- VALUES (1, '2025-10-07', 2500)
+-- ON DUPLICATE KEY UPDATE goal_calories = VALUES(goal_calories), updated_at = CURRENT_TIMESTAMP;

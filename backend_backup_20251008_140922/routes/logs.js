@@ -362,6 +362,7 @@ router.get('/history', [
         const offset = parseInt(req.query.offset) || 0;
 
         // Get all dates with logs, grouped by date with summaries
+        // Includes per-day goals from daily_goals table with fallback to user's default goal
         const history = await db.query(`
             SELECT 
                 fl.log_date,

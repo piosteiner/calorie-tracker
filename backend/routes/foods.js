@@ -77,10 +77,11 @@ router.get('/:id', optionalAuth, async (req, res) => {
 // Create new food (admin function - in future could be restricted)
 router.post('/', [
     body('name').trim().isLength({ min: 1, max: 100 }).withMessage('Food name is required (1-100 characters)'),
-    body('caloriesPerUnit').isFloat({ min: 0 }).withMessage('Calories per unit must be a positive number'),
+    body('caloriesPerUnit').isInt({ min: 0 }).withMessage('Calories per unit must be a positive whole number (kcal)'),
     body('defaultUnit').trim().isLength({ min: 1, max: 20 }).withMessage('Default unit is required (1-20 characters)'),
     body('category').optional().trim().isLength({ max: 50 }).withMessage('Category must be max 50 characters'),
-    body('brand').optional().trim().isLength({ max: 100 }).withMessage('Brand must be max 100 characters')
+    body('brand').optional().trim().isLength({ max: 100 }).withMessage('Brand must be max 100 characters'),
+    body('distributor').optional().trim().isLength({ max: 100 }).withMessage('Distributor must be max 100 characters')
 ], optionalAuth, async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -91,8 +92,8 @@ router.post('/', [
             });
         }
 
-        const { name, caloriesPerUnit, defaultUnit, category, brand } = req.body;
-        const result = await db.createFood(name, caloriesPerUnit, defaultUnit, category, brand);
+        const { name, caloriesPerUnit, defaultUnit, category, brand, distributor } = req.body;
+        const result = await db.createFood(name, caloriesPerUnit, defaultUnit, category, brand, distributor);
         
         res.status(201).json({
             success: true,

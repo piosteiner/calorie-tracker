@@ -111,12 +111,12 @@ class Database {
         return results[0];
     }
 
-    async createFood(name, caloriesPer100g, defaultUnit, category = null, brand = null) {
+    async createFood(name, caloriesPer100g, defaultUnit, category = null, brand = null, distributor = null) {
         const sql = `
-            INSERT INTO foods (name, calories_per_100g, default_unit, category, brand) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO foods (name, calories_per_100g, default_unit, category, brand, distributor) 
+            VALUES (?, ?, ?, ?, ?, ?)
         `;
-        return await this.query(sql, [name, caloriesPer100g, defaultUnit, category, brand]);
+        return await this.query(sql, [name, caloriesPer100g, defaultUnit, category, brand, distributor]);
     }
 
     // Food log queries
