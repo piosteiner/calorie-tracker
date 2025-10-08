@@ -224,6 +224,23 @@ class CalorieTracker {
             selectedFoodIds: new Set() // Track selected food IDs for bulk operations
         };
         
+        // User Contributions properties
+        this.contributionsData = {
+            foods: [],
+            stats: {},
+            topContributors: [],
+            pagination: {
+                page: 1,
+                limit: 20,
+                total: 0,
+                totalPages: 0
+            },
+            filters: {
+                sortBy: 'popularity', // 'popularity', 'recent', 'alphabetical'
+                minUsage: 0
+            }
+        };
+        
         // History properties
         this.historyData = {
             days: [], // Array of day summaries
@@ -467,6 +484,16 @@ class CalorieTracker {
                 this.handleEditFoodLogSubmit();
             });
         }
+        
+        // Promote Food form
+        const promoteFoodForm = document.getElementById('promoteFoodForm');
+        if (promoteFoodForm) {
+            promoteFoodForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handlePromoteFoodSubmit();
+            });
+        }
+        
         // Food name input for suggestions
         document.getElementById('foodName').addEventListener('input', (e) => {
             this.debouncedFoodSearch(e.target.value);
@@ -657,6 +684,52 @@ class CalorieTracker {
                     e.preventDefault();
                     target.parentElement?.remove();
                     break;
+                    
+                // User Contributions actions
+                case 'filter-popular-foods':
+                    e.preventDefault();
+                    this.filterContributions('popular');
+                    break;
+                    
+                case 'filter-recent-foods':
+                    e.preventDefault();
+                    this.filterContributions('recent');
+                    break;
+                    
+                case 'filter-all-foods':
+                    e.preventDefault();
+                    this.filterContributions('all');
+                    break;
+                    
+                case 'contributions-prev-page':
+                    e.preventDefault();
+                    this.changeContributionsPage('prev');
+                    break;
+                    
+                case 'contributions-next-page':
+                    e.preventDefault();
+                    this.changeContributionsPage('next');
+                    break;
+                    
+                case 'promote-user-food':
+                    e.preventDefault();
+                    this.openPromoteFoodModal(parseInt(target.dataset.foodId));
+                    break;
+                    
+                case 'reject-user-food':
+                    e.preventDefault();
+                    this.rejectUserFood(parseInt(target.dataset.foodId), target.dataset.foodName);
+                    break;
+                    
+                case 'delete-user-food':
+                    e.preventDefault();
+                    this.deleteUserFood(parseInt(target.dataset.foodId), target.dataset.foodName);
+                    break;
+                    
+                case 'close-promote-modal':
+                    e.preventDefault();
+                    this.closePromoteFoodModal();
+                    break;
             }
         });
         
@@ -674,6 +747,18 @@ class CalorieTracker {
                     
                 case 'toggle-food-selection':
                     this.toggleFoodSelection(target, target.dataset.foodId);
+                    break;
+                    
+                case 'change-contributions-sort':
+                    this.contributionsData.filters.sortBy = target.value;
+                    this.contributionsData.pagination.page = 1; // Reset to first page
+                    this.loadContributionsData();
+                    break;
+                    
+                case 'change-min-usage':
+                    this.contributionsData.filters.minUsage = parseInt(target.value) || 0;
+                    this.contributionsData.pagination.page = 1; // Reset to first page
+                    this.loadContributionsData();
                     break;
             }
         });
@@ -4245,6 +4330,10 @@ class CalorieTracker {
                 logger.info('Loading Pios Food DB section...');
                 this.loadPiosFoodDB();
                 break;
+            case 'Contributions':
+                logger.info('Loading User Contributions section...');
+                this.loadContributionsData();
+                break;
             case 'Database':
                 logger.info('Loading Database section...');
                 this.loadDatabaseManagement();
@@ -4915,6 +5004,446 @@ class CalorieTracker {
         } catch (error) {
             logger.error('Admin categories error:', error);
             return [];
+        }
+    }
+
+    // =============================================================================
+    // USER CONTRIBUTIONS MANAGEMENT
+    // =============================================================================
+
+    /**
+     * Load user contributions data including stats, foods, and contributors
+     */
+    async loadContributionsData() {
+        if (!this.isAdmin) return;
+
+        try {
+            logger.info('Loading user contributions data...');
+
+            // Load statistics
+            await this.loadContributionStats();
+
+            // Load user-contributed foods with current filters
+            await this.loadUserFoods();
+
+        } catch (error) {
+            logger.error('Error loading contributions data:', error);
+            this.notifications.error('Failed to load user contributions');
+        }
+    }
+
+    /**
+     * Load contribution statistics
+     */
+    async loadContributionStats() {
+        try {
+            const response = await this.apiCall('/admin/user-foods/stats');
+            
+            if (response.success) {
+                this.contributionsData.stats = response.stats;
+                this.contributionsData.topContributors = response.topContributors || [];
+                this.renderContributionStats();
+                this.renderTopContributors();
+            }
+        } catch (error) {
+            logger.error('Error loading contribution stats:', error);
+        }
+    }
+
+    /**
+     * Render contribution statistics
+     */
+    renderContributionStats() {
+        const stats = this.contributionsData.stats;
+        
+        document.getElementById('totalUserFoods').textContent = stats.total_user_foods || 0;
+        document.getElementById('totalContributors').textContent = stats.total_contributors || 0;
+        document.getElementById('popularFoodsCount').textContent = stats.popular_foods_count || 0;
+        document.getElementById('avgUsagePerFood').textContent = 
+            stats.avg_usage_per_food ? stats.avg_usage_per_food.toFixed(1) : '0.0';
+    }
+
+    /**
+     * Render top contributors list
+     */
+    renderTopContributors() {
+        const listDiv = document.getElementById('topContributorsList');
+        const contributors = this.contributionsData.topContributors;
+
+        if (!contributors || contributors.length === 0) {
+            listDiv.innerHTML = '<p class="empty-message">No contributors yet</p>';
+            return;
+        }
+
+        listDiv.innerHTML = contributors.slice(0, 5).map((contributor, index) => `
+            <div class="contributor-item">
+                <div class="contributor-rank">${index + 1}</div>
+                <div class="contributor-info">
+                    <div class="contributor-name">${this.escapeHtml(contributor.username)}</div>
+                    <div class="contributor-stats">
+                        ${contributor.foods_contributed} food${contributor.foods_contributed !== 1 ? 's' : ''} • 
+                        ${contributor.total_usage} use${contributor.total_usage !== 1 ? 's' : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * Load user-contributed foods with pagination and filters
+     */
+    async loadUserFoods() {
+        try {
+            const { page, limit } = this.contributionsData.pagination;
+            const { sortBy, minUsage } = this.contributionsData.filters;
+
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString(),
+                sortBy: sortBy
+            });
+
+            if (minUsage > 0) {
+                params.append('minUsage', minUsage.toString());
+            }
+
+            const response = await this.apiCall(`/admin/user-foods?${params}`);
+
+            if (response.success) {
+                this.contributionsData.foods = response.foods || [];
+                this.contributionsData.pagination = {
+                    ...this.contributionsData.pagination,
+                    ...response.pagination
+                };
+
+                this.renderUserFoodsList();
+                this.updateContributionsPagination();
+            }
+        } catch (error) {
+            logger.error('Error loading user foods:', error);
+            document.getElementById('userFoodsList').innerHTML = 
+                '<p class="error-message">Failed to load user contributions</p>';
+        }
+    }
+
+    /**
+     * Render user foods list
+     */
+    renderUserFoodsList() {
+        const listDiv = document.getElementById('userFoodsList');
+        const foods = this.contributionsData.foods;
+
+        if (!foods || foods.length === 0) {
+            listDiv.innerHTML = '<p class="empty-message">No user-contributed foods found</p>';
+            return;
+        }
+
+        listDiv.innerHTML = foods.map(food => this.renderUserFoodItem(food)).join('');
+    }
+
+    /**
+     * Render a single user food item
+     */
+    renderUserFoodItem(food) {
+        const badge = this.getUsageBadge(food.times_logged);
+        const popularityClass = food.times_logged >= 10 ? 'very-popular' : 
+                               food.times_logged >= 5 ? 'popular' : '';
+        
+        const brandText = food.brand ? ` • Brand: ${this.escapeHtml(food.brand)}` : '';
+        const distributorText = food.distributor ? ` • Store: ${this.escapeHtml(food.distributor)}` : '';
+        
+        const lastUsed = food.last_used_at ? 
+            new Date(food.last_used_at).toLocaleDateString() : 'Never';
+        
+        const created = new Date(food.created_at).toLocaleDateString();
+
+        return `
+            <div class="user-food-item ${popularityClass}" data-food-id="${food.id}">
+                <div class="user-food-header">
+                    <div class="user-food-title">
+                        <div class="user-food-name">${this.escapeHtml(food.name)}</div>
+                        <div class="user-food-meta">
+                            ${Math.round(food.calories_per_100g)} kcal/100g${brandText}${distributorText}
+                        </div>
+                    </div>
+                    <div class="user-food-badge ${badge.class}">${badge.text}</div>
+                </div>
+
+                <div class="user-food-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Created by:</span>
+                        <span class="detail-value">${this.escapeHtml(food.creator_username)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Created:</span>
+                        <span class="detail-value">${created}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Last used:</span>
+                        <span class="detail-value">${lastUsed}</span>
+                    </div>
+                </div>
+
+                <div class="user-food-stats">
+                    <div class="stat-item">
+                        📊 <strong>${food.times_logged}</strong> log${food.times_logged !== 1 ? 's' : ''}
+                    </div>
+                    <div class="stat-item">
+                        👥 <strong>${food.unique_users}</strong> user${food.unique_users !== 1 ? 's' : ''}
+                    </div>
+                </div>
+
+                <div class="user-food-actions">
+                    <button class="btn btn-success btn-small" 
+                            data-action="promote-user-food" 
+                            data-food-id="${food.id}">
+                        ✅ Promote to Pios DB
+                    </button>
+                    <button class="btn btn-danger btn-small" 
+                            data-action="reject-user-food" 
+                            data-food-id="${food.id}"
+                            data-food-name="${this.escapeHtml(food.name)}">
+                        ❌ Reject
+                    </button>
+                    <button class="btn btn-secondary btn-small" 
+                            data-action="delete-user-food" 
+                            data-food-id="${food.id}"
+                            data-food-name="${this.escapeHtml(food.name)}">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Get usage badge based on times logged
+     */
+    getUsageBadge(timesLogged) {
+        if (timesLogged >= 10) {
+            return { text: '🔥 Very Popular', class: 'badge-very-popular' };
+        }
+        if (timesLogged >= 5) {
+            return { text: '⭐ Popular', class: 'badge-popular' };
+        }
+        if (timesLogged >= 2) {
+            return { text: '👍 Used', class: 'badge-used' };
+        }
+        return { text: '🆕 New', class: 'badge-new' };
+    }
+
+    /**
+     * Update pagination controls
+     */
+    updateContributionsPagination() {
+        const { page, totalPages } = this.contributionsData.pagination;
+        const paginationDiv = document.getElementById('contributionsPagination');
+
+        if (totalPages <= 1) {
+            paginationDiv.style.display = 'none';
+            return;
+        }
+
+        paginationDiv.style.display = 'flex';
+        document.getElementById('contributionsCurrentPage').textContent = page;
+        document.getElementById('contributionsTotalPages').textContent = totalPages;
+
+        const prevBtn = document.querySelector('[data-action="contributions-prev-page"]');
+        const nextBtn = document.querySelector('[data-action="contributions-next-page"]');
+
+        prevBtn.disabled = page <= 1;
+        nextBtn.disabled = page >= totalPages;
+    }
+
+    /**
+     * Filter contributions by preset
+     */
+    filterContributions(filterType) {
+        switch (filterType) {
+            case 'popular':
+                this.contributionsData.filters.minUsage = 5;
+                this.contributionsData.filters.sortBy = 'popularity';
+                document.getElementById('minUsageFilter').value = '5';
+                document.getElementById('sortByContributions').value = 'popularity';
+                break;
+            case 'recent':
+                this.contributionsData.filters.minUsage = 0;
+                this.contributionsData.filters.sortBy = 'recent';
+                document.getElementById('minUsageFilter').value = '0';
+                document.getElementById('sortByContributions').value = 'recent';
+                break;
+            case 'all':
+                this.contributionsData.filters.minUsage = 0;
+                this.contributionsData.filters.sortBy = 'popularity';
+                document.getElementById('minUsageFilter').value = '0';
+                document.getElementById('sortByContributions').value = 'popularity';
+                break;
+        }
+
+        this.contributionsData.pagination.page = 1;
+        this.loadUserFoods();
+    }
+
+    /**
+     * Change contributions page
+     */
+    changeContributionsPage(direction) {
+        const { page, totalPages } = this.contributionsData.pagination;
+
+        if (direction === 'prev' && page > 1) {
+            this.contributionsData.pagination.page--;
+            this.loadUserFoods();
+        } else if (direction === 'next' && page < totalPages) {
+            this.contributionsData.pagination.page++;
+            this.loadUserFoods();
+        }
+    }
+
+    /**
+     * Open promote food modal
+     */
+    async openPromoteFoodModal(foodId) {
+        const food = this.contributionsData.foods.find(f => f.id === foodId);
+        if (!food) {
+            this.notifications.error('Food not found');
+            return;
+        }
+
+        // Populate modal with food data
+        document.getElementById('promoteFoodId').value = food.id;
+        document.getElementById('promoteFoodName').value = food.name;
+        document.getElementById('promoteFoodCalories').value = Math.round(food.calories_per_100g);
+        document.getElementById('promoteFoodBrand').value = food.brand || '';
+        document.getElementById('promoteFoodDistributor').value = food.distributor || '';
+        
+        // Populate nutrition fields if available
+        document.getElementById('promoteFoodProtein').value = food.protein_per_100g || '';
+        document.getElementById('promoteFoodCarbs').value = food.carbs_per_100g || '';
+        document.getElementById('promoteFoodFat').value = food.fat_per_100g || '';
+        document.getElementById('promoteFoodFiber').value = food.fiber_per_100g || '';
+        document.getElementById('promoteFoodSugar').value = food.sugar_per_100g || '';
+        document.getElementById('promoteFoodSodium').value = food.sodium_per_100g || '';
+        document.getElementById('promoteFoodDescription').value = food.description || '';
+        document.getElementById('promoteFoodBarcode').value = food.barcode || '';
+        document.getElementById('promoteAdminNotes').value = '';
+
+        // Show creator info
+        document.getElementById('promoteCreatorInfo').textContent = 
+            `${food.creator_username} (${food.creator_email})`;
+        document.getElementById('promoteUsageInfo').textContent = 
+            `${food.times_logged} logs by ${food.unique_users} user${food.unique_users !== 1 ? 's' : ''}`;
+
+        // Show modal
+        document.getElementById('promoteFoodModal').style.display = 'flex';
+    }
+
+    /**
+     * Close promote food modal
+     */
+    closePromoteFoodModal() {
+        document.getElementById('promoteFoodModal').style.display = 'none';
+        document.getElementById('promoteFoodForm').reset();
+    }
+
+    /**
+     * Handle promote food form submission
+     */
+    async handlePromoteFoodSubmit() {
+        const foodId = parseInt(document.getElementById('promoteFoodId').value);
+        
+        // Collect edited data
+        const editedData = {
+            name: document.getElementById('promoteFoodName').value.trim(),
+            calories_per_100g: parseFloat(document.getElementById('promoteFoodCalories').value),
+            brand: document.getElementById('promoteFoodBrand').value.trim() || null,
+            distributor: document.getElementById('promoteFoodDistributor').value || null
+        };
+
+        // Optional nutrition fields
+        const protein = document.getElementById('promoteFoodProtein').value;
+        const carbs = document.getElementById('promoteFoodCarbs').value;
+        const fat = document.getElementById('promoteFoodFat').value;
+        const fiber = document.getElementById('promoteFoodFiber').value;
+        const sugar = document.getElementById('promoteFoodSugar').value;
+        const sodium = document.getElementById('promoteFoodSodium').value;
+        const description = document.getElementById('promoteFoodDescription').value.trim();
+        const barcode = document.getElementById('promoteFoodBarcode').value.trim();
+
+        if (protein) editedData.protein_per_100g = parseFloat(protein);
+        if (carbs) editedData.carbs_per_100g = parseFloat(carbs);
+        if (fat) editedData.fat_per_100g = parseFloat(fat);
+        if (fiber) editedData.fiber_per_100g = parseFloat(fiber);
+        if (sugar) editedData.sugar_per_100g = parseFloat(sugar);
+        if (sodium) editedData.sodium_per_100g = parseFloat(sodium);
+        if (description) editedData.description = description;
+        if (barcode) editedData.barcode = barcode;
+
+        const notes = document.getElementById('promoteAdminNotes').value.trim();
+
+        try {
+            const response = await this.apiCall(
+                `/admin/user-foods/${foodId}/promote`,
+                'POST',
+                { editedData, notes },
+                { showSuccess: true, successMessage: `"${editedData.name}" has been promoted to Pios Food DB!` }
+            );
+
+            if (response.success) {
+                this.closePromoteFoodModal();
+                // Reload both contributions data and Pios Food DB
+                await this.loadContributionsData();
+                await this.loadPiosFoodDB();
+            }
+        } catch (error) {
+            logger.error('Error promoting food:', error);
+        }
+    }
+
+    /**
+     * Reject user food
+     */
+    async rejectUserFood(foodId, foodName) {
+        const reason = prompt(`Why are you rejecting "${foodName}"?`);
+        
+        if (!reason) return; // User cancelled
+
+        try {
+            const response = await this.apiCall(
+                `/admin/user-foods/${foodId}/reject`,
+                'POST',
+                { reason },
+                { showSuccess: true, successMessage: `"${foodName}" has been rejected` }
+            );
+
+            if (response.success) {
+                await this.loadContributionsData();
+            }
+        } catch (error) {
+            logger.error('Error rejecting food:', error);
+        }
+    }
+
+    /**
+     * Delete user food
+     */
+    async deleteUserFood(foodId, foodName) {
+        if (!confirm(`Are you sure you want to permanently delete "${foodName}"?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await this.apiCall(
+                `/admin/user-foods/${foodId}`,
+                'DELETE',
+                null,
+                { showSuccess: true, successMessage: `"${foodName}" has been deleted` }
+            );
+
+            if (response.success) {
+                await this.loadContributionsData();
+            }
+        } catch (error) {
+            logger.error('Error deleting food:', error);
         }
     }
 }
