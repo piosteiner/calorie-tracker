@@ -260,6 +260,7 @@ class CalorieTracker {
                     calories: food.calories_per_100g || food.calories_per_unit || food.calories || 0,
                     unit: 'g', // All foods now use grams
                     brand: food.brand || '',
+                    distributor: food.distributor || '',
                     source: 'Local Database',
                     protein: food.protein_per_100g || food.protein || 0,
                     carbs: food.carbs_per_100g || food.carbs || 0,
@@ -1472,9 +1473,14 @@ class CalorieTracker {
             const foodName = foodNameInput.value.trim();
             const quantity = parseFloat(quantityInput.value);
             const unit = 'g'; // Always use grams since unit selector removed
+            const brand = document.getElementById('foodBrand')?.value?.trim() || null;
+            const distributor = document.getElementById('foodDistributor')?.value || null;
 
             // Check if we have enhanced food data from selection
             if (this.selectedFoodData) {
+                // Add brand and distributor to selected food data
+                this.selectedFoodData.brand = brand || this.selectedFoodData.brand;
+                this.selectedFoodData.distributor = distributor || this.selectedFoodData.distributor;
                 await this.handleAddEnhancedFood(this.selectedFoodData, quantity, unit);
                 return;
             }
@@ -1497,6 +1503,8 @@ class CalorieTracker {
                         quantity,
                         unit,
                         calories,
+                        brand: brand || food.brand,
+                        distributor: distributor || food.distributor,
                         logDate: new Date().toISOString().split('T')[0]
                     };
                 } else {
@@ -1511,6 +1519,8 @@ class CalorieTracker {
                             quantity,
                             unit,
                             calories,
+                            brand,
+                            distributor,
                             logDate: new Date().toISOString().split('T')[0]
                         };
                     } catch (error) {
@@ -1584,7 +1594,8 @@ class CalorieTracker {
                 timestamp: timestamp,
                 offline: !this.isOnline,
                 source: foodData.source || 'Pios Food DB',
-                brand: foodData.brand || ''
+                brand: foodData.brand || '',
+                distributor: foodData.distributor || ''
             };
             
             this.foodLog.push(foodLogEntry);
@@ -1626,6 +1637,8 @@ class CalorieTracker {
                     quantity: log.quantity,
                     unit: log.unit,
                     calories: parseFloat(log.calories),
+                    brand: log.brand || null,
+                    distributor: log.distributor || null,
                     timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
                 }));
                 
@@ -1743,13 +1756,14 @@ class CalorieTracker {
         const suggestions = matches.slice(0, CONFIG.MAX_SUGGESTIONS || 10).map(food => {
             const sourceIcon = this.getSourceIcon(food.source);
             const brandText = food.brand ? ` by ${food.brand}` : '';
+            const distributorText = food.distributor ? ` @ ${food.distributor}` : '';
             const nutritionText = this.getNutritionText(food);
             const sourceText = this.getSourceText(food.source);
             
             return `
                 <div class="suggestion-item enhanced" data-action="select-enhanced-food" data-food-data='${encodeURIComponent(JSON.stringify(food))}'>
                     <div class="food-main">
-                        <span class="food-name">${this.highlightMatch(food.name, input)}${brandText}</span>
+                        <span class="food-name">${this.highlightMatch(food.name, input)}${brandText}${distributorText}</span>
                         <span class="food-source" title="${this.getSourceTooltip(food.source)}">${sourceIcon} ${sourceText}</span>
                     </div>
                     <div class="food-details">
@@ -1928,16 +1942,19 @@ class CalorieTracker {
             return;
         }
 
-        foodLogDiv.innerHTML = this.foodLog.map(food => `
+        foodLogDiv.innerHTML = this.foodLog.map(food => {
+            const brandText = food.brand ? ` by ${food.brand}` : '';
+            const distributorText = food.distributor ? ` @ ${food.distributor}` : '';
+            return `
             <div class="food-item">
                 <div class="food-info">
-                    <div class="food-name">${this.capitalizeFirst(food.name)} ${food.offline ? '(Offline)' : ''}</div>
+                    <div class="food-name">${this.capitalizeFirst(food.name)}${brandText}${distributorText} ${food.offline ? '(Offline)' : ''}</div>
                     <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit} • ${food.timestamp}</div>
                 </div>
                 <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
                 <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${food.name}" data-date="${new Date().toISOString().split('T')[0]}">×</button>
             </div>
-        `).reverse().join('');
+        `;}).reverse().join('');
     }
 
     async deleteFood(foodId) {
@@ -2332,10 +2349,13 @@ class CalorieTracker {
                 <div class="food-items">
                     ${logs.length === 0 
                         ? '<p class="empty-message">No food logged for this day</p>'
-                        : logs.map(log => `
+                        : logs.map(log => {
+                            const brandText = log.brand ? ` by ${this.escapeHtml(log.brand)}` : '';
+                            const distributorText = log.distributor ? ` @ ${this.escapeHtml(log.distributor)}` : '';
+                            return `
                         <div class="food-item-row editable" data-log-id="${log.id}">
                             <div class="food-item-content">
-                                <span class="food-item-name">${this.escapeHtml(log.food_name)}</span>
+                                <span class="food-item-name">${this.escapeHtml(log.food_name)}${brandText}${distributorText}</span>
                                 <span class="food-item-details">${Math.round(parseFloat(log.quantity))} ${log.unit}</span>
                                 <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} kcal</span>
                             </div>
@@ -2348,7 +2368,7 @@ class CalorieTracker {
                                 </button>
                             </div>
                         </div>
-                    `).join('')}
+                    `;}).join('')}
                 </div>
             </div>
         `;
@@ -2987,6 +3007,14 @@ class CalorieTracker {
                     aVal = a.name.toLowerCase();
                     bVal = b.name.toLowerCase();
                     break;
+                case 'brand':
+                    aVal = (a.brand || '').toLowerCase();
+                    bVal = (b.brand || '').toLowerCase();
+                    break;
+                case 'distributor':
+                    aVal = (a.distributor || '').toLowerCase();
+                    bVal = (b.distributor || '').toLowerCase();
+                    break;
                 case 'calories':
                     aVal = a.calories || 0;
                     bVal = b.calories || 0;
@@ -3492,7 +3520,7 @@ class CalorieTracker {
         }
 
         if (!this.adminData.foods || this.adminData.foods.length === 0) {
-            foodsList.innerHTML = '<tr><td colspan="5" class="empty">No foods in database yet</td></tr>';
+            foodsList.innerHTML = '<tr><td colspan="7" class="empty">No foods in database yet</td></tr>';
             this.updateSortIndicators();
             return;
         }
@@ -3512,6 +3540,14 @@ class CalorieTracker {
                     data-field="name" 
                     data-food-id="${food.id}"
                     data-original-value="${this.escapeHtml(food.name)}">${this.escapeHtml(food.name)}</td>
+                <td class="editable-cell" 
+                    data-field="brand" 
+                    data-food-id="${food.id}"
+                    data-original-value="${this.escapeHtml(food.brand || '')}">${this.escapeHtml(food.brand || '-')}</td>
+                <td class="editable-cell" 
+                    data-field="distributor" 
+                    data-food-id="${food.id}"
+                    data-original-value="${this.escapeHtml(food.distributor || '')}">${this.escapeHtml(food.distributor || '-')}</td>
                 <td class="editable-cell" 
                     data-field="calories" 
                     data-food-id="${food.id}"
@@ -3584,13 +3620,17 @@ class CalorieTracker {
             
             const name = nameInput.value.trim();
             const calories = parseFloat(caloriesInput.value);
+            const brand = document.getElementById('piosFoodDBBrand')?.value?.trim() || null;
+            const distributor = document.getElementById('piosFoodDBDistributor')?.value || null;
 
             // Try to save to backend first, fall back to local demo data if needed
             try {
                 // Attempt to save to backend database with enhanced notifications
                 await this.apiCall('/admin/foods', 'POST', {
                     name,
-                    calories_per_100g: calories
+                    calories_per_100g: calories,
+                    brand,
+                    distributor
                 }, {
                     showLoading: true,
                     showSuccess: true,
@@ -3692,12 +3732,18 @@ class CalorieTracker {
         
         const nameCell = row.querySelector('[data-field="name"]');
         const caloriesCell = row.querySelector('[data-field="calories"]');
+        const brandCell = row.querySelector('[data-field="brand"]');
+        const distributorCell = row.querySelector('[data-field="distributor"]');
         
         // Enable contenteditable
         nameCell.contentEditable = 'true';
         caloriesCell.contentEditable = 'true';
+        brandCell.contentEditable = 'true';
+        distributorCell.contentEditable = 'true';
         nameCell.classList.add('editing');
         caloriesCell.classList.add('editing');
+        brandCell.classList.add('editing');
+        distributorCell.classList.add('editing');
         
         // Toggle button visibility
         const editBtn = row.querySelector('[data-action="toggle-edit-mode"]');
@@ -3730,11 +3776,18 @@ class CalorieTracker {
         
         const nameCell = row.querySelector('[data-field="name"]');
         const caloriesCell = row.querySelector('[data-field="calories"]');
+        const brandCell = row.querySelector('[data-field="brand"]');
+        const distributorCell = row.querySelector('[data-field="distributor"]');
         
         const newName = nameCell.textContent.trim();
         const newCalories = caloriesCell.textContent.trim();
+        const newBrand = brandCell.textContent.trim();
+        const newDistributor = distributorCell.textContent.trim();
+        
         const originalName = nameCell.dataset.originalValue;
         const originalCalories = caloriesCell.dataset.originalValue;
+        const originalBrand = brandCell.dataset.originalValue;
+        const originalDistributor = distributorCell.dataset.originalValue;
         
         // Validate
         if (!newName) {
@@ -3753,8 +3806,10 @@ class CalorieTracker {
         // Check if anything changed
         const nameChanged = newName !== originalName;
         const caloriesChanged = newCalories !== originalCalories;
+        const brandChanged = newBrand !== originalBrand;
+        const distributorChanged = newDistributor !== originalDistributor;
         
-        if (!nameChanged && !caloriesChanged) {
+        if (!nameChanged && !caloriesChanged && !brandChanged && !distributorChanged) {
             logger.info('No changes detected, disabling edit mode');
             this.disableEditMode(foodId);
             return;
@@ -3763,12 +3818,16 @@ class CalorieTracker {
         // Show saving state
         nameCell.classList.add('saving');
         caloriesCell.classList.add('saving');
+        brandCell.classList.add('saving');
+        distributorCell.classList.add('saving');
         
         try {
             // Prepare update data
             const updateData = {
                 name: newName,
-                calories_per_100g: parseFloat(newCalories)
+                calories_per_100g: parseFloat(newCalories),
+                brand: newBrand === '-' ? null : newBrand,
+                distributor: newDistributor === '-' ? null : newDistributor
             };
             
             // Call API with enhanced notifications
@@ -3780,6 +3839,8 @@ class CalorieTracker {
             // Update original values
             nameCell.dataset.originalValue = newName;
             caloriesCell.dataset.originalValue = newCalories;
+            brandCell.dataset.originalValue = newBrand;
+            distributorCell.dataset.originalValue = newDistributor;
             
             // Update local cache
             const food = this.adminData.foods.find(f => f.id == foodId);
@@ -3787,17 +3848,25 @@ class CalorieTracker {
                 food.name = newName;
                 food.calories = parseFloat(newCalories);
                 food.calories_per_100g = parseFloat(newCalories);
+                food.brand = newBrand === '-' ? null : newBrand;
+                food.distributor = newDistributor === '-' ? null : newDistributor;
             }
             
             // Show visual success feedback
             nameCell.classList.remove('saving');
             caloriesCell.classList.remove('saving');
+            brandCell.classList.remove('saving');
+            distributorCell.classList.remove('saving');
             nameCell.classList.add('saved');
             caloriesCell.classList.add('saved');
+            brandCell.classList.add('saved');
+            distributorCell.classList.add('saved');
             
             setTimeout(() => {
                 nameCell.classList.remove('saved');
                 caloriesCell.classList.remove('saved');
+                brandCell.classList.remove('saved');
+                distributorCell.classList.remove('saved');
             }, 1500);
             
             // Disable edit mode
@@ -3810,6 +3879,8 @@ class CalorieTracker {
             // Remove saving state
             nameCell.classList.remove('saving');
             caloriesCell.classList.remove('saving');
+            brandCell.classList.remove('saving');
+            distributorCell.classList.remove('saving');
         }
     }
 
@@ -3822,10 +3893,14 @@ class CalorieTracker {
         
         const nameCell = row.querySelector('[data-field="name"]');
         const caloriesCell = row.querySelector('[data-field="calories"]');
+        const brandCell = row.querySelector('[data-field="brand"]');
+        const distributorCell = row.querySelector('[data-field="distributor"]');
         
         // Revert to original values
         nameCell.textContent = nameCell.dataset.originalValue;
         caloriesCell.textContent = caloriesCell.dataset.originalValue;
+        brandCell.textContent = brandCell.dataset.originalValue;
+        distributorCell.textContent = distributorCell.dataset.originalValue;
         
         // Disable edit mode
         this.disableEditMode(foodId);
@@ -3842,12 +3917,18 @@ class CalorieTracker {
         
         const nameCell = row.querySelector('[data-field="name"]');
         const caloriesCell = row.querySelector('[data-field="calories"]');
+        const brandCell = row.querySelector('[data-field="brand"]');
+        const distributorCell = row.querySelector('[data-field="distributor"]');
         
         // Disable contenteditable
         nameCell.contentEditable = 'false';
         caloriesCell.contentEditable = 'false';
+        brandCell.contentEditable = 'false';
+        distributorCell.contentEditable = 'false';
         nameCell.classList.remove('editing');
         caloriesCell.classList.remove('editing');
+        brandCell.classList.remove('editing');
+        distributorCell.classList.remove('editing');
         
         // Toggle button visibility
         const editBtn = row.querySelector('[data-action="toggle-edit-mode"]');
