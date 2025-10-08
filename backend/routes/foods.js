@@ -93,12 +93,14 @@ router.post('/', [
         }
 
         const { name, caloriesPerUnit, defaultUnit, category, brand, distributor } = req.body;
-        const result = await db.createFood(name, caloriesPerUnit, defaultUnit, category, brand, distributor);
+        const userId = req.user ? req.user.id : null; // Track who created it
+        const result = await db.createFood(name, caloriesPerUnit, defaultUnit, category, brand, distributor, userId);
         
         res.status(201).json({
             success: true,
             message: 'Food created successfully',
-            foodId: result.insertId
+            foodId: result.insertId,
+            contributedToDatabase: userId ? true : false // Let user know they contributed
         });
     } catch (error) {
         console.error('Create food error:', error);

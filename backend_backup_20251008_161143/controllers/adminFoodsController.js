@@ -102,7 +102,7 @@ class AdminFoodsController {
     async createFood(req, res) {
         try {
             const {
-                name, calories_per_100g, category_id, brand,
+                name, calories_per_100g, category_id, brand, distributor,
                 protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                 sodium_per_100g, sugar_per_100g, description, barcode, is_verified
             } = req.body;
@@ -121,13 +121,13 @@ class AdminFoodsController {
 
             const result = await db.query(`
                 INSERT INTO foods (
-                    name, calories_per_100g, default_unit, category_id, brand,
+                    name, calories_per_100g, default_unit, category_id, brand, distributor,
                     protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                     sodium_per_100g, sugar_per_100g, description, barcode,
                     source, is_verified, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'custom', ?, ?)
             `, [
-                name, calories_per_100g, default_unit, category_id, brand,
+                name, calories_per_100g, default_unit, category_id, brand, distributor,
                 protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                 sodium_per_100g, sugar_per_100g, description, barcode,
                 is_verified || false, req.user.id
@@ -158,7 +158,7 @@ class AdminFoodsController {
         try {
             const { foodId } = req.params;
             const {
-                name, calories_per_100g, category_id, brand,
+                name, calories_per_100g, category_id, brand, distributor,
                 protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                 sodium_per_100g, sugar_per_100g, description, barcode, is_verified
             } = req.body;
@@ -177,13 +177,13 @@ class AdminFoodsController {
 
             await db.query(`
                 UPDATE foods SET
-                    name = ?, calories_per_100g = ?, default_unit = ?, category_id = ?, brand = ?,
+                    name = ?, calories_per_100g = ?, default_unit = ?, category_id = ?, brand = ?, distributor = ?,
                     protein_per_100g = ?, carbs_per_100g = ?, fat_per_100g = ?, fiber_per_100g = ?,
                     sodium_per_100g = ?, sugar_per_100g = ?, description = ?, barcode = ?,
                     is_verified = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `, [
-                name, calories_per_100g, default_unit, category_id, brand,
+                name, calories_per_100g, default_unit, category_id, brand, distributor,
                 protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g,
                 sodium_per_100g, sugar_per_100g, description, barcode,
                 is_verified || false, foodId
