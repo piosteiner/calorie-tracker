@@ -16,6 +16,7 @@ const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
 const adminFoodsRoutes = require('./routes/adminFoods');
 const adminDatabaseRoutes = require('./routes/adminDatabase');
+const userFoodsRoutes = require('./routes/userFoods');
 const db = require('./database');
 
 const app = express();
@@ -86,6 +87,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/foods', adminFoodsRoutes);
 app.use('/api/admin/database', adminDatabaseRoutes);
+app.use('/api/admin/user-foods', userFoodsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

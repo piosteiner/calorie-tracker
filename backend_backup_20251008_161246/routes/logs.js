@@ -63,7 +63,7 @@ router.post('/', [
     body('name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Food name must be 1-100 characters'),
     body('quantity').isFloat({ min: 0.1 }).withMessage('Quantity must be at least 0.1'),
     body('unit').trim().isLength({ min: 1, max: 20 }).withMessage('Unit is required (1-20 characters)'),
-    body('calories').isFloat({ min: 0 }).withMessage('Calories must be a positive number'),
+    body('calories').isInt({ min: 0 }).withMessage('Calories must be a positive whole number (kcal)'),
     body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format')
 ], async (req, res) => {
     try {
@@ -116,7 +116,7 @@ router.post('/', [
         
         res.status(201).json({
             success: true,
-            message: `Successfully logged ${quantity}${unit} of ${foodName} (${calories} cal)`,
+            message: `Successfully logged ${quantity}${unit} of ${foodName} (${calories} kcal)`,
             logId: result.insertId,
             entry: {
                 id: result.insertId,
@@ -142,7 +142,7 @@ router.put('/:id', [
     body('name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Food name must be 1-100 characters'),
     body('quantity').optional().isFloat({ min: 0.1 }).withMessage('Quantity must be at least 0.1'),
     body('unit').optional().trim().isLength({ min: 1, max: 20 }).withMessage('Unit must be 1-20 characters'),
-    body('calories').optional().isFloat({ min: 0 }).withMessage('Calories must be a positive number'),
+    body('calories').optional().isInt({ min: 0 }).withMessage('Calories must be a positive whole number (kcal)'),
     body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format')
 ], async (req, res) => {
     try {

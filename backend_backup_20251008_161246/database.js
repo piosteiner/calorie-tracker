@@ -111,12 +111,17 @@ class Database {
         return results[0];
     }
 
-    async createFood(name, caloriesPer100g, defaultUnit, category = null, brand = null) {
+    async createFood(name, caloriesPer100g, defaultUnit, category = null, brand = null, distributor = null, createdBy = null, isPublic = 1) {
         const sql = `
-            INSERT INTO foods (name, calories_per_100g, default_unit, category, brand) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO foods (name, calories_per_100g, default_unit, category, brand, distributor, created_by, is_public, source, is_verified) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        return await this.query(sql, [name, caloriesPer100g, defaultUnit, category, brand]);
+        // User-created foods are 'custom' source and not verified by default
+        // Admin-created foods (createdBy=null) can be system foods
+        const source = createdBy ? 'custom' : 'system';
+        const isVerified = createdBy ? 0 : 1;
+        
+        return await this.query(sql, [name, caloriesPer100g, defaultUnit, category, brand, distributor, createdBy, isPublic, source, isVerified]);
     }
 
     // Food log queries

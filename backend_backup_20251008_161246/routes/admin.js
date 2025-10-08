@@ -152,6 +152,7 @@ router.get('/foods', async (req, res) => {
         f.default_unit as unit,
         f.category,
         f.brand,
+        f.distributor,
         'local' as source,
         COUNT(fl.id) as usage_count,
         SUM(fl.quantity) as total_quantity_logged,
@@ -182,7 +183,7 @@ router.get('/foods', async (req, res) => {
 // Add new food (admin only)
 router.post('/foods', async (req, res) => {
   try {
-    const { name, calories_per_100g, category, brand } = req.body;
+    const { name, calories_per_100g, category, brand, distributor } = req.body;
     
     if (!name || !calories_per_100g) {
       return res.status(400).json({
@@ -193,7 +194,7 @@ router.post('/foods', async (req, res) => {
 
     // Always use 100g as the default unit since all calories are standardized to per 100g
     const default_unit = '100g';
-    const result = await db.createFood(name, calories_per_100g, default_unit, category, brand);
+    const result = await db.createFood(name, calories_per_100g, default_unit, category, brand, distributor);
     
     res.json({
       success: true,
@@ -220,7 +221,7 @@ router.post('/foods', async (req, res) => {
 router.put('/foods/:foodId', async (req, res) => {
   try {
     const foodId = req.params.foodId;
-    const { name, calories_per_100g, category, brand } = req.body;
+    const { name, calories_per_100g, category, brand, distributor } = req.body;
     
     // Always use 100g as the default unit since all calories are standardized to per 100g
     const default_unit = '100g';
@@ -230,12 +231,13 @@ router.put('/foods/:foodId', async (req, res) => {
     const safeCalories = calories_per_100g !== undefined ? calories_per_100g : null;
     const safeCategory = category !== undefined ? category : null;
     const safeBrand = brand !== undefined ? brand : null;
+    const safeDistributor = distributor !== undefined ? distributor : null;
     
     const result = await db.query(`
       UPDATE foods 
-      SET name = ?, calories_per_100g = ?, default_unit = ?, category = ?, brand = ?
+      SET name = ?, calories_per_100g = ?, default_unit = ?, category = ?, brand = ?, distributor = ?
       WHERE id = ?
-    `, [safeName, safeCalories, default_unit, safeCategory, safeBrand, foodId]);
+    `, [safeName, safeCalories, default_unit, safeCategory, safeBrand, safeDistributor, foodId]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
@@ -358,6 +360,7 @@ router.get('/foods-enhanced', async (req, res) => {
         f.default_unit,
         f.category,
         f.brand,
+        f.distributor,
         f.source,
         f.protein_per_100g,
         f.carbs_per_100g,
@@ -379,8 +382,8 @@ router.get('/foods-enhanced', async (req, res) => {
     }
 
     if (search) {
-      conditions.push('(f.name LIKE ? OR f.brand LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`);
+      conditions.push('(f.name LIKE ? OR f.brand LIKE ? OR f.distributor LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     if (conditions.length > 0) {
