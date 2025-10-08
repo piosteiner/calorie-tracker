@@ -257,14 +257,14 @@ class CalorieTracker {
                 return response.foods.map(food => ({
                     id: food.id,
                     name: food.name,
-                    calories: food.calories_per_100g || food.calories,
+                    calories: food.calories_per_100g || food.calories_per_unit || food.calories || 0,
                     unit: 'g', // All foods now use grams
                     brand: food.brand || '',
                     source: 'Local Database',
-                    protein: food.protein_per_100g || 0,
-                    carbs: food.carbs_per_100g || 0,
-                    fat: food.fat_per_100g || 0,
-                    fiber: food.fiber_per_100g || 0
+                    protein: food.protein_per_100g || food.protein || 0,
+                    carbs: food.carbs_per_100g || food.carbs || 0,
+                    fat: food.fat_per_100g || food.fat || 0,
+                    fiber: food.fiber_per_100g || food.fiber || 0
                 })).slice(0, limit);
             }
             return [];
