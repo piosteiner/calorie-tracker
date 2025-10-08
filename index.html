@@ -248,6 +248,120 @@
                     </div>
                 </div>
 
+                <!-- Food Promotion Modal -->
+                <div id="promoteFoodModal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content-edit promote-modal">
+                        <div class="modal-header">
+                            <h3>✅ Promote to Pios Food DB</h3>
+                            <button class="btn-close" data-action="close-promote-modal" title="Close">&times;</button>
+                        </div>
+                        <form id="promoteFoodForm" class="modal-body">
+                            <input type="hidden" id="promoteFoodId">
+                            
+                            <div class="form-section">
+                                <h4>Basic Information</h4>
+                                <div class="form-group">
+                                    <label for="promoteFoodName">Food Name *</label>
+                                    <input type="text" id="promoteFoodName" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="promoteFoodBrand">Brand</label>
+                                        <input type="text" id="promoteFoodBrand" maxlength="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="promoteFoodDistributor">Store</label>
+                                        <select id="promoteFoodDistributor">
+                                            <option value="">None</option>
+                                            <option value="Migros">Migros</option>
+                                            <option value="Coop">Coop</option>
+                                            <option value="Spar">Spar</option>
+                                            <option value="Aldi">Aldi</option>
+                                            <option value="Lidl">Lidl</option>
+                                            <option value="Denner">Denner</option>
+                                            <option value="Volg">Volg</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>Nutrition per 100g</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="promoteFoodCalories">Calories (kcal) *</label>
+                                        <input type="number" id="promoteFoodCalories" step="1" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="promoteFoodProtein">Protein (g)</label>
+                                        <input type="number" id="promoteFoodProtein" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="promoteFoodCarbs">Carbs (g)</label>
+                                        <input type="number" id="promoteFoodCarbs" step="0.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="promoteFoodFat">Fat (g)</label>
+                                        <input type="number" id="promoteFoodFat" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="promoteFoodFiber">Fiber (g)</label>
+                                        <input type="number" id="promoteFoodFiber" step="0.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="promoteFoodSugar">Sugar (g)</label>
+                                        <input type="number" id="promoteFoodSugar" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="promoteFoodSodium">Sodium (g)</label>
+                                        <input type="number" id="promoteFoodSodium" step="0.01">
+                                    </div>
+                                    <div class="form-group">
+                                        <!-- Empty for layout -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>Additional Details</h4>
+                                <div class="form-group">
+                                    <label for="promoteFoodDescription">Description</label>
+                                    <textarea id="promoteFoodDescription" rows="3" placeholder="Optional description..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="promoteFoodBarcode">Barcode</label>
+                                    <input type="text" id="promoteFoodBarcode" maxlength="50">
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>Admin Notes</h4>
+                                <div class="form-group">
+                                    <label for="promoteAdminNotes">Why are you promoting this food?</label>
+                                    <textarea id="promoteAdminNotes" rows="2" placeholder="e.g., Popular contribution - verified nutrition"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="contribution-info">
+                                <p><strong>Original Creator:</strong> <span id="promoteCreatorInfo">-</span></p>
+                                <p><strong>Usage Stats:</strong> <span id="promoteUsageInfo">-</span></p>
+                            </div>
+
+                            <div class="modal-actions">
+                                <button type="button" class="btn btn-secondary" data-action="close-promote-modal">Cancel</button>
+                                <button type="submit" class="btn btn-success">✅ Promote to Pios DB</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <!-- Admin Panel -->
                 <div id="adminPanel" class="admin-panel" style="display: none;">
                     <div class="admin-card">
@@ -256,6 +370,7 @@
                             <button class="btn btn-admin" data-action="show-admin-section" data-section="Stats">📊 Statistics</button>
                             <button class="btn btn-admin" data-action="show-admin-section" data-section="Users">👥 Users</button>
                             <button class="btn btn-admin" data-action="show-admin-section" data-section="Foods">🥗 Pios Food DB</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Contributions">🎁 User Contributions</button>
                             <button class="btn btn-admin" data-action="show-admin-section" data-section="Database">🗄️ Database</button>
                         </nav>
 
@@ -377,6 +492,78 @@
                                         <tr><td colspan="7" class="loading">Loading foods...</td></tr>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+
+                        <!-- User Contributions Management -->
+                        <div id="adminContributions" class="admin-section">
+                            <h3>🎁 User Contributions Dashboard</h3>
+                            
+                            <!-- Contributions Statistics -->
+                            <div class="contributions-stats">
+                                <h4>Overview</h4>
+                                <div class="admin-stats-grid">
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="totalUserFoods">0</div>
+                                        <div class="admin-stat-label">User Foods</div>
+                                    </div>
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="totalContributors">0</div>
+                                        <div class="admin-stat-label">Contributors</div>
+                                    </div>
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="popularFoodsCount">0</div>
+                                        <div class="admin-stat-label">Popular Foods</div>
+                                    </div>
+                                    <div class="admin-stat">
+                                        <div class="admin-stat-value" id="avgUsagePerFood">0</div>
+                                        <div class="admin-stat-label">Avg Uses Per Food</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Top Contributors -->
+                            <div class="top-contributors">
+                                <h4>🏆 Top Contributors</h4>
+                                <div id="topContributorsList" class="contributors-list">
+                                    <p class="loading">Loading contributors...</p>
+                                </div>
+                            </div>
+
+                            <!-- Filters and Controls -->
+                            <div class="contributions-controls">
+                                <div class="filter-group">
+                                    <label for="sortByContributions">Sort by:</label>
+                                    <select id="sortByContributions" data-action="change-contributions-sort">
+                                        <option value="popularity">Popularity (Most Used)</option>
+                                        <option value="recent">Recent (Newest First)</option>
+                                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label for="minUsageFilter">Min Uses:</label>
+                                    <input type="number" id="minUsageFilter" min="0" value="0" data-action="change-min-usage" placeholder="0">
+                                </div>
+                                <div class="filter-group">
+                                    <button class="btn btn-secondary" data-action="filter-popular-foods">⭐ Show Popular (5+)</button>
+                                    <button class="btn btn-secondary" data-action="filter-recent-foods">🆕 Show Recent</button>
+                                    <button class="btn btn-secondary" data-action="filter-all-foods">📋 Show All</button>
+                                </div>
+                            </div>
+
+                            <!-- User Foods List -->
+                            <div class="user-foods-container">
+                                <h4>User-Contributed Foods</h4>
+                                <div id="userFoodsList" class="user-foods-list">
+                                    <p class="loading">Loading user contributions...</p>
+                                </div>
+                                
+                                <!-- Pagination -->
+                                <div id="contributionsPagination" class="pagination-controls" style="display: none;">
+                                    <button class="btn btn-secondary" data-action="contributions-prev-page" disabled>← Previous</button>
+                                    <span class="pagination-info">Page <span id="contributionsCurrentPage">1</span> of <span id="contributionsTotalPages">1</span></span>
+                                    <button class="btn btn-secondary" data-action="contributions-next-page">Next →</button>
+                                </div>
                             </div>
                         </div>
 
