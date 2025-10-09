@@ -6660,33 +6660,57 @@ class CalorieTracker {
             const response = await this.apiCall(endpoint);
             
             if (response.success) {
-                this.renderShopItems(response.data.items, response.data.balance);
+                // Get user's current points for balance display
+                const userBalance = await this.getCurrentPoints();
+                this.renderShopItems(response.items, userBalance, response.userLevel);
             }
         } catch (error) {
             logger.error('Error loading shop items:', error);
+            const shopGrid = document.getElementById('shopItemsGrid');
+            if (shopGrid) {
+                shopGrid.innerHTML = '<p class="error">Failed to load shop items. Please try again.</p>';
+            }
+        }
+    }
+
+    /**
+     * Get user's current points
+     */
+    async getCurrentPoints() {
+        try {
+            const response = await this.apiCall('/rewards/points');
+            return response.success ? response.points.currentPoints : 0;
+        } catch (error) {
+            console.error('Error getting current points:', error);
+            return 0;
         }
     }
 
     /**
      * Render shop items in grid
      */
-    renderShopItems(items, balance) {
+    renderShopItems(items, balance, userLevel = 1) {
         const shopGrid = document.getElementById('shopItemsGrid');
-        const balanceElement = document.getElementById('shopBalance');
+        const balanceElement = document.getElementById('shopUserPoints');
         
         if (!shopGrid) return;
 
         // Update balance
         if (balanceElement) {
-            balanceElement.textContent = `${balance} pts`;
+            balanceElement.textContent = balance;
         }
 
         // Clear existing items
         shopGrid.innerHTML = '';
 
+        if (!items || items.length === 0) {
+            shopGrid.innerHTML = '<p class="no-items">No items available in this category.</p>';
+            return;
+        }
+
         // Render each item
         items.forEach(item => {
-            const itemElement = this.createShopItemElement(item, balance);
+            const itemElement = this.createShopItemElement(item, balance, userLevel);
             shopGrid.appendChild(itemElement);
         });
     }
@@ -6694,70 +6718,111 @@ class CalorieTracker {
     /**
      * Create shop item DOM element
      */
-    createShopItemElement(item, userBalance) {
+    createShopItemElement(item, userBalance, userLevel = 1) {
         const div = document.createElement('div');
         div.className = 'shop-item';
         
-        // Add status classes
-        if (item.is_owned) {
-            div.classList.add('owned');
-        } else if (item.level_required > this.currentUser.level) {
-            div.classList.add('locked');
-        }
+        // Check if item can be purchased
+        const canAfford = userBalance >= item.cost_points;
+        const meetsLevel = !item.required_level || userLevel >= item.required_level;
+        const alreadyOwned = item.already_owned || false;
+        const canPurchase = item.can_purchase && canAfford && meetsLevel && !alreadyOwned;
 
-        const canAfford = userBalance >= item.cost;
-        const canPurchase = !item.is_owned && canAfford && (!item.level_required || item.level_required <= this.currentUser.level);
+        // Add status classes
+        if (alreadyOwned) {
+            div.classList.add('owned');
+        } else if (!meetsLevel) {
+            div.classList.add('locked');
+        } else if (!canAfford) {
+            div.classList.add('insufficient-points');
+        }
 
         div.innerHTML = `
             <div class="shop-item-header">
-                <div>
-                    <div class="shop-item-name">${item.name}</div>
-                    <div class="shop-item-category">${item.category}</div>
+                <div class="shop-item-icon">${this.getCategoryIcon(item.category)}</div>
+                <div class="shop-item-info">
+                    <h4 class="shop-item-name">${item.name}</h4>
+                    <span class="shop-item-category">${item.category}</span>
                 </div>
-                <div class="shop-item-cost">${item.cost} ⭐</div>
             </div>
-            <div class="shop-item-description">${item.description}</div>
+            <p class="shop-item-description">${item.description}</p>
             <div class="shop-item-footer">
-                <div class="shop-item-level">
-                    ${item.level_required ? `Requires Level ${item.level_required}` : ''}
+                <div class="shop-item-cost">
+                    <span class="cost-amount">${item.cost_points}</span> ⭐
                 </div>
-                <div class="shop-item-status ${item.is_owned ? 'owned' : canPurchase ? 'available' : 'locked'}">
-                    ${item.is_owned ? 'Owned' : canPurchase ? 'Available' : !canAfford ? 'Insufficient Points' : 'Locked'}
+                <div class="shop-item-actions">
+                    ${item.required_level > 1 ? `<span class="level-req">Lvl ${item.required_level}</span>` : ''}
+                    ${alreadyOwned 
+                        ? '<span class="status-badge owned">✓ Owned</span>' 
+                        : !meetsLevel 
+                            ? '<span class="status-badge locked">🔒 Locked</span>'
+                            : !canAfford
+                                ? '<span class="status-badge insufficient">Insufficient Points</span>'
+                                : '<button class="btn btn-sm btn-primary">Purchase</button>'
+                    }
                 </div>
             </div>
         `;
 
         // Add click handler for purchase
-        if (canPurchase) {
-            div.style.cursor = 'pointer';
-            div.addEventListener('click', () => {
-                this.showPurchaseConfirmation(item);
-            });
+        if (canPurchase && !alreadyOwned) {
+            const purchaseBtn = div.querySelector('.btn-primary');
+            if (purchaseBtn) {
+                purchaseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.showPurchaseConfirmation(item, userBalance);
+                });
+            }
         }
 
         return div;
     }
 
     /**
+     * Get emoji icon for category
+     */
+    getCategoryIcon(category) {
+        const icons = {
+            'theme': '🎨',
+            'badge': '🏆',
+            'feature': '⚡',
+            'avatar': '👤',
+            'powerup': '💪',
+            'challenge': '🎯'
+        };
+        return icons[category] || '🎁';
+    }
+
+    /**
      * Show purchase confirmation modal
      */
-    showPurchaseConfirmation(item) {
+    showPurchaseConfirmation(item, currentBalance) {
         const modal = document.getElementById('purchaseConfirmModal');
         if (!modal) return;
 
         // Update modal content
-        document.getElementById('confirmItemName').textContent = item.name;
-        document.getElementById('confirmItemCost').textContent = item.cost;
-        document.getElementById('confirmItemDescription').textContent = item.description;
+        const nameEl = document.getElementById('purchaseItemName');
+        const costEl = document.getElementById('purchaseItemCost');
+        const descEl = document.getElementById('purchaseItemDescription');
+        const balanceEl = document.getElementById('purchaseRemainingBalance');
+        
+        if (nameEl) nameEl.textContent = item.name;
+        if (costEl) costEl.textContent = item.cost_points;
+        if (descEl) descEl.textContent = item.description;
 
-        // Get current balance
-        const currentBalance = parseInt(document.getElementById('shopBalance').textContent);
-        const remainingBalance = currentBalance - item.cost;
-        document.getElementById('confirmRemainingBalance').textContent = remainingBalance;
+        // Calculate remaining balance
+        const remainingBalance = currentBalance - item.cost_points;
+        if (balanceEl) balanceEl.textContent = remainingBalance;
 
         // Set up purchase button
         const purchaseBtn = document.getElementById('confirmPurchaseBtn');
-        purchaseBtn.onclick = () => this.purchaseItem(item.id);
+        if (purchaseBtn) {
+            // Remove old event listeners by cloning
+            const newBtn = purchaseBtn.cloneNode(true);
+            purchaseBtn.parentNode.replaceChild(newBtn, purchaseBtn);
+            
+            newBtn.onclick = () => this.purchaseItem(item.id);
+        }
 
         // Show modal
         modal.style.display = 'flex';
@@ -6771,18 +6836,29 @@ class CalorieTracker {
             const response = await this.apiCall(`/rewards/shop/${itemId}/purchase`, 'POST');
             
             if (response.success) {
-                this.notifications.success('Item purchased successfully!');
+                // Show success notification
+                this.showNotification(`Successfully purchased ${response.item.name}!`, 'success');
                 
                 // Close modals
-                document.getElementById('purchaseConfirmModal').style.display = 'none';
+                const confirmModal = document.getElementById('purchaseConfirmModal');
+                if (confirmModal) confirmModal.style.display = 'none';
                 
                 // Reload shop and rewards data
                 await this.loadShopItems();
                 await this.loadRewardsData();
+                
+                // Show points updated toast
+                showPointsToast({
+                    pointsAwarded: -response.pointsSpent,
+                    pointsDetails: {
+                        purchase: -response.pointsSpent
+                    },
+                    newBalance: response.remainingPoints
+                });
             }
         } catch (error) {
             logger.error('Error purchasing item:', error);
-            this.notifications.error(error.message || 'Failed to purchase item');
+            this.showNotification(error.message || 'Failed to purchase item', 'error');
         }
     }
 
@@ -6791,40 +6867,76 @@ class CalorieTracker {
      */
     async loadLeaderboard(timeframe = 'all-time') {
         try {
-            const response = await this.apiCall(`/rewards/leaderboard?timeframe=${timeframe}`);
+            const leaderboardTable = document.getElementById('leaderboardTable');
+            if (leaderboardTable) {
+                leaderboardTable.innerHTML = '<p class="loading">Loading leaderboard...</p>';
+            }
+
+            const response = await this.apiCall(`/rewards/leaderboard?limit=100`);
             
             if (response.success) {
-                this.renderLeaderboard(response.data);
+                this.renderLeaderboard(response.leaderboard, response.myRank);
             }
         } catch (error) {
             logger.error('Error loading leaderboard:', error);
+            const leaderboardTable = document.getElementById('leaderboardTable');
+            if (leaderboardTable) {
+                leaderboardTable.innerHTML = '<p class="error">Failed to load leaderboard. Please try again.</p>';
+            }
         }
     }
 
     /**
      * Render leaderboard table
      */
-    renderLeaderboard(data) {
+    renderLeaderboard(leaderboard, myRank) {
+        const container = document.getElementById('leaderboardTable');
+        if (!container) return;
+
+        if (!leaderboard || leaderboard.length === 0) {
+            container.innerHTML = '<p class="no-data">No leaderboard data available yet.</p>';
+            return;
+        }
+
+        // Create table
+        const table = document.createElement('table');
+        table.className = 'leaderboard-table';
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Current Points</th>
+                    <th>Lifetime Points</th>
+                    <th>Level</th>
+                    <th>Streak</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardTableBody"></tbody>
+        `;
+
+        container.innerHTML = '';
+        container.appendChild(table);
+
         const tbody = document.getElementById('leaderboardTableBody');
-        if (!tbody) return;
 
-        tbody.innerHTML = '';
-
-        data.leaderboard.forEach((user, index) => {
+        leaderboard.forEach((entry, index) => {
             const row = document.createElement('tr');
-            if (user.user_id === this.currentUser?.id) {
+            const isCurrentUser = myRank && entry.user_id === myRank.user_id;
+            
+            if (isCurrentUser) {
                 row.classList.add('my-rank');
             }
 
             const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
 
             row.innerHTML = `
-                <td class="leaderboard-rank ${rankClass}">${user.rank}</td>
-                <td>${user.username}</td>
-                <td>${user.current_points}</td>
-                <td>${user.lifetime_points}</td>
-                <td>${user.level}</td>
-                <td>${user.streak_days || 0}</td>
+                <td class="leaderboard-rank ${rankClass}">${index + 1}</td>
+                <td class="leaderboard-username">${entry.username}${isCurrentUser ? ' <span class="you-badge">(You)</span>' : ''}</td>
+                <td class="leaderboard-points">${entry.current_points.toLocaleString()}</td>
+                <td class="leaderboard-lifetime">${entry.lifetime_points.toLocaleString()}</td>
+                <td class="leaderboard-level">${entry.level}</td>
+                <td class="leaderboard-streak">${entry.current_streak || 0}</td>
             `;
 
             tbody.appendChild(row);
@@ -6836,26 +6948,47 @@ class CalorieTracker {
      */
     async loadAchievements() {
         try {
+            const achievementsGrid = document.getElementById('achievementsGrid');
+            if (achievementsGrid) {
+                achievementsGrid.innerHTML = '<p class="loading">Loading achievements...</p>';
+            }
+
             const response = await this.apiCall('/rewards/achievements');
             
             if (response.success) {
-                this.renderAchievements(response.data);
+                this.renderAchievements(response.achievements, response.totalAchievements);
             }
         } catch (error) {
             logger.error('Error loading achievements:', error);
+            const achievementsGrid = document.getElementById('achievementsGrid');
+            if (achievementsGrid) {
+                achievementsGrid.innerHTML = '<p class="error">Failed to load achievements. Please try again.</p>';
+            }
         }
     }
 
     /**
      * Render achievements grid
      */
-    renderAchievements(data) {
+    renderAchievements(achievements, totalCount) {
         const grid = document.getElementById('achievementsGrid');
         if (!grid) return;
 
         grid.innerHTML = '';
 
-        data.achievements.forEach(achievement => {
+        if (!achievements || achievements.length === 0) {
+            grid.innerHTML = '<p class="no-data">No achievements unlocked yet. Keep logging to earn your first achievement!</p>';
+            return;
+        }
+
+        // Add summary header
+        const summary = document.createElement('div');
+        summary.className = 'achievements-summary';
+        summary.innerHTML = `<h4>🏆 ${totalCount} Achievement${totalCount !== 1 ? 's' : ''} Unlocked</h4>`;
+        grid.appendChild(summary);
+
+        // Render each achievement
+        achievements.forEach(achievement => {
             const achievementElement = this.createAchievementElement(achievement);
             grid.appendChild(achievementElement);
         });
@@ -6866,26 +6999,30 @@ class CalorieTracker {
      */
     createAchievementElement(achievement) {
         const div = document.createElement('div');
-        div.className = 'achievement-item';
+        div.className = 'achievement-item unlocked';
         
-        if (!achievement.unlocked_at) {
-            div.classList.add('locked');
-        }
+        const unlockedDate = new Date(achievement.unlocked_at);
+        const formattedDate = unlockedDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
 
         div.innerHTML = `
-            <div class="achievement-icon">${achievement.icon || '🏆'}</div>
-            <div class="achievement-name">${achievement.name}</div>
-            <div class="achievement-description">${achievement.description}</div>
-            <div class="achievement-points">+${achievement.points_reward} pts</div>
-            ${achievement.unlocked_at ? `<div class="achievement-date">Unlocked ${new Date(achievement.unlocked_at).toLocaleDateString()}</div>` : ''}
+            <div class="achievement-icon">${achievement.achievement_icon || '🏆'}</div>
+            <div class="achievement-details">
+                <h4 class="achievement-name">${achievement.achievement_name}</h4>
+                <p class="achievement-description">${achievement.achievement_description || ''}</p>
+                <div class="achievement-footer">
+                    <span class="achievement-points">+${achievement.points_awarded} points</span>
+                    <span class="achievement-date">Unlocked: ${formattedDate}</span>
+                </div>
+            </div>
         `;
 
         return div;
     }
 
-    /**
-     * Toggle rewards details section
-     */
     /**
      * Toggle rewards details section
      */
