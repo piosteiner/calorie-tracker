@@ -17,16 +17,25 @@ class RewardsController {
      */
     static async getMyPoints(req, res) {
         try {
+            console.log('🔍 [getMyPoints] Fetching points for user:', req.user.id);
             const points = await PointsService.getUserPoints(req.user.id);
+            console.log('🔍 [getMyPoints] Points from DB:', points);
             
             if (!points) {
+                console.log('🔍 [getMyPoints] No points found, initializing new user...');
                 // Initialize points for new user
                 await PointsService.initializeUserPoints(req.user.id);
                 const newPoints = await PointsService.getUserPoints(req.user.id);
+                console.log('🔍 [getMyPoints] New points initialized:', newPoints);
                 
                 // Get milestones
+                console.log('🔍 [getMyPoints] Fetching food milestone...');
                 const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
+                console.log('🔍 [getMyPoints] Food milestone:', foodMilestone);
+                
+                console.log('🔍 [getMyPoints] Fetching weight milestone...');
                 const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
+                console.log('🔍 [getMyPoints] Weight milestone:', weightMilestone);
                 
                 return res.json({ 
                     success: true, 
@@ -52,33 +61,41 @@ class RewardsController {
             }
 
             // Get milestones for existing user
+            console.log('🔍 [getMyPoints] Points found, fetching milestones...');
             const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
             const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
+            console.log('🔍 [getMyPoints] Food milestone:', foodMilestone);
+            console.log('🔍 [getMyPoints] Weight milestone:', weightMilestone);
+
+            const responseData = {
+                ...points,
+                currentPoints: points.current_points,
+                lifetimePoints: points.lifetime_points,
+                pointsSpent: points.points_spent,
+                currentStreak: points.current_streak,
+                longestStreak: points.longest_streak,
+                foodMilestone: {
+                    level: foodMilestone.milestone_level,
+                    multiplier: parseFloat(foodMilestone.points_multiplier),
+                    currentCount: foodMilestone.total_logs
+                },
+                weightMilestone: {
+                    level: weightMilestone.milestone_level,
+                    multiplier: parseFloat(weightMilestone.points_multiplier),
+                    currentCount: weightMilestone.total_logs
+                }
+            };
+            
+            console.log('🔍 [getMyPoints] Final response data:', responseData);
 
             res.json({ 
                 success: true, 
-                points: {
-                    ...points,
-                    currentPoints: points.current_points,
-                    lifetimePoints: points.lifetime_points,
-                    pointsSpent: points.points_spent,
-                    currentStreak: points.current_streak,
-                    longestStreak: points.longest_streak,
-                    foodMilestone: {
-                        level: foodMilestone.milestone_level,
-                        multiplier: parseFloat(foodMilestone.points_multiplier),
-                        currentCount: foodMilestone.total_logs
-                    },
-                    weightMilestone: {
-                        level: weightMilestone.milestone_level,
-                        multiplier: parseFloat(weightMilestone.points_multiplier),
-                        currentCount: weightMilestone.total_logs
-                    }
-                }
+                points: responseData
             });
         } catch (error) {
-            console.error('Get my points error:', error);
-            res.status(500).json({ success: false, error: 'Failed to retrieve points' });
+            console.error('❌ [getMyPoints] Error:', error);
+            console.error('❌ [getMyPoints] Stack:', error.stack);
+            res.status(500).json({ success: false, error: 'Failed to retrieve points', details: error.message });
         }
     }
 
