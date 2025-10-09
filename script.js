@@ -1860,14 +1860,20 @@ class CalorieTracker {
                 
                 logger.info('✅ Food log reloaded from backend after adding');
                 logger.info('=== FOOD LOGGING COMPLETED ===');
-                logger.info('Food log reloaded from backend after adding');
                 
                 // Check for rewards data in response (optional, may not be present)
+                console.log('🎁 Full logResponse object:', logResponse);
+                console.log('🎁 logResponse.pointsAwarded:', logResponse.pointsAwarded);
+                console.log('🎁 logResponse.data?.pointsAwarded:', logResponse.data?.pointsAwarded);
+                
                 const pointsAwarded = logResponse.pointsAwarded || logResponse.data?.pointsAwarded;
                 const pointsDetails = logResponse.pointsDetails || logResponse.data?.pointsDetails;
                 const milestoneLevel = logResponse.milestoneLevel || logResponse.data?.milestoneLevel;
                 
                 logger.info('Rewards data from response:', { pointsAwarded, pointsDetails, milestoneLevel });
+                console.log('🎁 Extracted pointsAwarded:', pointsAwarded);
+                console.log('🎁 Extracted pointsDetails:', pointsDetails);
+                console.log('🎁 Extracted milestoneLevel:', milestoneLevel);
                 
                 if (pointsAwarded && pointsAwarded > 0) {
                     logger.info('Showing points toast for:', pointsAwarded);
@@ -1953,6 +1959,7 @@ class CalorieTracker {
                 });
                 
                 logger.info('Enhanced food log API response:', logResponse);
+                console.log('🎁 ENHANCED - Full logResponse:', logResponse);
                 
                 // Verify the backend save was successful
                 if (!logResponse || !logResponse.success) {
@@ -1964,11 +1971,16 @@ class CalorieTracker {
                 await this.loadTodaysData();
                 
                 // Handle rewards
+                console.log('🎁 ENHANCED - logResponse.pointsAwarded:', logResponse.pointsAwarded);
                 const pointsAwarded = logResponse.pointsAwarded || logResponse.data?.pointsAwarded;
                 const pointsDetails = logResponse.pointsDetails || logResponse.data?.pointsDetails;
                 const milestoneLevel = logResponse.milestoneLevel || logResponse.data?.milestoneLevel;
                 
+                console.log('🎁 ENHANCED - Extracted pointsAwarded:', pointsAwarded);
+                console.log('🎁 ENHANCED - pointsDetails:', pointsDetails);
+                
                 if (pointsAwarded && pointsAwarded > 0) {
+                    console.log('🎁 ENHANCED - Showing points toast!');
                     this.showPointsToast({
                         total: pointsAwarded,
                         reason: 'Food logged!',
