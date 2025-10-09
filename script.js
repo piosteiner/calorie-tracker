@@ -850,6 +850,57 @@ class CalorieTracker {
                     e.preventDefault();
                     this.closePromoteFoodModal();
                     break;
+                    
+                // Rewards system actions
+                case 'toggle-rewards':
+                    e.preventDefault();
+                    this.toggleRewardsDetails();
+                    break;
+                    
+                case 'claim-daily-reward':
+                    e.preventDefault();
+                    this.claimDailyReward();
+                    break;
+                    
+                case 'show-rewards-shop':
+                    e.preventDefault();
+                    this.showRewardsShop();
+                    break;
+                    
+                case 'show-leaderboard':
+                    e.preventDefault();
+                    this.showLeaderboard();
+                    break;
+                    
+                case 'show-achievements':
+                    e.preventDefault();
+                    this.showAchievements();
+                    break;
+                    
+                case 'close-rewards-shop':
+                    e.preventDefault();
+                    document.getElementById('rewardsShopModal').style.display = 'none';
+                    break;
+                    
+                case 'close-leaderboard':
+                    e.preventDefault();
+                    document.getElementById('leaderboardModal').style.display = 'none';
+                    break;
+                    
+                case 'close-achievements':
+                    e.preventDefault();
+                    document.getElementById('achievementsModal').style.display = 'none';
+                    break;
+                    
+                case 'close-purchase-confirm':
+                    e.preventDefault();
+                    document.getElementById('purchaseConfirmModal').style.display = 'none';
+                    break;
+                    
+                case 'filter-shop':
+                    e.preventDefault();
+                    this.filterShopByCategory(target.dataset.category);
+                    break;
             }
         });
         
@@ -1537,6 +1588,7 @@ class CalorieTracker {
                     await this.loadTodaysData();
                     await this.checkAdminStatus();
                     this.toggleAdminInterface();
+                    await this.loadRewardsData(); // Load rewards system data
                     this.showMessage('Login successful! (Connected to backend)', 'success');
                     return;
                 } catch (error) {
@@ -1596,6 +1648,8 @@ class CalorieTracker {
                 // Check admin status and show admin interface if applicable
                 await this.checkAdminStatus();
                 this.toggleAdminInterface();
+                
+                await this.loadRewardsData(); // Load rewards system data
                 
                 this.showMessage('Login successful!', 'success');
                 
@@ -1765,6 +1819,27 @@ class CalorieTracker {
                 
                 this.updateDashboard();
                 this.updateFoodLog();
+                
+                // Check for rewards data in response
+                if (logResponse.pointsAwarded && logResponse.pointsAwarded > 0) {
+                    this.showPointsToast({
+                        total: logResponse.pointsAwarded,
+                        reason: 'Food logged!',
+                        breakdown: logResponse.pointsDetails
+                    });
+                    
+                    // Check for level-up
+                    if (logResponse.milestoneLevel) {
+                        this.showLevelUpCelebration({
+                            icon: '🍽️',
+                            message: `Food Logging Level ${logResponse.milestoneLevel.level}!`,
+                            bonus: logResponse.milestoneLevel.bonusPoints
+                        });
+                    }
+                    
+                    // Refresh rewards display
+                    await this.loadRewardsData();
+                }
                 
                 // Reset form
                 form.reset();
@@ -2734,6 +2809,27 @@ class CalorieTracker {
                 form.reset();
                 // Reset date to today
                 document.getElementById('weightDate').value = new Date().toISOString().split('T')[0];
+                
+                // Check for rewards data in response
+                if (response.pointsAwarded && response.pointsAwarded > 0) {
+                    this.showPointsToast({
+                        total: response.pointsAwarded,
+                        reason: 'Weight logged!',
+                        breakdown: response.pointsDetails
+                    });
+                    
+                    // Check for level-up
+                    if (response.milestoneLevel) {
+                        this.showLevelUpCelebration({
+                            icon: '⚖️',
+                            message: `Weight Logging Level ${response.milestoneLevel.level}!`,
+                            bonus: response.milestoneLevel.bonusPoints
+                        });
+                    }
+                    
+                    // Refresh rewards display
+                    await this.loadRewardsData();
+                }
                 
                 // Reload weight history to show new entry
                 await this.loadWeightHistory();
@@ -5994,6 +6090,487 @@ class CalorieTracker {
         } catch (error) {
             logger.error('Error deleting food:', error);
         }
+    }
+
+    // =============================================================================
+    // REWARDS SYSTEM METHODS
+    // =============================================================================
+
+    /**
+     * Load rewards data and update UI
+     */
+    async loadRewardsData() {
+        if (!this.currentUser) return;
+
+        try {
+            const response = await this.apiCall('/rewards/points');
+            if (response.success) {
+                this.updateRewardsDisplay(response.data);
+            }
+        } catch (error) {
+            logger.error('Error loading rewards data:', error);
+        }
+    }
+
+    /**
+     * Update rewards display in header and card
+     */
+    updateRewardsDisplay(data) {
+        const rewardsDisplay = document.getElementById('rewardsDisplay');
+        if (!rewardsDisplay) return;
+
+        // Show rewards display
+        rewardsDisplay.style.display = 'flex';
+
+        // Update header badges
+        document.getElementById('userPoints').textContent = data.currentPoints;
+        
+        // Update food milestone
+        document.getElementById('foodMilestoneLevel').textContent = `Lv${data.foodMilestone.level}`;
+        document.getElementById('foodMultiplier').textContent = `${data.foodMilestone.multiplier.toFixed(1)}x`;
+        
+        // Update weight milestone
+        document.getElementById('weightMilestoneLevel').textContent = `Lv${data.weightMilestone.level}`;
+        document.getElementById('weightMultiplier').textContent = `${data.weightMilestone.multiplier.toFixed(1)}x`;
+
+        // Update rewards card stats
+        document.getElementById('currentPoints').textContent = data.currentPoints;
+        document.getElementById('lifetimePoints').textContent = data.lifetimePoints;
+        document.getElementById('userLevel').textContent = data.level.currentLevel;
+
+        // Update milestone details
+        this.updateMilestoneProgress('food', data.foodMilestone);
+        this.updateMilestoneProgress('weight', data.weightMilestone);
+
+        // Update daily reward button
+        const dailyRewardBtn = document.getElementById('claimDailyReward');
+        if (dailyRewardBtn) {
+            if (data.dailyRewardAvailable) {
+                dailyRewardBtn.disabled = false;
+                dailyRewardBtn.textContent = '🎁 Claim Daily Reward (100 pts)';
+            } else {
+                dailyRewardBtn.disabled = true;
+                dailyRewardBtn.textContent = '✓ Daily Reward Claimed';
+            }
+        }
+    }
+
+    /**
+     * Update milestone progress display
+     */
+    updateMilestoneProgress(type, milestone) {
+        const levelElement = document.getElementById(`${type}MilestoneDetailLevel`);
+        const multiplierElement = document.getElementById(`${type}MilestoneMultiplierDetail`);
+        const pointsElement = document.getElementById(`${type}PointsPerLog`);
+        const progressBar = document.getElementById(`${type}MilestoneProgress`);
+        const logsUntilNext = document.getElementById(`${type}LogsUntilNext`);
+        const nextLevelElement = document.getElementById(`${type}NextLevel`);
+
+        if (levelElement) levelElement.textContent = milestone.level;
+        if (multiplierElement) multiplierElement.textContent = `${milestone.multiplier.toFixed(1)}x`;
+        
+        // Calculate points per log based on type
+        const basePoints = type === 'food' ? 50 : 150;
+        const earnedPoints = Math.round(basePoints * milestone.multiplier);
+        if (pointsElement) pointsElement.textContent = earnedPoints;
+
+        // Update progress bar
+        if (progressBar && milestone.nextLevel) {
+            const progress = (milestone.currentCount / milestone.nextLevel.threshold) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // Update logs until next level
+        if (logsUntilNext && nextLevelElement && milestone.nextLevel) {
+            const remaining = milestone.nextLevel.threshold - milestone.currentCount;
+            logsUntilNext.textContent = remaining;
+            nextLevelElement.textContent = milestone.nextLevel.level;
+        } else if (logsUntilNext) {
+            // Max level reached
+            logsUntilNext.parentElement.textContent = '🏆 Max Level Reached!';
+        }
+    }
+
+    /**
+     * Show points earned toast notification
+     */
+    showPointsToast(pointsData) {
+        const toast = document.createElement('div');
+        toast.className = 'points-toast';
+
+        let breakdownHTML = '';
+        if (pointsData.breakdown) {
+            breakdownHTML = `
+                <div class="points-toast-breakdown">
+                    <div class="points-toast-item">${pointsData.breakdown.base} base points</div>
+                    ${pointsData.breakdown.multiplier ? `<div class="points-toast-item">× ${pointsData.breakdown.multiplier.toFixed(1)} multiplier</div>` : ''}
+                    ${pointsData.breakdown.bonus ? `<div class="points-toast-item">+ ${pointsData.breakdown.bonus} bonus</div>` : ''}
+                </div>
+            `;
+        }
+
+        toast.innerHTML = `
+            <div class="points-toast-header">⭐ +${pointsData.total} Points!</div>
+            <div class="points-toast-details">${pointsData.reason || 'Points earned'}</div>
+            ${breakdownHTML}
+        `;
+
+        document.body.appendChild(toast);
+
+        // Remove toast after animation
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3500);
+    }
+
+    /**
+     * Show level-up celebration
+     */
+    showLevelUpCelebration(levelData) {
+        const celebration = document.createElement('div');
+        celebration.className = 'level-up-celebration';
+
+        celebration.innerHTML = `
+            <div class="level-up-icon">${levelData.icon || '🎉'}</div>
+            <div class="level-up-title">Level Up!</div>
+            <div class="level-up-message">${levelData.message}</div>
+            ${levelData.bonus ? `<div class="level-up-bonus">+${levelData.bonus} Bonus Points!</div>` : ''}
+        `;
+
+        document.body.appendChild(celebration);
+
+        // Remove celebration after 3 seconds
+        setTimeout(() => {
+            if (celebration.parentNode) {
+                celebration.parentNode.removeChild(celebration);
+            }
+        }, 3000);
+    }
+
+    /**
+     * Claim daily reward
+     */
+    async claimDailyReward() {
+        try {
+            const response = await this.apiCall('/rewards/daily-reward', 'POST');
+            if (response.success) {
+                this.showPointsToast({
+                    total: response.data.pointsAwarded,
+                    reason: 'Daily reward claimed!',
+                    breakdown: {
+                        base: response.data.pointsAwarded,
+                        multiplier: null,
+                        bonus: response.data.streakBonus || 0
+                    }
+                });
+
+                // Reload rewards data
+                await this.loadRewardsData();
+            }
+        } catch (error) {
+            logger.error('Error claiming daily reward:', error);
+            this.notifications.error('Failed to claim daily reward');
+        }
+    }
+
+    /**
+     * Load and display shop items
+     */
+    async loadShopItems(category = null) {
+        try {
+            const endpoint = category ? `/rewards/shop?category=${category}` : '/rewards/shop';
+            const response = await this.apiCall(endpoint);
+            
+            if (response.success) {
+                this.renderShopItems(response.data.items, response.data.balance);
+            }
+        } catch (error) {
+            logger.error('Error loading shop items:', error);
+        }
+    }
+
+    /**
+     * Render shop items in grid
+     */
+    renderShopItems(items, balance) {
+        const shopGrid = document.getElementById('shopItemsGrid');
+        const balanceElement = document.getElementById('shopBalance');
+        
+        if (!shopGrid) return;
+
+        // Update balance
+        if (balanceElement) {
+            balanceElement.textContent = `${balance} pts`;
+        }
+
+        // Clear existing items
+        shopGrid.innerHTML = '';
+
+        // Render each item
+        items.forEach(item => {
+            const itemElement = this.createShopItemElement(item, balance);
+            shopGrid.appendChild(itemElement);
+        });
+    }
+
+    /**
+     * Create shop item DOM element
+     */
+    createShopItemElement(item, userBalance) {
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        
+        // Add status classes
+        if (item.is_owned) {
+            div.classList.add('owned');
+        } else if (item.level_required > this.currentUser.level) {
+            div.classList.add('locked');
+        }
+
+        const canAfford = userBalance >= item.cost;
+        const canPurchase = !item.is_owned && canAfford && (!item.level_required || item.level_required <= this.currentUser.level);
+
+        div.innerHTML = `
+            <div class="shop-item-header">
+                <div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-category">${item.category}</div>
+                </div>
+                <div class="shop-item-cost">${item.cost} ⭐</div>
+            </div>
+            <div class="shop-item-description">${item.description}</div>
+            <div class="shop-item-footer">
+                <div class="shop-item-level">
+                    ${item.level_required ? `Requires Level ${item.level_required}` : ''}
+                </div>
+                <div class="shop-item-status ${item.is_owned ? 'owned' : canPurchase ? 'available' : 'locked'}">
+                    ${item.is_owned ? 'Owned' : canPurchase ? 'Available' : !canAfford ? 'Insufficient Points' : 'Locked'}
+                </div>
+            </div>
+        `;
+
+        // Add click handler for purchase
+        if (canPurchase) {
+            div.style.cursor = 'pointer';
+            div.addEventListener('click', () => {
+                this.showPurchaseConfirmation(item);
+            });
+        }
+
+        return div;
+    }
+
+    /**
+     * Show purchase confirmation modal
+     */
+    showPurchaseConfirmation(item) {
+        const modal = document.getElementById('purchaseConfirmModal');
+        if (!modal) return;
+
+        // Update modal content
+        document.getElementById('confirmItemName').textContent = item.name;
+        document.getElementById('confirmItemCost').textContent = item.cost;
+        document.getElementById('confirmItemDescription').textContent = item.description;
+
+        // Get current balance
+        const currentBalance = parseInt(document.getElementById('shopBalance').textContent);
+        const remainingBalance = currentBalance - item.cost;
+        document.getElementById('confirmRemainingBalance').textContent = remainingBalance;
+
+        // Set up purchase button
+        const purchaseBtn = document.getElementById('confirmPurchaseBtn');
+        purchaseBtn.onclick = () => this.purchaseItem(item.id);
+
+        // Show modal
+        modal.style.display = 'flex';
+    }
+
+    /**
+     * Purchase shop item
+     */
+    async purchaseItem(itemId) {
+        try {
+            const response = await this.apiCall(`/rewards/shop/${itemId}/purchase`, 'POST');
+            
+            if (response.success) {
+                this.notifications.success('Item purchased successfully!');
+                
+                // Close modals
+                document.getElementById('purchaseConfirmModal').style.display = 'none';
+                
+                // Reload shop and rewards data
+                await this.loadShopItems();
+                await this.loadRewardsData();
+            }
+        } catch (error) {
+            logger.error('Error purchasing item:', error);
+            this.notifications.error(error.message || 'Failed to purchase item');
+        }
+    }
+
+    /**
+     * Load and display leaderboard
+     */
+    async loadLeaderboard(timeframe = 'all-time') {
+        try {
+            const response = await this.apiCall(`/rewards/leaderboard?timeframe=${timeframe}`);
+            
+            if (response.success) {
+                this.renderLeaderboard(response.data);
+            }
+        } catch (error) {
+            logger.error('Error loading leaderboard:', error);
+        }
+    }
+
+    /**
+     * Render leaderboard table
+     */
+    renderLeaderboard(data) {
+        const tbody = document.getElementById('leaderboardTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+
+        data.leaderboard.forEach((user, index) => {
+            const row = document.createElement('tr');
+            if (user.user_id === this.currentUser?.id) {
+                row.classList.add('my-rank');
+            }
+
+            const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
+
+            row.innerHTML = `
+                <td class="leaderboard-rank ${rankClass}">${user.rank}</td>
+                <td>${user.username}</td>
+                <td>${user.current_points}</td>
+                <td>${user.lifetime_points}</td>
+                <td>${user.level}</td>
+                <td>${user.streak_days || 0}</td>
+            `;
+
+            tbody.appendChild(row);
+        });
+    }
+
+    /**
+     * Load and display achievements
+     */
+    async loadAchievements() {
+        try {
+            const response = await this.apiCall('/rewards/achievements');
+            
+            if (response.success) {
+                this.renderAchievements(response.data);
+            }
+        } catch (error) {
+            logger.error('Error loading achievements:', error);
+        }
+    }
+
+    /**
+     * Render achievements grid
+     */
+    renderAchievements(data) {
+        const grid = document.getElementById('achievementsGrid');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+
+        data.achievements.forEach(achievement => {
+            const achievementElement = this.createAchievementElement(achievement);
+            grid.appendChild(achievementElement);
+        });
+    }
+
+    /**
+     * Create achievement DOM element
+     */
+    createAchievementElement(achievement) {
+        const div = document.createElement('div');
+        div.className = 'achievement-item';
+        
+        if (!achievement.unlocked_at) {
+            div.classList.add('locked');
+        }
+
+        div.innerHTML = `
+            <div class="achievement-icon">${achievement.icon || '🏆'}</div>
+            <div class="achievement-name">${achievement.name}</div>
+            <div class="achievement-description">${achievement.description}</div>
+            <div class="achievement-points">+${achievement.points_reward} pts</div>
+            ${achievement.unlocked_at ? `<div class="achievement-date">Unlocked ${new Date(achievement.unlocked_at).toLocaleDateString()}</div>` : ''}
+        `;
+
+        return div;
+    }
+
+    /**
+     * Toggle rewards details section
+     */
+    toggleRewardsDetails() {
+        const details = document.getElementById('rewardsDetails');
+        const toggleBtn = document.getElementById('toggleRewards');
+        
+        if (!details) return;
+
+        const isHidden = details.style.display === 'none' || !details.style.display;
+        details.style.display = isHidden ? 'block' : 'none';
+        
+        if (toggleBtn) {
+            toggleBtn.textContent = isHidden ? '▲ Hide Details' : '▼ Show Details';
+        }
+    }
+
+    /**
+     * Show rewards shop modal
+     */
+    showRewardsShop() {
+        const modal = document.getElementById('rewardsShopModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            this.loadShopItems();
+        }
+    }
+
+    /**
+     * Show leaderboard modal
+     */
+    showLeaderboard() {
+        const modal = document.getElementById('leaderboardModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            this.loadLeaderboard();
+        }
+    }
+
+    /**
+     * Show achievements modal
+     */
+    showAchievements() {
+        const modal = document.getElementById('achievementsModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            this.loadAchievements();
+        }
+    }
+
+    /**
+     * Filter shop items by category
+     */
+    filterShopByCategory(category) {
+        // Update active filter button
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.category === category) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Load filtered items
+        this.loadShopItems(category === 'all' ? null : category);
     }
 }
 

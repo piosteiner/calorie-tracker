@@ -54,6 +54,23 @@
                 <h1>🍎 Calorie Tracker</h1>
                 <div class="user-info">
                     <span id="welcomeUser">Welcome!</span>
+                    <!-- Rewards Display -->
+                    <div id="rewardsDisplay" class="rewards-display" style="display: none;">
+                        <div class="points-badge" title="Current Points">
+                            <span class="points-icon">⭐</span>
+                            <span id="userPoints">0</span>
+                        </div>
+                        <div class="milestone-badge food-milestone" title="Food Logging Level">
+                            <span class="milestone-icon">🍽️</span>
+                            <span id="foodMilestoneLevel">Lv1</span>
+                            <span class="multiplier" id="foodMultiplier">1.0x</span>
+                        </div>
+                        <div class="milestone-badge weight-milestone" title="Weight Logging Level">
+                            <span class="milestone-icon">⚖️</span>
+                            <span id="weightMilestoneLevel">Lv1</span>
+                            <span class="multiplier" id="weightMultiplier">1.0x</span>
+                        </div>
+                    </div>
                     <div id="syncIndicator" class="sync-indicator">⏳ Pending sync</div>
                     <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
                     <button id="logoutBtn" class="btn btn-secondary">Logout</button>
@@ -83,6 +100,93 @@
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="calorieProgress"></div>
+                    </div>
+                </div>
+
+                <!-- Rewards Dashboard Card -->
+                <div id="rewardsCard" class="rewards-card" style="display: none;">
+                    <div class="card-header-with-action">
+                        <h3>🎮 Your Progress</h3>
+                        <button id="toggleRewardsBtn" class="btn btn-secondary-small" data-action="toggle-rewards">
+                            <span id="rewardsBtnText">Show Details</span>
+                        </button>
+                    </div>
+
+                    <div class="rewards-summary">
+                        <div class="rewards-stats-grid">
+                            <div class="reward-stat">
+                                <div class="reward-stat-value" id="rewardsCurrentPoints">0</div>
+                                <div class="reward-stat-label">Current Points</div>
+                            </div>
+                            <div class="reward-stat">
+                                <div class="reward-stat-value" id="rewardsLifetimePoints">0</div>
+                                <div class="reward-stat-label">Lifetime Points</div>
+                            </div>
+                            <div class="reward-stat">
+                                <div class="reward-stat-value" id="rewardsLevel">1</div>
+                                <div class="reward-stat-label">Level</div>
+                            </div>
+                        </div>
+                        
+                        <button id="claimDailyRewardBtn" class="btn btn-reward" data-action="claim-daily-reward">
+                            🎁 Claim Daily Reward (+100 pts)
+                        </button>
+                    </div>
+
+                    <div id="rewardsDetails" class="rewards-details" style="display: none;">
+                        <!-- Milestone Progress -->
+                        <div class="milestone-progress-section">
+                            <h4>📊 Milestone Progress</h4>
+                            
+                            <div class="milestone-card">
+                                <div class="milestone-header">
+                                    <div class="milestone-title">
+                                        <span class="milestone-icon">🍽️</span>
+                                        <span>Food Logging - Level <span id="foodMilestoneDetailLevel">1</span></span>
+                                    </div>
+                                    <div class="milestone-multiplier">
+                                        <span id="foodMilestoneMultiplierDetail">1.0x</span> multiplier
+                                    </div>
+                                </div>
+                                <div class="milestone-info">
+                                    <span>Earning <strong><span id="foodPointsPerLog">50</span> pts</strong> per log</span>
+                                </div>
+                                <div class="milestone-progress-bar">
+                                    <div class="progress-bar-fill" id="foodMilestoneProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="milestone-next">
+                                    <span id="foodLogsUntilNext">10</span> logs until Level <span id="foodNextLevel">2</span>
+                                </div>
+                            </div>
+
+                            <div class="milestone-card">
+                                <div class="milestone-header">
+                                    <div class="milestone-title">
+                                        <span class="milestone-icon">⚖️</span>
+                                        <span>Weight Logging - Level <span id="weightMilestoneDetailLevel">1</span></span>
+                                    </div>
+                                    <div class="milestone-multiplier">
+                                        <span id="weightMilestoneMultiplierDetail">1.0x</span> multiplier
+                                    </div>
+                                </div>
+                                <div class="milestone-info">
+                                    <span>Earning <strong><span id="weightPointsPerLog">150</span> pts</strong> per log</span>
+                                </div>
+                                <div class="milestone-progress-bar">
+                                    <div class="progress-bar-fill" id="weightMilestoneProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="milestone-next">
+                                    <span id="weightLogsUntilNext">5</span> logs until Level <span id="weightNextLevel">2</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Links -->
+                        <div class="rewards-quick-links">
+                            <button class="btn btn-outline" data-action="show-rewards-shop">🛍️ Rewards Shop</button>
+                            <button class="btn btn-outline" data-action="show-leaderboard">🏆 Leaderboard</button>
+                            <button class="btn btn-outline" data-action="show-achievements">🏅 Achievements</button>
+                        </div>
                     </div>
                 </div>
 
@@ -442,6 +546,89 @@
                                 <button type="submit" class="btn btn-success">✅ Promote to Pios DB</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Rewards Shop Modal -->
+                <div id="rewardsShopModal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content-large">
+                        <div class="modal-header">
+                            <h3>🛍️ Rewards Shop</h3>
+                            <button class="btn-close" data-action="close-rewards-shop" title="Close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="shop-header">
+                                <div class="shop-balance">
+                                    Available Points: <strong id="shopUserPoints">0</strong> ⭐
+                                </div>
+                                <div class="shop-filters">
+                                    <button class="filter-btn active" data-category="all">All</button>
+                                    <button class="filter-btn" data-category="theme">Themes</button>
+                                    <button class="filter-btn" data-category="badge">Badges</button>
+                                    <button class="filter-btn" data-category="feature">Features</button>
+                                    <button class="filter-btn" data-category="powerup">Power-ups</button>
+                                </div>
+                            </div>
+                            <div id="shopItemsGrid" class="shop-items-grid">
+                                <p class="loading">Loading shop items...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard Modal -->
+                <div id="leaderboardModal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content-large">
+                        <div class="modal-header">
+                            <h3>🏆 Leaderboard</h3>
+                            <button class="btn-close" data-action="close-leaderboard" title="Close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="leaderboardTable" class="leaderboard-table">
+                                <p class="loading">Loading leaderboard...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Achievements Modal -->
+                <div id="achievementsModal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content-large">
+                        <div class="modal-header">
+                            <h3>🏅 Achievements</h3>
+                            <button class="btn-close" data-action="close-achievements" title="Close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="achievementsGrid" class="achievements-grid">
+                                <p class="loading">Loading achievements...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Purchase Confirmation Modal -->
+                <div id="purchaseConfirmModal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content-confirm">
+                        <div class="modal-header">
+                            <h3>🛒 Confirm Purchase</h3>
+                            <button class="btn-close" data-action="close-purchase-confirm" title="Close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="purchase-item-preview">
+                                <h4 id="purchaseItemName"></h4>
+                                <p id="purchaseItemDescription"></p>
+                                <div class="purchase-cost">
+                                    Cost: <strong id="purchaseItemCost">0</strong> ⭐
+                                </div>
+                            </div>
+                            <p class="purchase-balance">
+                                Your balance after purchase: <strong id="purchaseRemainingBalance">0</strong> ⭐
+                            </p>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" data-action="close-purchase-confirm">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="confirmPurchaseBtn" data-action="confirm-purchase">Purchase</button>
+                        </div>
                     </div>
                 </div>
 
