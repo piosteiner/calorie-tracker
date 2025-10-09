@@ -28,7 +28,7 @@ router.get('/', userFoodsController.getUserContributedFoods);
  * @desc    Get statistics about user contributions
  * @access  Admin
  */
-router.get('/stats', userFoodsController.getContributionStats);
+router.get('/stats', userFoodsController.getStats);
 
 /**
  * @route   POST /api/admin/user-foods/:id/promote

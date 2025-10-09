@@ -102,9 +102,23 @@ router.post('/', [
             const existingFood = await db.query('SELECT * FROM foods WHERE name = ? LIMIT 1', [name]);
             if (existingFood.length > 0) {
                 finalFoodId = existingFood[0].id;
+                foodName = existingFood[0].name;
             } else {
-                // For hybrid storage, we'll use a null foodId and store the name directly
-                finalFoodId = null;
+                // Create a new user-contributed food entry
+                // Calculate calories per 100g from the logged data
+                const caloriesPer100g = Math.round((calories / quantity) * 100);
+                const newFood = await db.createFood(
+                    name, 
+                    caloriesPer100g, 
+                    unit || '100g',
+                    null, // category
+                    null, // brand
+                    null, // distributor
+                    req.user.id, // createdBy - track user contribution
+                    1 // isPublic
+                );
+                finalFoodId = newFood.insertId;
+                foodName = name;
             }
         }
 
