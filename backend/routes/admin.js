@@ -140,6 +140,103 @@ router.post('/users/:userId/reset-password', async (req, res) => {
   }
 });
 
+// Create new user (admin only)
+router.post('/users', async (req, res) => {
+  try {
+    const { username, password, email, dailyCalorieGoal = 2200 } = req.body;
+
+    // Validation
+    if (!username || username.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Username must be at least 3 characters long'
+      });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      });
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    if (dailyCalorieGoal < 1000 || dailyCalorieGoal > 5000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Daily calorie goal must be between 1000 and 5000'
+      });
+    }
+
+    // Check if username already exists
+    const existingUser = await db.query(
+      'SELECT id FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (existingUser.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Username already exists'
+      });
+    }
+
+    // Check if email already exists (if provided)
+    if (email) {
+      const existingEmail = await db.query(
+        'SELECT id FROM users WHERE email = ?',
+        [email]
+      );
+
+      if (existingEmail.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: 'Email already exists'
+        });
+      }
+    }
+
+    // Hash password
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create user (as regular user, not admin)
+    const result = await db.query(`
+      INSERT INTO users (username, password_hash, email, daily_calorie_goal, role, is_active)
+      VALUES (?, ?, ?, ?, 'user', TRUE)
+    `, [username, passwordHash, email || null, dailyCalorieGoal]);
+
+    // Log the user creation
+    console.log(`Admin ${req.admin.username} created new user: ${username} (ID: ${result.insertId})`);
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: {
+        id: result.insertId,
+        username,
+        email: email || null,
+        dailyCalorieGoal,
+        role: 'user'
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin create user error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create user',
+      details: error.message
+    });
+  }
+});
+
 // Get all foods (admin only)
 router.get('/foods', async (req, res) => {
   try {
