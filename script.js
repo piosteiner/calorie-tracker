@@ -2141,7 +2141,21 @@ class CalorieTracker {
 
     updateDashboard() {
         document.getElementById('totalCalories').textContent = this.dailyCalories;
-        document.getElementById('mealsCount').textContent = this.foodLog.length;
+        
+        // Calculate remaining calories
+        const remaining = this.calorieGoal - this.dailyCalories;
+        const remainingEl = document.getElementById('remainingCalories');
+        remainingEl.textContent = remaining;
+        
+        // Color code the remaining calories
+        if (remaining < 0) {
+            remainingEl.style.color = 'var(--accent-danger)'; // Red for over goal
+        } else if (remaining < 200) {
+            remainingEl.style.color = 'var(--accent-warning)'; // Orange/yellow for close to goal
+        } else {
+            remainingEl.style.color = 'var(--accent-success)'; // Green for plenty remaining
+        }
+        
         document.getElementById('calorieGoal').textContent = this.calorieGoal;
         
         const progressPercent = Math.min((this.dailyCalories / this.calorieGoal) * 100, 100);
