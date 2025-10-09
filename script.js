@@ -3458,6 +3458,17 @@ class CalorieTracker {
         // Debug: Log the received data
         logger.debug('Calorie chart data received:', dataByDate);
         
+        // Normalize the data keys - convert any date format to YYYY-MM-DD
+        const normalizedData = {};
+        Object.keys(dataByDate).forEach(key => {
+            // Parse the date and convert to YYYY-MM-DD format
+            const date = new Date(key);
+            const normalizedKey = date.toISOString().split('T')[0];
+            normalizedData[normalizedKey] = dataByDate[key];
+        });
+        
+        logger.debug('Normalized data:', normalizedData);
+        
         // Prepare data for last 28 days
         const endDate = new Date();
         const dailyData = [];
@@ -3468,8 +3479,8 @@ class CalorieTracker {
             date.setDate(endDate.getDate() - i);
             const dateStr = date.toISOString().split('T')[0];
             
-            // Get data for this day from the response
-            const dayData = dataByDate[dateStr];
+            // Get data for this day from the normalized response
+            const dayData = normalizedData[dateStr];
             const totalCalories = dayData ? parseInt(dayData.total_calories) : 0;
             
             // Get the calorie goal for this day (use user's current goal)
