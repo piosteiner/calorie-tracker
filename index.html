@@ -96,15 +96,29 @@
                         </button>
                     </div>
                     <form id="foodForm">
-                        <!-- Date and Meal Info Row -->
-                        <div class="form-row meal-info-row">
-                            <div class="input-group">
-                                <label for="logDate">📅 Date</label>
+                        <!-- Compact Food Entry Row -->
+                        <div class="form-row compact-entry">
+                            <div class="input-group flex-grow">
+                                <label for="foodName">Food Item</label>
+                                <input type="text" id="foodName" name="foodName" placeholder="e.g., Apple, Chicken Breast" required>
+                                <div id="foodSuggestions" class="suggestions"></div>
+                            </div>
+                            
+                            <div class="input-group compact">
+                                <label for="quantity">Grams</label>
+                                <input type="number" id="quantity" name="quantity" min="1" value="100" required>
+                            </div>
+                        </div>
+                        
+                        <!-- Compact Meal Info Row -->
+                        <div class="form-row compact-meal-info">
+                            <div class="input-group compact">
+                                <label for="logDate">Date</label>
                                 <input type="date" id="logDate" name="logDate" required>
                             </div>
                             
-                            <div class="input-group">
-                                <label for="mealCategory">🍽️ Meal</label>
+                            <div class="input-group flex-grow">
+                                <label for="mealCategory">Meal</label>
                                 <select id="mealCategory" name="mealCategory" required>
                                     <option value="breakfast">🌅 Breakfast</option>
                                     <option value="lunch">☀️ Lunch</option>
@@ -114,76 +128,52 @@
                                 </select>
                             </div>
                             
-                            <div class="input-group">
-                                <label for="mealTime">🕐 Time (optional)</label>
+                            <div class="input-group compact">
+                                <label for="mealTime">Time</label>
                                 <input type="time" id="mealTime" name="mealTime">
                             </div>
                         </div>
                         
-                        <div class="form-row">
-                            <div class="input-group">
-                                <label for="foodName">Food Item</label>
-                                <input type="text" id="foodName" name="foodName" placeholder="e.g., Apple, Chicken Breast" required>
-                                <div id="foodSuggestions" class="suggestions"></div>
+                        <!-- Collapsible Optional Details -->
+                        <details class="optional-details">
+                            <summary>+ Optional Details</summary>
+                            <div class="form-row">
+                                <div class="input-group">
+                                    <label for="foodBrand">Brand</label>
+                                    <input type="text" id="foodBrand" name="foodBrand" placeholder="e.g., Lindt, Migros Bio" maxlength="100">
+                                </div>
+                                
+                                <div class="input-group">
+                                    <label for="foodDistributor">Store</label>
+                                    <select id="foodDistributor" name="foodDistributor">
+                                        <option value="">Select store</option>
+                                        <option value="Migros">Migros</option>
+                                        <option value="Coop">Coop</option>
+                                        <option value="Spar">Spar</option>
+                                        <option value="Aldi">Aldi</option>
+                                        <option value="Lidl">Lidl</option>
+                                        <option value="Denner">Denner</option>
+                                        <option value="Volg">Volg</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
                             </div>
                             
-                            <div class="input-group">
-                                <label for="quantity">Gramm</label>
-                                <input type="number" id="quantity" name="quantity" min="1" value="100" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="input-group">
-                                <label for="foodBrand">Brand (optional)</label>
-                                <input type="text" id="foodBrand" name="foodBrand" placeholder="e.g., Lindt, Migros Bio" maxlength="100">
-                            </div>
-                            
-                            <div class="input-group">
-                                <label for="foodDistributor">Store (optional)</label>
-                                <select id="foodDistributor" name="foodDistributor">
-                                    <option value="">Select store</option>
-                                    <option value="Migros">Migros</option>
-                                    <option value="Coop">Coop</option>
-                                    <option value="Spar">Spar</option>
-                                    <option value="Aldi">Aldi</option>
-                                    <option value="Lidl">Lidl</option>
-                                    <option value="Denner">Denner</option>
-                                    <option value="Volg">Volg</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Database Search Toggles -->
-                        <div class="search-controls">
-                            <div class="search-controls-header">
-                                <label class="search-controls-title">
-                                    🔍 Search Databases
-                                    <button type="button" class="info-button-small" data-action="show-database-toggle-info" title="Learn about database search options">
-                                        <span class="info-icon-small">?</span>
-                                    </button>
-                                </label>
-                            </div>
-                            <div class="toggle-grid">
-                                <label class="toggle-item">
+                            <!-- Database Search Toggles -->
+                            <div class="search-controls-compact">
+                                <span class="search-label">Search in:</span>
+                                <label class="toggle-compact">
                                     <input type="checkbox" id="toggleFavorites" checked>
-                                    <span class="toggle-label">
-                                        <span class="toggle-icon">⭐</span>
-                                        <span class="toggle-text">Favorites</span>
-                                    </span>
+                                    <span>⭐ Favorites</span>
                                 </label>
-                                <label class="toggle-item">
+                                <label class="toggle-compact">
                                     <input type="checkbox" id="toggleLocalFoods" checked>
-                                    <span class="toggle-label">
-                                        <span class="toggle-icon">🏠</span>
-                                        <span class="toggle-text">Pios Food DB</span>
-                                    </span>
+                                    <span>🏠 Pios DB</span>
                                 </label>
                             </div>
-                        </div>
+                        </details>
                         
-                        <button type="submit" class="btn btn-primary">Add Food</button>
+                        <button type="submit" class="btn btn-primary btn-add-food">+ Add Food</button>
                     </form>
                 </div>
 
