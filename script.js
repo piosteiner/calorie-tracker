@@ -730,6 +730,11 @@ class CalorieTracker {
                     this.toggleWeightTracking();
                     break;
                 
+                case 'toggle-calorie-chart':
+                    e.preventDefault();
+                    this.toggleCalorieChart();
+                    break;
+                
                 case 'view-day-details':
                     e.preventDefault();
                     this.viewDayDetails(target.dataset.date);
@@ -3385,6 +3390,186 @@ class CalorieTracker {
         } catch (error) {
             logger.error('Error deleting weight:', error);
         }
+    }
+
+    // =============================================================================
+    // CALORIE TRACKING CHART
+    // =============================================================================
+
+    /**
+     * Toggle calorie chart visibility
+     */
+    async toggleCalorieChart() {
+        const content = document.getElementById('calorieChartContent');
+        const btn = document.getElementById('calorieChartBtnText');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            btn.textContent = 'Hide Chart';
+            
+            // Load and render calorie data for last 28 days
+            await this.loadCalorieChartData();
+        } else {
+            content.style.display = 'none';
+            btn.textContent = 'Show Chart';
+        }
+    }
+
+    /**
+     * Load calorie data for the last 28 days
+     */
+    async loadCalorieChartData() {
+        try {
+            // Get data for last 28 days
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 27); // 28 days including today
+            
+            const response = await this.apiCall(
+                `/logs/date-range?start=${startDate.toISOString().split('T')[0]}&end=${endDate.toISOString().split('T')[0]}`,
+                'GET',
+                null,
+                { silent: true }
+            );
+            
+            if (response.success && response.logs) {
+                this.renderCalorieChart(response.logs);
+            }
+        } catch (error) {
+            logger.error('Error loading calorie chart data:', error);
+            this.notifications.error('Failed to load calorie chart data');
+        }
+    }
+
+    /**
+     * Render calorie chart as a bar chart
+     */
+    renderCalorieChart(logs) {
+        const canvas = document.getElementById('calorieChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Destroy existing chart if any
+        if (this.calorieChart) {
+            this.calorieChart.destroy();
+        }
+        
+        // Prepare data for last 28 days
+        const endDate = new Date();
+        const dailyData = [];
+        
+        // Generate all 28 days
+        for (let i = 27; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(endDate.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            // Find logs for this day
+            const dayLogs = logs.filter(log => log.log_date.startsWith(dateStr));
+            const totalCalories = dayLogs.reduce((sum, log) => sum + (log.calories || 0), 0);
+            
+            // Get the calorie goal for this day (use user's current goal)
+            const calorieGoal = this.currentUser?.dailyCalorieGoal || 2000;
+            
+            dailyData.push({
+                date: dateStr,
+                label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                calories: totalCalories,
+                goal: calorieGoal,
+                isOverGoal: totalCalories > calorieGoal
+            });
+        }
+        
+        // Prepare chart data
+        const labels = dailyData.map(d => d.label);
+        const caloriesData = dailyData.map(d => d.calories);
+        const goalData = dailyData.map(d => d.goal);
+        
+        // Color bars based on whether over or under goal
+        const barColors = dailyData.map(d => d.isOverGoal ? '#ef4444' : '#10b981');
+        
+        // Create new chart
+        this.calorieChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Calories Consumed',
+                        data: caloriesData,
+                        backgroundColor: barColors,
+                        borderColor: barColors,
+                        borderWidth: 1,
+                        barThickness: 'flex',
+                        maxBarThickness: 30
+                    },
+                    {
+                        label: 'Daily Goal',
+                        data: goalData,
+                        type: 'line',
+                        borderColor: '#fbbf24',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2.5,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Daily Calorie Consumption vs Goal (Last 28 Days)',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                if (context.dataset.label === 'Calories Consumed') {
+                                    const calories = context.parsed.y;
+                                    const goal = goalData[context.dataIndex];
+                                    const diff = calories - goal;
+                                    const status = diff > 0 ? `(+${diff} over)` : diff < 0 ? `(${Math.abs(diff)} under)` : '(at goal)';
+                                    return `Calories: ${calories} ${status}`;
+                                } else {
+                                    return `Goal: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' cal';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Calories'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
     }
 
     // =============================================================================
