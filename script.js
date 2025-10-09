@@ -218,6 +218,7 @@ class CalorieTracker {
         this.adminData = {
             users: [],
             foods: [],
+            filteredFoods: null, // For search filtering
             stats: {},
             foodsSortColumn: 'name', // Default sort column
             foodsSortDirection: 'asc', // 'asc' or 'desc'
@@ -237,7 +238,8 @@ class CalorieTracker {
             },
             filters: {
                 sortBy: 'popularity', // 'popularity', 'recent', 'alphabetical'
-                minUsage: 0
+                minUsage: 0,
+                searchQuery: '' // Search query for filtering
             }
         };
         
@@ -260,6 +262,12 @@ class CalorieTracker {
         this.lastSyncTime = null;
         this.syncInProgress = false;
         this.syncStatus = 'pending'; // 'pending', 'syncing', 'synced', 'error'
+        
+        // Search debounce timers
+        this.searchDebounceTimers = {
+            foodDb: null,
+            contributions: null
+        };
         
         this.loadCachedFoods();
         
@@ -610,6 +618,26 @@ class CalorieTracker {
                 case 'sort-foods-table':
                     e.preventDefault();
                     this.sortFoodsTable(target.dataset.column);
+                    break;
+                
+                // Search food database
+                case 'search-food-db':
+                    this.searchFoodDatabase(target.value);
+                    break;
+                    
+                case 'clear-food-db-search':
+                    e.preventDefault();
+                    this.clearFoodDatabaseSearch();
+                    break;
+                
+                // Search contributions
+                case 'search-contributions':
+                    this.searchUserContributions(target.value);
+                    break;
+                    
+                case 'clear-contributions-search':
+                    e.preventDefault();
+                    this.clearContributionsSearch();
                     break;
                 
                 // SQL Query buttons
@@ -3118,6 +3146,15 @@ class CalorieTracker {
             return 0;
         });
 
+        // If search is active, re-apply filter with new sort order
+        if (this.adminData.filteredFoods !== null && this.adminData.filteredFoods !== undefined) {
+            const searchInput = document.getElementById('foodDbSearchInput');
+            if (searchInput) {
+                this.searchFoodDatabase(searchInput.value);
+                return; // searchFoodDatabase will call updatePiosFoodDBDisplay
+            }
+        }
+
         // Update display with sorted data
         this.updatePiosFoodDBDisplay();
     }
@@ -3592,6 +3629,54 @@ class CalorieTracker {
         });
     }
 
+    // Search/filter foods in the food database
+    searchFoodDatabase(searchQuery) {
+        // Clear any existing timer
+        if (this.searchDebounceTimers.foodDb) {
+            clearTimeout(this.searchDebounceTimers.foodDb);
+        }
+        
+        const query = searchQuery.toLowerCase().trim();
+        
+        // Show/hide clear button immediately
+        const clearBtn = document.getElementById('clearFoodDbSearch');
+        if (clearBtn) {
+            clearBtn.style.display = query ? 'flex' : 'none';
+        }
+        
+        // Debounce the actual search
+        this.searchDebounceTimers.foodDb = setTimeout(() => {
+            // If no search query, show all foods
+            if (!query) {
+                this.adminData.filteredFoods = null;
+                this.updatePiosFoodDBDisplay();
+                return;
+            }
+            
+            // Filter foods based on search query
+            this.adminData.filteredFoods = this.adminData.foods.filter(food => {
+                const name = (food.name || '').toLowerCase();
+                const brand = (food.brand || '').toLowerCase();
+                const distributor = (food.distributor || '').toLowerCase();
+                
+                return name.includes(query) || 
+                       brand.includes(query) || 
+                       distributor.includes(query);
+            });
+            
+            this.updatePiosFoodDBDisplay();
+        }, 300); // 300ms debounce delay
+    }
+
+    // Clear food database search
+    clearFoodDatabaseSearch() {
+        const searchInput = document.getElementById('foodDbSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        this.searchFoodDatabase('');
+    }
+
     // Update foods display
     updatePiosFoodDBDisplay() {
         logger.debug('updatePiosFoodDBDisplay called');
@@ -3604,13 +3689,21 @@ class CalorieTracker {
             return;
         }
 
-        if (!this.adminData.foods || this.adminData.foods.length === 0) {
-            foodsList.innerHTML = '<tr><td colspan="7" class="empty">No foods in database yet</td></tr>';
+        // Use filtered foods if search is active, otherwise use all foods
+        const foodsToDisplay = this.adminData.filteredFoods !== null && this.adminData.filteredFoods !== undefined
+            ? this.adminData.filteredFoods
+            : this.adminData.foods;
+
+        if (!foodsToDisplay || foodsToDisplay.length === 0) {
+            const message = this.adminData.filteredFoods !== null && this.adminData.filteredFoods !== undefined
+                ? 'No foods match your search'
+                : 'No foods in database yet';
+            foodsList.innerHTML = `<tr><td colspan="7" class="empty">${message}</td></tr>`;
             this.updateSortIndicators();
             return;
         }
 
-        foodsList.innerHTML = this.adminData.foods.map(food => {
+        foodsList.innerHTML = foodsToDisplay.map(food => {
             const isSelected = this.adminData.selectedFoodIds.has(String(food.id));
             return `
             <tr data-food-id="${food.id}">
@@ -5092,10 +5185,54 @@ class CalorieTracker {
     /**
      * Load user-contributed foods with pagination and filters
      */
+    /**
+     * Search/filter user contributions
+     */
+    searchUserContributions(searchQuery) {
+        // Clear any existing timer
+        if (this.searchDebounceTimers.contributions) {
+            clearTimeout(this.searchDebounceTimers.contributions);
+        }
+        
+        const query = searchQuery.toLowerCase().trim();
+        
+        // Show/hide clear button immediately
+        const clearBtn = document.getElementById('clearContributionsSearch');
+        if (clearBtn) {
+            clearBtn.style.display = query ? 'flex' : 'none';
+        }
+        
+        // Store search query in filters
+        this.contributionsData.filters.searchQuery = query;
+        
+        // Reset to first page when searching
+        this.contributionsData.pagination.page = 1;
+        
+        // Debounce the API call
+        this.searchDebounceTimers.contributions = setTimeout(() => {
+            // Reload with search filter
+            this.loadUserFoods();
+        }, 500); // 500ms debounce delay for API calls
+    }
+
+    /**
+     * Clear contributions search
+     */
+    clearContributionsSearch() {
+        const searchInput = document.getElementById('contributionsSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        this.searchUserContributions('');
+    }
+
+    /**
+     * Load user-contributed foods with filters
+     */
     async loadUserFoods() {
         try {
             const { page, limit } = this.contributionsData.pagination;
-            const { sortBy, minUsage } = this.contributionsData.filters;
+            const { sortBy, minUsage, searchQuery } = this.contributionsData.filters;
 
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -5105,6 +5242,10 @@ class CalorieTracker {
 
             if (minUsage > 0) {
                 params.append('minUsage', minUsage.toString());
+            }
+
+            if (searchQuery) {
+                params.append('search', searchQuery);
             }
 
             const response = await this.apiCall(`/admin/user-foods?${params}`);

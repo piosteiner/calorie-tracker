@@ -454,6 +454,14 @@
                                 </form>
                             </div>
 
+                            <!-- Search and Filter Controls -->
+                            <div class="search-filter-controls">
+                                <div class="search-box">
+                                    <input type="text" id="foodDbSearchInput" placeholder="🔍 Search foods by name, brand, or store..." data-action="search-food-db">
+                                    <button id="clearFoodDbSearch" class="btn-clear-search" data-action="clear-food-db-search" style="display: none;" title="Clear search">✕</button>
+                                </div>
+                            </div>
+
                             <!-- Bulk Actions Toolbar -->
                             <div id="bulkActionsToolbar" class="bulk-actions-toolbar" style="display: none;">
                                 <span id="selectedCount" class="selected-count">0 items selected</span>
@@ -532,22 +540,31 @@
 
                             <!-- Filters and Controls -->
                             <div class="contributions-controls">
-                                <div class="filter-group">
-                                    <label for="sortByContributions">Sort by:</label>
-                                    <select id="sortByContributions" data-action="change-contributions-sort">
-                                        <option value="popularity">Popularity (Most Used)</option>
-                                        <option value="recent">Recent (Newest First)</option>
-                                        <option value="alphabetical">Alphabetical (A-Z)</option>
-                                    </select>
+                                <!-- Search Box -->
+                                <div class="search-box">
+                                    <input type="text" id="contributionsSearchInput" placeholder="🔍 Search contributions by food name, brand, or contributor..." data-action="search-contributions">
+                                    <button id="clearContributionsSearch" class="btn-clear-search" data-action="clear-contributions-search" style="display: none;" title="Clear search">✕</button>
                                 </div>
-                                <div class="filter-group">
-                                    <label for="minUsageFilter">Min Uses:</label>
-                                    <input type="number" id="minUsageFilter" min="0" value="0" data-action="change-min-usage" placeholder="0">
-                                </div>
-                                <div class="filter-group">
-                                    <button class="btn btn-secondary" data-action="filter-popular-foods">⭐ Show Popular (5+)</button>
-                                    <button class="btn btn-secondary" data-action="filter-recent-foods">🆕 Show Recent</button>
-                                    <button class="btn btn-secondary" data-action="filter-all-foods">📋 Show All</button>
+                                
+                                <!-- Filter Controls -->
+                                <div class="filter-controls-row">
+                                    <div class="filter-group">
+                                        <label for="sortByContributions">Sort by:</label>
+                                        <select id="sortByContributions" data-action="change-contributions-sort">
+                                            <option value="popularity">Popularity (Most Used)</option>
+                                            <option value="recent">Recent (Newest First)</option>
+                                            <option value="alphabetical">Alphabetical (A-Z)</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label for="minUsageFilter">Min Uses:</label>
+                                        <input type="number" id="minUsageFilter" min="0" value="0" data-action="change-min-usage" placeholder="0">
+                                    </div>
+                                    <div class="filter-group">
+                                        <button class="btn btn-secondary" data-action="filter-popular-foods">⭐ Show Popular (5+)</button>
+                                        <button class="btn btn-secondary" data-action="filter-recent-foods">🆕 Show Recent</button>
+                                        <button class="btn btn-secondary" data-action="filter-all-foods">📋 Show All</button>
+                                    </div>
                                 </div>
                             </div>
 
