@@ -75,7 +75,15 @@ router.post('/log', [
         try {
             if (isSameDayLog) {
                 // Get current weight milestone to apply multiplier
+                console.log('🎯 Getting weight milestone for user:', req.user.id);
                 const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
+                console.log('🎯 Weight milestone received:', weightMilestone);
+                
+                if (!weightMilestone) {
+                    console.error('❌ Weight milestone is undefined for user:', req.user.id);
+                    throw new Error('Weight milestone not found');
+                }
+                
                 const basePoints = PointsService.POINT_REWARDS.WEIGHT_LOG;
                 const multipliedPoints = Math.round(basePoints * weightMilestone.points_multiplier);
 

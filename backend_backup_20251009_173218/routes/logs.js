@@ -2,6 +2,7 @@ const express = require('express');
 const { body, query, param, validationResult } = require('express-validator');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
+const PointsService = require('../services/pointsService');
 
 const router = express.Router();
 
@@ -111,6 +112,9 @@ router.post('/', [
                 error: 'Cannot log food for future dates'
             });
         }
+        
+        // Check if this is a same-day log (for point rewards)
+        const isSameDayLog = (logDate === today);
 
         const mealCategory = meal_category || 'other';
         const mealTime = meal_time || null;
@@ -165,6 +169,123 @@ router.post('/', [
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate, mealCategory, mealTime]);
         
+        // Award points for logging food (only for same-day logs)
+        let pointsAwarded = 0;
+        let pointsDetails = [];
+        try {
+            if (isSameDayLog) {
+                // Get current food milestone to apply multiplier
+                const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
+                const basePoints = PointsService.POINT_REWARDS.FOOD_LOG;
+                const multipliedPoints = Math.round(basePoints * foodMilestone.points_multiplier);
+
+                // Base points for food logging (with multiplier applied)
+                const foodLogReward = await PointsService.awardPoints(
+                    req.user.id,
+                    multipliedPoints,
+                    'food_log',
+                    `Logged ${foodName} (${foodMilestone.points_multiplier}x multiplier)`,
+                    'food_log',
+                    result.insertId,
+                    { multiplier: foodMilestone.points_multiplier, basePoints: basePoints }
+                );
+                pointsAwarded += multipliedPoints;
+                pointsDetails.push({ 
+                    reason: 'food_log', 
+                    points: multipliedPoints,
+                    basePoints: basePoints,
+                    multiplier: foodMilestone.points_multiplier
+                });
+
+                pointsDetails.push({ 
+                    reason: 'food_log', 
+                    points: multipliedPoints,
+                    basePoints: basePoints,
+                    multiplier: foodMilestone.points_multiplier
+                });
+
+                // Check for first food log achievement
+                const [foodLogCount] = await db.query(
+                    'SELECT COUNT(*) as count FROM food_logs WHERE user_id = ?',
+                    [req.user.id]
+                );
+                if (foodLogCount[0].count === 1) {
+                    await PointsService.awardAchievement(
+                        req.user.id,
+                        'FIRST_FOOD_LOG',
+                        'First Steps',
+                        'Logged your first meal',
+                        '🏆',
+                        PointsService.POINT_REWARDS.FIRST_FOOD_LOG
+                    );
+                    pointsAwarded += PointsService.POINT_REWARDS.FIRST_FOOD_LOG;
+                    pointsDetails.push({ reason: 'first_food_log', points: PointsService.POINT_REWARDS.FIRST_FOOD_LOG });
+                }
+
+                // Check for food milestone level up
+                const milestoneResult = await PointsService.checkFoodMilestone(req.user.id);
+                if (milestoneResult.leveledUp) {
+                    pointsAwarded += milestoneResult.bonus;
+                    pointsDetails.push({ 
+                        reason: 'milestone_level_up', 
+                        points: milestoneResult.bonus,
+                        newLevel: milestoneResult.milestone_level,
+                        newMultiplier: milestoneResult.multiplier
+                    });
+                }
+
+                // Early bird bonus (if breakfast before 10am)
+                if (mealCategory === 'breakfast' && mealTime) {
+                    const hour = parseInt(mealTime.split(':')[0]);
+                    if (hour < 10) {
+                        await PointsService.awardPoints(
+                            req.user.id,
+                            PointsService.POINT_REWARDS.EARLY_BIRD,
+                            'early_bird',
+                            'Logged breakfast before 10am',
+                            'food_log',
+                            result.insertId
+                        );
+                        pointsAwarded += PointsService.POINT_REWARDS.EARLY_BIRD;
+                        pointsDetails.push({ reason: 'early_bird', points: PointsService.POINT_REWARDS.EARLY_BIRD });
+                    }
+                }
+
+                // Check for complete day (breakfast, lunch, dinner all logged)
+                const [dayLogs] = await db.query(`
+                    SELECT COUNT(DISTINCT meal_category) as meal_count
+                    FROM food_logs
+                    WHERE user_id = ? AND log_date = ? AND meal_category IN ('breakfast', 'lunch', 'dinner')
+                `, [req.user.id, logDate]);
+                
+                if (dayLogs[0].meal_count === 3) {
+                    // Check if already awarded today
+                    const [alreadyAwarded] = await db.query(`
+                        SELECT COUNT(*) as count
+                        FROM point_transactions
+                        WHERE user_id = ? AND reason = 'complete_day' AND DATE(created_at) = ?
+                    `, [req.user.id, logDate]);
+                    
+                    if (alreadyAwarded[0].count === 0) {
+                        await PointsService.awardPoints(
+                            req.user.id,
+                            PointsService.POINT_REWARDS.COMPLETE_DAY,
+                            'complete_day',
+                            'Logged all 3 main meals',
+                            'food_log',
+                            null,
+                            { date: logDate }
+                        );
+                        pointsAwarded += PointsService.POINT_REWARDS.COMPLETE_DAY;
+                        pointsDetails.push({ reason: 'complete_day', points: PointsService.POINT_REWARDS.COMPLETE_DAY });
+                    }
+                }
+            }
+        } catch (pointsError) {
+            console.error('Error awarding points:', pointsError);
+            // Don't fail the food log if points fail
+        }
+        
         res.status(201).json({
             success: true,
             message: `Successfully logged ${quantity}${unit} of ${foodName} (${calories} kcal)`,
@@ -178,7 +299,9 @@ router.post('/', [
                 logDate: logDate,
                 meal_category: mealCategory,
                 meal_time: mealTime
-            }
+            },
+            pointsAwarded: pointsAwarded,
+            pointsDetails: pointsDetails
         });
     } catch (error) {
         console.error('Create food log error:', error);

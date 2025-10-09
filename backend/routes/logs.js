@@ -176,6 +176,11 @@ router.post('/', [
             if (isSameDayLog) {
                 // Get current food milestone to apply multiplier
                 const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
+                
+                if (!foodMilestone) {
+                    throw new Error('Food milestone not found');
+                }
+                
                 const basePoints = PointsService.POINT_REWARDS.FOOD_LOG;
                 const multipliedPoints = Math.round(basePoints * foodMilestone.points_multiplier);
 
@@ -205,11 +210,12 @@ router.post('/', [
                 });
 
                 // Check for first food log achievement
-                const [foodLogCount] = await db.query(
+                const foodLogCountResult = await db.query(
                     'SELECT COUNT(*) as count FROM food_logs WHERE user_id = ?',
                     [req.user.id]
                 );
-                if (foodLogCount[0].count === 1) {
+                
+                if (foodLogCountResult[0] && foodLogCountResult[0].count === 1) {
                     await PointsService.awardAchievement(
                         req.user.id,
                         'FIRST_FOOD_LOG',
@@ -252,21 +258,21 @@ router.post('/', [
                 }
 
                 // Check for complete day (breakfast, lunch, dinner all logged)
-                const [dayLogs] = await db.query(`
+                const dayLogsResult = await db.query(`
                     SELECT COUNT(DISTINCT meal_category) as meal_count
                     FROM food_logs
                     WHERE user_id = ? AND log_date = ? AND meal_category IN ('breakfast', 'lunch', 'dinner')
                 `, [req.user.id, logDate]);
                 
-                if (dayLogs[0].meal_count === 3) {
+                if (dayLogsResult[0] && dayLogsResult[0].meal_count === 3) {
                     // Check if already awarded today
-                    const [alreadyAwarded] = await db.query(`
+                    const alreadyAwardedResult = await db.query(`
                         SELECT COUNT(*) as count
                         FROM point_transactions
                         WHERE user_id = ? AND reason = 'complete_day' AND DATE(created_at) = ?
                     `, [req.user.id, logDate]);
                     
-                    if (alreadyAwarded[0].count === 0) {
+                    if (alreadyAwardedResult[0] && alreadyAwardedResult[0].count === 0) {
                         await PointsService.awardPoints(
                             req.user.id,
                             PointsService.POINT_REWARDS.COMPLETE_DAY,
