@@ -240,4 +240,85 @@ router.get('/daily-goal/:date', async (req, res) => {
     }
 });
 
+// Change password (user self-service)
+router.put('/change-password', [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
+    body('confirmPassword').notEmpty().withMessage('Password confirmation is required')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                error: 'Validation failed',
+                details: errors.array()
+            });
+        }
+
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+        const userId = req.user.id;
+
+        // Check if new password and confirmation match
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                error: 'New password and confirmation do not match'
+            });
+        }
+
+        // Check if new password is different from current
+        if (currentPassword === newPassword) {
+            return res.status(400).json({
+                success: false,
+                error: 'New password must be different from current password'
+            });
+        }
+
+        // Get user from database
+        const user = await db.getUserById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        // Verify current password
+        const bcrypt = require('bcryptjs');
+        const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+        
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                error: 'Current password is incorrect'
+            });
+        }
+
+        // Hash new password
+        const passwordHash = await bcrypt.hash(newPassword, 12);
+
+        // Update password in database
+        await db.query(
+            'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [passwordHash, userId]
+        );
+
+        // Log password change for security
+        console.log(`User ${user.username} (ID: ${userId}) changed their password`);
+
+        res.json({
+            success: true,
+            message: 'Password changed successfully'
+        });
+
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to change password'
+        });
+    }
+});
+
 module.exports = router;
