@@ -6908,7 +6908,7 @@ class CalorieTracker {
             
             if (response.success) {
                 // Show success notification
-                this.showNotification(`Successfully purchased ${response.item.name}!`, 'success');
+                this.notifications.success(`Successfully purchased ${response.item.name}!`);
                 
                 // Close modals
                 const confirmModal = document.getElementById('purchaseConfirmModal');
@@ -6929,7 +6929,7 @@ class CalorieTracker {
             }
         } catch (error) {
             logger.error('Error purchasing item:', error);
-            this.showNotification(error.message || 'Failed to purchase item', 'error');
+            this.notifications.error(error.message || 'Failed to purchase item');
         }
     }
 
@@ -7256,7 +7256,7 @@ class CalorieTracker {
             });
             
             if (response.success) {
-                this.showNotification(`✅ User created successfully!\n\nUsername: ${response.user.username}\nID: ${response.user.id}`, 'success');
+                this.notifications.success(`User created successfully!\n\nUsername: ${response.user.username}\nID: ${response.user.id}`);
                 
                 // Close modal
                 this.closeCreateUserModal();
@@ -7264,11 +7264,11 @@ class CalorieTracker {
                 // Refresh user list
                 await this.loadAdminUsers();
             } else {
-                this.showNotification(`❌ Failed to create user: ${response.error || response.message}`, 'error');
+                this.notifications.error(`Failed to create user: ${response.error || response.message}`);
             }
         } catch (error) {
             console.error('Create user error:', error);
-            this.showNotification('❌ Failed to create user. Please try again.', 'error');
+            this.notifications.error('Failed to create user. Please try again.');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Create User';
@@ -7388,16 +7388,16 @@ class CalorieTracker {
             });
             
             if (response.success) {
-                this.showNotification('✅ Password changed successfully!', 'success');
+                this.notifications.success('Password changed successfully!');
                 
                 // Close modal
                 this.closeChangePasswordModal();
             } else {
-                this.showNotification(`❌ ${response.error || 'Failed to change password'}`, 'error');
+                this.notifications.error(response.error || 'Failed to change password');
             }
         } catch (error) {
             console.error('Change password error:', error);
-            this.showNotification('❌ Failed to change password. Please try again.', 'error');
+            this.notifications.error('Failed to change password. Please try again.');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Change Password';
