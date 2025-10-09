@@ -201,7 +201,7 @@
                 </div>
 
                 <!-- Calorie Tracking Chart -->
-                <div class="calorie-chart-card">
+                <div class="weight-tracking-card">
                     <div class="card-header-with-action">
                         <h3>📊 Calorie Tracking (Last 28 Days)</h3>
                         <button id="toggleCalorieChartBtn" class="btn btn-secondary" data-action="toggle-calorie-chart">
@@ -209,26 +209,10 @@
                         </button>
                     </div>
                     
-                    <div id="calorieChartContent" class="calorie-chart-content" style="display: none;">
+                    <div id="calorieChartContent" class="weight-content" style="display: none;">
                         <!-- Calorie Chart -->
-                        <div class="calorie-chart-container">
+                        <div class="weight-chart-container">
                             <canvas id="calorieChart"></canvas>
-                        </div>
-                        
-                        <!-- Chart Legend -->
-                        <div class="chart-legend">
-                            <div class="legend-item">
-                                <span class="legend-color" style="background: #10b981;"></span>
-                                <span class="legend-label">At or Under Goal</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-color" style="background: #ef4444;"></span>
-                                <span class="legend-label">Over Goal</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-line" style="border-top: 2px dashed #fbbf24;"></span>
-                                <span class="legend-label">Daily Goal</span>
-                            </div>
                         </div>
                     </div>
                 </div>
