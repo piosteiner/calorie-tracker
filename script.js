@@ -1770,7 +1770,7 @@ class CalorieTracker {
                         calories,
                         brand: brand || food.brand,
                         distributor: distributor || food.distributor,
-                        log_date: logDate,
+                        logDate: logDate,
                         meal_category: mealCategory,
                         meal_time: mealTime
                     };
@@ -1788,7 +1788,7 @@ class CalorieTracker {
                             calories,
                             brand,
                             distributor,
-                            log_date: logDate,
+                            logDate: logDate,
                             meal_category: mealCategory,
                             meal_time: mealTime
                         };
@@ -1799,6 +1799,8 @@ class CalorieTracker {
                     }
                 }
 
+                logger.info('Sending food log data to backend:', logData);
+
                 // Add to backend with notifications
                 const logResponse = await this.apiCall('/logs', 'POST', logData, {
                     showLoading: true,
@@ -1808,25 +1810,17 @@ class CalorieTracker {
 
                 logger.info('Food log API response:', logResponse);
 
-                // Extract log ID from response (handle different response formats)
-                const logId = logResponse.logId || logResponse.id || logResponse.data?.id || Date.now();
-                
-                const foodEntry = {
-                    id: logId,
-                    name: foodName,
-                    quantity,
-                    unit,
-                    calories,
-                    timestamp: new Date().toLocaleTimeString()
-                };
+                // Verify the backend save was successful
+                if (!logResponse || !logResponse.success) {
+                    logger.error('Backend save failed, not updating local state');
+                    throw new Error('Failed to save food log to backend');
+                }
 
-                this.foodLog.push(foodEntry);
-                this.dailyCalories += parseFloat(calories);
+                // Reload data from server to get the accurate state (including rewards)
+                await this.loadTodaysData();
                 
-                this.updateDashboard();
-                this.updateFoodLog();
-                
-                logger.info('Current food log after adding:', this.foodLog);
+                logger.info('Food log reloaded from backend after adding');
+                logger.info('Food log reloaded from backend after adding');
                 
                 // Check for rewards data in response (optional, may not be present)
                 const pointsAwarded = logResponse.pointsAwarded || logResponse.data?.pointsAwarded;
@@ -1858,9 +1852,6 @@ class CalorieTracker {
                     logger.info('No points awarded in response');
                 }
                 
-                // Reload today's data from server to ensure we have the latest
-                await this.loadTodaysData();
-                
                 // Reset form
                 form.reset();
                 document.getElementById('quantity').value = 100;
@@ -1886,34 +1877,103 @@ class CalorieTracker {
     // Handle adding enhanced food from Pios Food DB or offline database
     async handleAddEnhancedFood(foodData, quantity, unit) {
         try {
-            const timestamp = new Date().toLocaleTimeString('en-US', {
-                hour12: false, hour: '2-digit', minute: '2-digit'
-            });
+            logger.info('Adding enhanced food:', foodData);
+            
+            // Get meal category, date, and time from form
+            const mealCategory = document.getElementById('mealCategory')?.value || 'other';
+            const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
+            const mealTime = document.getElementById('mealTime')?.value || null;
 
             // Calculate calories (everything is now per 100g basis)
             const calories = Math.round((foodData.calories / 100) * quantity);
 
-            // Add food to log (local database)
-            const foodLogEntry = {
-                id: Date.now(),
-                name: foodData.name,
-                quantity: quantity,
-                unit: 'g',
-                calories: calories,
-                timestamp: timestamp,
-                offline: !this.isOnline,
-                source: foodData.source || 'Pios Food DB',
-                brand: foodData.brand || '',
-                distributor: foodData.distributor || ''
-            };
+            if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+                // Send to backend
+                const logData = {
+                    foodId: foodData.id || undefined,
+                    name: foodData.name,
+                    quantity,
+                    unit: 'g',
+                    calories,
+                    logDate: logDate,
+                    meal_category: mealCategory,
+                    meal_time: mealTime
+                };
+                
+                logger.info('Sending enhanced food to backend:', logData);
+                
+                const logResponse = await this.apiCall('/logs', 'POST', logData, {
+                    showLoading: true,
+                    showSuccess: true,
+                    successMessage: `Successfully logged ${quantity}g of ${foodData.name} (${calories} kcal)`
+                });
+                
+                logger.info('Enhanced food log API response:', logResponse);
+                
+                // Verify the backend save was successful
+                if (!logResponse || !logResponse.success) {
+                    logger.error('Backend save failed');
+                    throw new Error('Failed to save food log to backend');
+                }
+                
+                // Reload data from server
+                await this.loadTodaysData();
+                
+                // Handle rewards
+                const pointsAwarded = logResponse.pointsAwarded || logResponse.data?.pointsAwarded;
+                const pointsDetails = logResponse.pointsDetails || logResponse.data?.pointsDetails;
+                const milestoneLevel = logResponse.milestoneLevel || logResponse.data?.milestoneLevel;
+                
+                if (pointsAwarded && pointsAwarded > 0) {
+                    this.showPointsToast({
+                        total: pointsAwarded,
+                        reason: 'Food logged!',
+                        breakdown: pointsDetails
+                    });
+                    
+                    if (milestoneLevel) {
+                        this.showLevelUpCelebration({
+                            icon: '🍽️',
+                            message: `Food Logging Level ${milestoneLevel.level}!`,
+                            bonus: milestoneLevel.bonusPoints
+                        });
+                    }
+                    
+                    await this.loadRewardsData();
+                }
+                
+                // Add to favorites
+                this.addToFavorites(foodData);
+                
+            } else {
+                // Offline mode - only update local state
+                const timestamp = new Date().toLocaleTimeString('en-US', {
+                    hour12: false, hour: '2-digit', minute: '2-digit'
+                });
+                
+                const foodLogEntry = {
+                    id: Date.now(),
+                    name: foodData.name,
+                    quantity: quantity,
+                    unit: 'g',
+                    calories: calories,
+                    timestamp: timestamp,
+                    offline: true,
+                    source: foodData.source || 'Pios Food DB',
+                    brand: foodData.brand || '',
+                    distributor: foodData.distributor || ''
+                };
+                
+                this.foodLog.push(foodLogEntry);
+                this.updateFoodLog();
+                this.updateDashboard();
+                this.saveToStorage();
+                this.addToFavorites(foodData);
+                
+                this.notifications.success(`Added ${foodData.name} (${quantity}g, ${calories} kcal) - Offline`);
+            }
             
-            this.foodLog.push(foodLogEntry);
-            this.updateFoodLog();
-            this.updateDashboard();
-            this.saveToStorage();
-            this.addToFavorites(foodData);
-            
-            this.notifications.success(`Added ${foodData.name} (${quantity}g, ${calories} kcal)`);
+            // Reset form
             document.getElementById('foodForm').reset();
             document.getElementById('quantity').value = 100;
             this.selectedFoodData = null;
