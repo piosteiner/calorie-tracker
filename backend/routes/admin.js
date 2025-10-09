@@ -438,4 +438,519 @@ router.get('/food-categories', async (req, res) => {
   }
 });
 
+// =============================================================================
+// SHOP ITEM MANAGEMENT ROUTES
+// =============================================================================
+
+// Get all shop items (admin only)
+router.get('/shop', async (req, res) => {
+  try {
+    const { category, is_active, search } = req.query;
+
+    let sql = `
+      SELECT 
+        ri.*,
+        (SELECT COUNT(*) FROM user_purchases WHERE item_id = ri.id) as total_purchases,
+        (SELECT SUM(cost_points) FROM user_purchases up 
+         JOIN reward_items ri2 ON up.item_id = ri2.id 
+         WHERE up.item_id = ri.id) as total_revenue
+      FROM reward_items ri
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    if (category) {
+      sql += ' AND ri.category = ?';
+      params.push(category);
+    }
+
+    if (is_active !== undefined) {
+      sql += ' AND ri.is_active = ?';
+      params.push(is_active === 'true' ? 1 : 0);
+    }
+
+    if (search) {
+      sql += ' AND (ri.name LIKE ? OR ri.description LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    sql += ' ORDER BY ri.category, ri.display_order, ri.cost_points';
+
+    const items = await db.query(sql, params);
+
+    // Parse JSON fields
+    const enrichedItems = items.map(item => ({
+      ...item,
+      item_data: item.item_data ? JSON.parse(item.item_data) : null,
+      total_purchases: item.total_purchases || 0,
+      total_revenue: item.total_revenue || 0
+    }));
+
+    res.json({
+      success: true,
+      items: enrichedItems,
+      total: enrichedItems.length
+    });
+
+  } catch (error) {
+    console.error('Admin get shop items error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve shop items',
+      error: error.message
+    });
+  }
+});
+
+// Get single shop item details (admin only)
+router.get('/shop/:itemId', async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const [item] = await db.query(`
+      SELECT 
+        ri.*,
+        (SELECT COUNT(*) FROM user_purchases WHERE item_id = ri.id) as total_purchases,
+        (SELECT COUNT(DISTINCT user_id) FROM user_purchases WHERE item_id = ri.id) as unique_purchasers
+      FROM reward_items ri
+      WHERE ri.id = ?
+    `, [itemId]);
+
+    if (!item[0]) {
+      return res.status(404).json({
+        success: false,
+        message: 'Shop item not found'
+      });
+    }
+
+    // Get recent purchases
+    const recentPurchases = await db.query(`
+      SELECT 
+        up.id,
+        up.user_id,
+        up.purchased_at,
+        up.is_equipped,
+        u.username
+      FROM user_purchases up
+      JOIN users u ON up.user_id = u.id
+      WHERE up.item_id = ?
+      ORDER BY up.purchased_at DESC
+      LIMIT 20
+    `, [itemId]);
+
+    const enrichedItem = {
+      ...item[0],
+      item_data: item[0].item_data ? JSON.parse(item[0].item_data) : null,
+      recent_purchases: recentPurchases
+    };
+
+    res.json({
+      success: true,
+      item: enrichedItem
+    });
+
+  } catch (error) {
+    console.error('Admin get shop item details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve shop item details',
+      error: error.message
+    });
+  }
+});
+
+// Create new shop item (admin only)
+router.post('/shop', async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      category,
+      cost_points,
+      item_data,
+      is_active = true,
+      is_limited_edition = false,
+      stock_quantity = null,
+      purchase_limit = null,
+      required_level = 1,
+      display_order = 0
+    } = req.body;
+
+    // Validation
+    if (!name || !category || cost_points === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, category, and cost_points are required'
+      });
+    }
+
+    const validCategories = ['theme', 'badge', 'feature', 'avatar', 'powerup', 'challenge'];
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid category. Must be one of: ${validCategories.join(', ')}`
+      });
+    }
+
+    if (cost_points < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cost points must be >= 0'
+      });
+    }
+
+    // Convert item_data to JSON string if it's an object
+    const itemDataString = item_data ? (typeof item_data === 'string' ? item_data : JSON.stringify(item_data)) : null;
+
+    const result = await db.query(`
+      INSERT INTO reward_items (
+        name, description, category, cost_points, item_data,
+        is_active, is_limited_edition, stock_quantity, purchase_limit,
+        required_level, display_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      name,
+      description || null,
+      category,
+      cost_points,
+      itemDataString,
+      is_active ? 1 : 0,
+      is_limited_edition ? 1 : 0,
+      stock_quantity,
+      purchase_limit,
+      required_level,
+      display_order
+    ]);
+
+    console.log(`Admin ${req.user.username} created shop item: ${name} (ID: ${result.insertId})`);
+
+    res.json({
+      success: true,
+      message: 'Shop item created successfully',
+      itemId: result.insertId
+    });
+
+  } catch (error) {
+    console.error('Admin create shop item error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create shop item',
+      error: error.message
+    });
+  }
+});
+
+// Update shop item (admin only)
+router.put('/shop/:itemId', async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const {
+      name,
+      description,
+      category,
+      cost_points,
+      item_data,
+      is_active,
+      is_limited_edition,
+      stock_quantity,
+      purchase_limit,
+      required_level,
+      display_order
+    } = req.body;
+
+    // Check if item exists
+    const [existing] = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
+    if (!existing[0]) {
+      return res.status(404).json({
+        success: false,
+        message: 'Shop item not found'
+      });
+    }
+
+    // Validate category if provided
+    if (category) {
+      const validCategories = ['theme', 'badge', 'feature', 'avatar', 'powerup', 'challenge'];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid category. Must be one of: ${validCategories.join(', ')}`
+        });
+      }
+    }
+
+    // Validate cost_points if provided
+    if (cost_points !== undefined && cost_points < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cost points must be >= 0'
+      });
+    }
+
+    // Build dynamic update query
+    const updates = [];
+    const params = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      params.push(name);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      params.push(description);
+    }
+    if (category !== undefined) {
+      updates.push('category = ?');
+      params.push(category);
+    }
+    if (cost_points !== undefined) {
+      updates.push('cost_points = ?');
+      params.push(cost_points);
+    }
+    if (item_data !== undefined) {
+      updates.push('item_data = ?');
+      const itemDataString = item_data ? (typeof item_data === 'string' ? item_data : JSON.stringify(item_data)) : null;
+      params.push(itemDataString);
+    }
+    if (is_active !== undefined) {
+      updates.push('is_active = ?');
+      params.push(is_active ? 1 : 0);
+    }
+    if (is_limited_edition !== undefined) {
+      updates.push('is_limited_edition = ?');
+      params.push(is_limited_edition ? 1 : 0);
+    }
+    if (stock_quantity !== undefined) {
+      updates.push('stock_quantity = ?');
+      params.push(stock_quantity);
+    }
+    if (purchase_limit !== undefined) {
+      updates.push('purchase_limit = ?');
+      params.push(purchase_limit);
+    }
+    if (required_level !== undefined) {
+      updates.push('required_level = ?');
+      params.push(required_level);
+    }
+    if (display_order !== undefined) {
+      updates.push('display_order = ?');
+      params.push(display_order);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+
+    params.push(itemId);
+    const sql = `UPDATE reward_items SET ${updates.join(', ')} WHERE id = ?`;
+    
+    await db.query(sql, params);
+
+    console.log(`Admin ${req.user.username} updated shop item ID ${itemId}`);
+
+    res.json({
+      success: true,
+      message: 'Shop item updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Admin update shop item error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update shop item',
+      error: error.message
+    });
+  }
+});
+
+// Toggle item active status (admin only) - Quick enable/disable
+router.patch('/shop/:itemId/toggle', async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    // Get current status
+    const [item] = await db.query('SELECT id, name, is_active FROM reward_items WHERE id = ?', [itemId]);
+    
+    if (!item[0]) {
+      return res.status(404).json({
+        success: false,
+        message: 'Shop item not found'
+      });
+    }
+
+    // Toggle the status
+    const newStatus = !item[0].is_active;
+    
+    await db.query('UPDATE reward_items SET is_active = ? WHERE id = ?', [newStatus ? 1 : 0, itemId]);
+
+    console.log(`Admin ${req.user.username} ${newStatus ? 'enabled' : 'disabled'} shop item: ${item[0].name} (ID: ${itemId})`);
+
+    res.json({
+      success: true,
+      message: `Shop item ${newStatus ? 'enabled' : 'disabled'} successfully`,
+      is_active: newStatus
+    });
+
+  } catch (error) {
+    console.error('Admin toggle shop item error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle shop item status',
+      error: error.message
+    });
+  }
+});
+
+// Update stock quantity (admin only)
+router.patch('/shop/:itemId/stock', async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { stock_quantity } = req.body;
+
+    if (stock_quantity === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'stock_quantity is required'
+      });
+    }
+
+    // Check if item exists
+    const [item] = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
+    
+    if (!item[0]) {
+      return res.status(404).json({
+        success: false,
+        message: 'Shop item not found'
+      });
+    }
+
+    await db.query('UPDATE reward_items SET stock_quantity = ? WHERE id = ?', [stock_quantity, itemId]);
+
+    console.log(`Admin ${req.user.username} updated stock for ${item[0].name} to ${stock_quantity}`);
+
+    res.json({
+      success: true,
+      message: 'Stock quantity updated successfully',
+      stock_quantity
+    });
+
+  } catch (error) {
+    console.error('Admin update stock error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update stock quantity',
+      error: error.message
+    });
+  }
+});
+
+// Delete shop item (admin only)
+router.delete('/shop/:itemId', async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    // Check if item exists
+    const [item] = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
+    
+    if (!item[0]) {
+      return res.status(404).json({
+        success: false,
+        message: 'Shop item not found'
+      });
+    }
+
+    // Check if item has been purchased
+    const [purchases] = await db.query('SELECT COUNT(*) as count FROM user_purchases WHERE item_id = ?', [itemId]);
+    
+    if (purchases[0].count > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete item that has been purchased. Consider disabling it instead.',
+        purchases: purchases[0].count
+      });
+    }
+
+    await db.query('DELETE FROM reward_items WHERE id = ?', [itemId]);
+
+    console.log(`Admin ${req.user.username} deleted shop item: ${item[0].name} (ID: ${itemId})`);
+
+    res.json({
+      success: true,
+      message: 'Shop item deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Admin delete shop item error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete shop item',
+      error: error.message
+    });
+  }
+});
+
+// Get shop statistics (admin only)
+router.get('/shop/stats/summary', async (req, res) => {
+  try {
+    const stats = await db.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM reward_items) as total_items,
+        (SELECT COUNT(*) FROM reward_items WHERE is_active = TRUE) as active_items,
+        (SELECT COUNT(*) FROM reward_items WHERE is_active = FALSE) as inactive_items,
+        (SELECT COUNT(*) FROM user_purchases) as total_purchases,
+        (SELECT COUNT(DISTINCT user_id) FROM user_purchases) as unique_customers,
+        (SELECT SUM(ri.cost_points) FROM user_purchases up 
+         JOIN reward_items ri ON up.item_id = ri.id) as total_revenue
+    `);
+
+    // Get top selling items
+    const topItems = await db.query(`
+      SELECT 
+        ri.id,
+        ri.name,
+        ri.category,
+        ri.cost_points,
+        COUNT(up.id) as purchase_count,
+        COUNT(DISTINCT up.user_id) as unique_buyers,
+        SUM(ri.cost_points) as revenue
+      FROM reward_items ri
+      LEFT JOIN user_purchases up ON ri.id = up.item_id
+      GROUP BY ri.id
+      ORDER BY purchase_count DESC, revenue DESC
+      LIMIT 10
+    `);
+
+    // Get category breakdown
+    const categoryStats = await db.query(`
+      SELECT 
+        ri.category,
+        COUNT(DISTINCT ri.id) as item_count,
+        COUNT(up.id) as purchase_count,
+        SUM(ri.cost_points) as revenue
+      FROM reward_items ri
+      LEFT JOIN user_purchases up ON ri.id = up.item_id
+      GROUP BY ri.category
+      ORDER BY purchase_count DESC
+    `);
+
+    res.json({
+      success: true,
+      summary: stats[0],
+      top_items: topItems,
+      category_breakdown: categoryStats
+    });
+
+  } catch (error) {
+    console.error('Admin shop stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve shop statistics',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

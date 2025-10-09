@@ -23,7 +23,7 @@ router.get('/', [
 
         const date = req.query.date || new Date().toISOString().split('T')[0];
         
-        // Enhanced query to support hybrid storage
+        // Enhanced query to support hybrid storage with meal categories
         const logs = await db.query(`
             SELECT 
                 fl.id,
@@ -33,20 +33,44 @@ router.get('/', [
                 fl.calories,
                 fl.logged_at as created_at,
                 fl.logged_at as updated_at,
-                fl.log_date
+                fl.log_date,
+                fl.meal_category,
+                fl.meal_time
             FROM food_logs fl
             LEFT JOIN foods f ON fl.food_id = f.id
             WHERE fl.user_id = ? AND fl.log_date = ?
-            ORDER BY fl.logged_at DESC
+            ORDER BY fl.meal_time ASC, fl.logged_at DESC
         `, [req.user.id, date]);
 
-        // Calculate total calories for the day
-        const totalCalories = logs.reduce((sum, log) => sum + parseFloat(log.calories), 0);
+        // Group logs by meal category
+        const grouped = {
+            breakfast: { foods: [], total_calories: 0 },
+            lunch: { foods: [], total_calories: 0 },
+            dinner: { foods: [], total_calories: 0 },
+            snack: { foods: [], total_calories: 0 },
+            other: { foods: [], total_calories: 0 }
+        };
+
+        let totalCalories = 0;
+        const categoriesUsed = new Set();
+
+        logs.forEach(log => {
+            const category = log.meal_category || 'other';
+            grouped[category].foods.push(log);
+            grouped[category].total_calories += parseFloat(log.calories);
+            totalCalories += parseFloat(log.calories);
+            categoriesUsed.add(category);
+        });
         
         res.json({
             success: true,
             logs,
-            totalCalories,
+            grouped,
+            totals: {
+                total_calories: totalCalories,
+                meals_count: logs.length,
+                categories_used: Array.from(categoriesUsed)
+            },
             date
         });
     } catch (error) {
@@ -64,7 +88,9 @@ router.post('/', [
     body('quantity').isFloat({ min: 0.1 }).withMessage('Quantity must be at least 0.1'),
     body('unit').trim().isLength({ min: 1, max: 20 }).withMessage('Unit is required (1-20 characters)'),
     body('calories').isInt({ min: 0 }).withMessage('Calories must be a positive whole number (kcal)'),
-    body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format')
+    body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format'),
+    body('meal_category').optional().isIn(['breakfast', 'lunch', 'dinner', 'snack', 'other']).withMessage('Invalid meal category'),
+    body('meal_time').optional().matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/).withMessage('Meal time must be in HH:MM:SS format')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -75,8 +101,19 @@ router.post('/', [
             });
         }
 
-        const { foodId, name, quantity, unit, calories } = req.body;
+        const { foodId, name, quantity, unit, calories, meal_category, meal_time } = req.body;
         const logDate = req.body.logDate || new Date().toISOString().split('T')[0];
+        
+        // Validate log_date is not in the future
+        const today = new Date().toISOString().split('T')[0];
+        if (logDate > today) {
+            return res.status(400).json({
+                error: 'Cannot log food for future dates'
+            });
+        }
+
+        const mealCategory = meal_category || 'other';
+        const mealTime = meal_time || null;
 
         // Validate that either foodId or name is provided
         if (!foodId && !name) {
@@ -124,9 +161,9 @@ router.post('/', [
 
         // Create the food log entry with enhanced data
         const result = await db.query(`
-            INSERT INTO food_logs (user_id, food_id, name, quantity, unit, calories, log_date) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate]);
+            INSERT INTO food_logs (user_id, food_id, name, quantity, unit, calories, log_date, meal_category, meal_time) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate, mealCategory, mealTime]);
         
         res.status(201).json({
             success: true,
@@ -138,7 +175,9 @@ router.post('/', [
                 quantity: quantity,
                 unit: unit,
                 calories: calories,
-                logDate: logDate
+                logDate: logDate,
+                meal_category: mealCategory,
+                meal_time: mealTime
             }
         });
     } catch (error) {
@@ -157,7 +196,9 @@ router.put('/:id', [
     body('quantity').optional().isFloat({ min: 0.1 }).withMessage('Quantity must be at least 0.1'),
     body('unit').optional().trim().isLength({ min: 1, max: 20 }).withMessage('Unit must be 1-20 characters'),
     body('calories').optional().isInt({ min: 0 }).withMessage('Calories must be a positive whole number (kcal)'),
-    body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format')
+    body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format'),
+    body('meal_category').optional().isIn(['breakfast', 'lunch', 'dinner', 'snack', 'other']).withMessage('Invalid meal category'),
+    body('meal_time').optional().matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/).withMessage('Meal time must be in HH:MM:SS format')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -169,7 +210,7 @@ router.put('/:id', [
         }
 
         const { id } = req.params;
-        const { foodId, name, quantity, unit, calories, logDate } = req.body;
+        const { foodId, name, quantity, unit, calories, logDate, meal_category, meal_time } = req.body;
 
         // First, verify the log exists and belongs to the user
         const existingLog = await db.query(
@@ -226,8 +267,25 @@ router.put('/:id', [
         }
 
         if (logDate !== undefined) {
+            // Validate log_date is not in the future
+            const today = new Date().toISOString().split('T')[0];
+            if (logDate > today) {
+                return res.status(400).json({
+                    error: 'Cannot log food for future dates'
+                });
+            }
             updates.push('log_date = ?');
             values.push(logDate);
+        }
+
+        if (meal_category !== undefined) {
+            updates.push('meal_category = ?');
+            values.push(meal_category);
+        }
+
+        if (meal_time !== undefined) {
+            updates.push('meal_time = ?');
+            values.push(meal_time);
         }
 
         // If no fields to update
@@ -322,6 +380,178 @@ router.get('/summary', [
         console.error('Get daily summary error:', error);
         res.status(500).json({
             error: 'Failed to get daily summary'
+        });
+    }
+});
+
+// Get logs for a date range
+router.get('/range', [
+    query('start_date').isISO8601().withMessage('Start date is required in YYYY-MM-DD format'),
+    query('end_date').isISO8601().withMessage('End date is required in YYYY-MM-DD format')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: errors.array()
+            });
+        }
+
+        const { start_date, end_date } = req.query;
+
+        // Validate date range (max 90 days)
+        const startDate = new Date(start_date);
+        const endDate = new Date(end_date);
+        const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff < 0) {
+            return res.status(400).json({
+                error: 'End date must be after start date'
+            });
+        }
+
+        if (daysDiff > 90) {
+            return res.status(400).json({
+                error: 'Date range cannot exceed 90 days'
+            });
+        }
+
+        // Get all logs for the date range
+        const logs = await db.query(`
+            SELECT 
+                fl.id,
+                COALESCE(fl.name, f.name) as food_name,
+                fl.quantity,
+                fl.unit,
+                fl.calories,
+                fl.logged_at,
+                fl.log_date,
+                fl.meal_category,
+                fl.meal_time
+            FROM food_logs fl
+            LEFT JOIN foods f ON fl.food_id = f.id
+            WHERE fl.user_id = ? AND fl.log_date BETWEEN ? AND ?
+            ORDER BY fl.log_date DESC, fl.meal_time ASC, fl.logged_at DESC
+        `, [req.user.id, start_date, end_date]);
+
+        // Group by date
+        const data = {};
+        let totalDaysLogged = 0;
+        let totalCaloriesAllDays = 0;
+
+        logs.forEach(log => {
+            const date = log.log_date;
+            if (!data[date]) {
+                data[date] = {
+                    logs: [],
+                    grouped: {
+                        breakfast: { foods: [], total_calories: 0 },
+                        lunch: { foods: [], total_calories: 0 },
+                        dinner: { foods: [], total_calories: 0 },
+                        snack: { foods: [], total_calories: 0 },
+                        other: { foods: [], total_calories: 0 }
+                    },
+                    total_calories: 0
+                };
+                totalDaysLogged++;
+            }
+
+            const category = log.meal_category || 'other';
+            data[date].logs.push(log);
+            data[date].grouped[category].foods.push(log);
+            data[date].grouped[category].total_calories += parseFloat(log.calories);
+            data[date].total_calories += parseFloat(log.calories);
+            totalCaloriesAllDays += parseFloat(log.calories);
+        });
+
+        const avgCalories = totalDaysLogged > 0 ? Math.round(totalCaloriesAllDays / totalDaysLogged) : 0;
+
+        res.json({
+            success: true,
+            data,
+            summary: {
+                total_days: daysDiff + 1,
+                days_logged: totalDaysLogged,
+                average_calories: avgCalories
+            }
+        });
+    } catch (error) {
+        console.error('Get date range logs error:', error);
+        res.status(500).json({
+            error: 'Failed to retrieve logs for date range'
+        });
+    }
+});
+
+// Get calendar view for a month
+router.get('/calendar', [
+    query('year').isInt({ min: 2000, max: 2100 }).withMessage('Year is required (2000-2100)'),
+    query('month').isInt({ min: 1, max: 12 }).withMessage('Month is required (1-12)')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: errors.array()
+            });
+        }
+
+        const { year, month } = req.query;
+
+        // Calculate first and last day of month
+        const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const lastDayStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        // Get all logs for the month
+        const logs = await db.query(`
+            SELECT 
+                fl.log_date,
+                COUNT(*) as meals_count,
+                SUM(fl.calories) as total_calories
+            FROM food_logs fl
+            WHERE fl.user_id = ? AND fl.log_date BETWEEN ? AND ?
+            GROUP BY fl.log_date
+        `, [req.user.id, firstDay, lastDayStr]);
+
+        // Get weight logs for the month
+        const weightLogs = await db.query(`
+            SELECT log_date
+            FROM weight_logs
+            WHERE user_id = ? AND log_date BETWEEN ? AND ?
+        `, [req.user.id, firstDay, lastDayStr]);
+
+        const weightLogDates = new Set(weightLogs.map(w => w.log_date));
+
+        // Get user's daily calorie goal
+        const user = await db.getUserById(req.user.id);
+        const dailyGoal = user.daily_calorie_goal || 2000;
+
+        // Create calendar array with all days
+        const calendar = [];
+        for (let day = 1; day <= lastDay; day++) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const logData = logs.find(l => l.log_date === dateStr);
+            
+            calendar.push({
+                date: dateStr,
+                total_calories: logData ? parseInt(logData.total_calories) : 0,
+                meals_count: logData ? parseInt(logData.meals_count) : 0,
+                goal_met: logData ? parseInt(logData.total_calories) >= dailyGoal : false,
+                has_weight_log: weightLogDates.has(dateStr)
+            });
+        }
+
+        res.json({
+            success: true,
+            calendar
+        });
+    } catch (error) {
+        console.error('Get calendar view error:', error);
+        res.status(500).json({
+            error: 'Failed to retrieve calendar view'
         });
     }
 });

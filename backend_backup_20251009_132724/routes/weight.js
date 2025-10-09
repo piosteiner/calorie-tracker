@@ -2,7 +2,6 @@ const express = require('express');
 const { body, query, param, validationResult } = require('express-validator');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
-const PointsService = require('../services/pointsService');
 
 const router = express.Router();
 
@@ -36,9 +35,6 @@ router.post('/log', [
                 error: 'Cannot log weight for future dates'
             });
         }
-        
-        // Check if this is a same-day log (for point rewards)
-        const isSameDayLog = (logDate === today);
 
         // Check if weight already logged for this date
         const existing = await db.query(
@@ -69,69 +65,6 @@ router.post('/log', [
             [req.user.id, weight_kg, logDate, notes || null]
         );
 
-        // Award points for logging weight (only for same-day logs)
-        let pointsAwarded = 0;
-        let pointsDetails = [];
-        try {
-            if (isSameDayLog) {
-                // Get current weight milestone to apply multiplier
-                const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
-                const basePoints = PointsService.POINT_REWARDS.WEIGHT_LOG;
-                const multipliedPoints = Math.round(basePoints * weightMilestone.points_multiplier);
-
-                // Base points for weight logging (with multiplier applied)
-                await PointsService.awardPoints(
-                    req.user.id,
-                    multipliedPoints,
-                    'weight_log',
-                    `Logged weight (${weightMilestone.points_multiplier}x multiplier)`,
-                    'weight_log',
-                    result.insertId,
-                    { multiplier: weightMilestone.points_multiplier, basePoints: basePoints }
-                );
-                pointsAwarded += multipliedPoints;
-                pointsDetails.push({ 
-                    reason: 'weight_log', 
-                    points: multipliedPoints,
-                    basePoints: basePoints,
-                    multiplier: weightMilestone.points_multiplier
-                });
-
-                // Check for first weight log achievement
-                const [weightLogCount] = await db.query(
-                    'SELECT COUNT(*) as count FROM weight_logs WHERE user_id = ?',
-                    [req.user.id]
-                );
-                if (weightLogCount[0].count === 1) {
-                    await PointsService.awardAchievement(
-                        req.user.id,
-                        'FIRST_WEIGHT_LOG',
-                        'Weight Tracker',
-                        'Logged your first weight',
-                        '⚖️',
-                        PointsService.POINT_REWARDS.FIRST_WEIGHT_LOG
-                    );
-                    pointsAwarded += PointsService.POINT_REWARDS.FIRST_WEIGHT_LOG;
-                    pointsDetails.push({ reason: 'first_weight_log', points: PointsService.POINT_REWARDS.FIRST_WEIGHT_LOG });
-                }
-
-                // Check for weight milestone level up
-                const milestoneResult = await PointsService.checkWeightMilestone(req.user.id);
-                if (milestoneResult.leveledUp) {
-                    pointsAwarded += milestoneResult.bonus;
-                    pointsDetails.push({ 
-                        reason: 'milestone_level_up', 
-                        points: milestoneResult.bonus,
-                        newLevel: milestoneResult.milestone_level,
-                        newMultiplier: milestoneResult.multiplier
-                    });
-                }
-            }
-        } catch (pointsError) {
-            console.error('Error awarding points:', pointsError);
-            // Don't fail the weight log if points fail
-        }
-
         res.status(201).json({
             success: true,
             data: {
@@ -140,9 +73,7 @@ router.post('/log', [
                 log_date: logDate,
                 notes: notes || null,
                 change_from_previous: changeFromPrevious
-            },
-            pointsAwarded: pointsAwarded,
-            pointsDetails: pointsDetails
+            }
         });
     } catch (error) {
         console.error('Log weight error:', error);

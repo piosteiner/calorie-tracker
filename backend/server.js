@@ -18,6 +18,7 @@ const adminFoodsRoutes = require('./routes/adminFoods');
 const adminDatabaseRoutes = require('./routes/adminDatabase');
 const userFoodsRoutes = require('./routes/userFoods');
 const weightRoutes = require('./routes/weight');
+const rewardsRoutes = require('./routes/rewards');
 const db = require('./database');
 
 const app = express();
@@ -86,6 +87,7 @@ app.use('/api/foods', foodRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/weight', weightRoutes);
+app.use('/api/rewards', rewardsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/foods', adminFoodsRoutes);
 app.use('/api/admin/database', adminDatabaseRoutes);
