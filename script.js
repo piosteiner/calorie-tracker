@@ -213,6 +213,9 @@ class CalorieTracker {
         // Initialize notification system
         this.notifications = new NotificationSystem();
         
+        // Weight tracking
+        this.weightChart = null; // Chart.js instance for weight graph
+        
         // Admin properties
         this.isAdmin = false;
         this.adminData = {
@@ -452,6 +455,55 @@ class CalorieTracker {
                 this.processSyncQueue();
             }
         }, 30000);
+        
+        // Initialize food form date and meal category
+        this.initializeFoodForm();
+    }
+    
+    // Initialize food logging form with smart defaults
+    initializeFoodForm() {
+        // Set log date to today by default
+        const logDateInput = document.getElementById('logDate');
+        if (logDateInput) {
+            logDateInput.value = new Date().toISOString().split('T')[0];
+            // Set max date to today (can't log future meals)
+            logDateInput.max = new Date().toISOString().split('T')[0];
+        }
+        
+        // Set weight date to today by default
+        const weightDateInput = document.getElementById('weightDate');
+        if (weightDateInput) {
+            weightDateInput.value = new Date().toISOString().split('T')[0];
+            weightDateInput.max = new Date().toISOString().split('T')[0];
+        }
+        
+        // Auto-suggest meal category based on current time
+        const mealCategoryInput = document.getElementById('mealCategory');
+        if (mealCategoryInput) {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            // Smart meal category suggestion based on time of day
+            let suggestedCategory = 'other';
+            if (hour >= 5 && hour < 11) {
+                suggestedCategory = 'breakfast';
+            } else if (hour >= 11 && hour < 15) {
+                suggestedCategory = 'lunch';
+            } else if (hour >= 17 && hour < 22) {
+                suggestedCategory = 'dinner';
+            } else if (hour >= 15 && hour < 17 || hour >= 22 || hour < 5) {
+                suggestedCategory = 'snack';
+            }
+            
+            mealCategoryInput.value = suggestedCategory;
+        }
+        
+        // Set current time in meal time input
+        const mealTimeInput = document.getElementById('mealTime');
+        if (mealTimeInput) {
+            const now = new Date();
+            mealTimeInput.value = now.toTimeString().slice(0, 5); // HH:MM format
+        }
     }
 
     bindEvents() {
@@ -527,6 +579,15 @@ class CalorieTracker {
             });
         }
 
+        // Weight tracking form
+        const weightForm = document.getElementById('weightForm');
+        if (weightForm) {
+            weightForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogWeight();
+            });
+        }
+
         // Hide suggestions when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#foodName') && !e.target.closest('#foodSuggestions')) {
@@ -581,6 +642,12 @@ class CalorieTracker {
                     this.loadMoreHistory();
                     break;
                 
+                // Weight tracking
+                case 'toggle-weight-tracking':
+                    e.preventDefault();
+                    this.toggleWeightTracking();
+                    break;
+                
                 case 'view-day-details':
                     e.preventDefault();
                     this.viewDayDetails(target.dataset.date);
@@ -600,6 +667,16 @@ class CalorieTracker {
                 case 'delete-food-log':
                     e.preventDefault();
                     this.openDeleteConfirmModal(target.dataset.logId, target.dataset.foodName, target.dataset.date);
+                    break;
+                
+                case 'edit-weight':
+                    e.preventDefault();
+                    this.editWeightEntry(target.dataset.weightId);
+                    break;
+                
+                case 'delete-weight':
+                    e.preventDefault();
+                    this.deleteWeightEntry(target.dataset.weightId);
                     break;
                 
                 case 'close-edit-modal':
@@ -1603,6 +1680,11 @@ class CalorieTracker {
             const unit = 'g'; // Always use grams since unit selector removed
             const brand = document.getElementById('foodBrand')?.value?.trim() || null;
             const distributor = document.getElementById('foodDistributor')?.value || null;
+            
+            // Get new meal category, date, and time fields
+            const mealCategory = document.getElementById('mealCategory')?.value || 'other';
+            const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
+            const mealTime = document.getElementById('mealTime')?.value || null;
 
             // Check if we have enhanced food data from selection
             if (this.selectedFoodData) {
@@ -1633,7 +1715,9 @@ class CalorieTracker {
                         calories,
                         brand: brand || food.brand,
                         distributor: distributor || food.distributor,
-                        logDate: new Date().toISOString().split('T')[0]
+                        log_date: logDate,
+                        meal_category: mealCategory,
+                        meal_time: mealTime
                     };
                 } else {
                     // Not found in database - use custom food name
@@ -1649,7 +1733,9 @@ class CalorieTracker {
                             calories,
                             brand,
                             distributor,
-                            logDate: new Date().toISOString().split('T')[0]
+                            log_date: logDate,
+                            meal_category: mealCategory,
+                            meal_time: mealTime
                         };
                     } catch (error) {
                         // User cancelled calorie input
@@ -2573,6 +2659,275 @@ class CalorieTracker {
         this.historyData.expandedDays.add(date);
         this.renderDayDetails(dayCard, demoLogs, 620);
         dayCard.classList.add('expanded');
+    }
+
+    // =============================================================================
+    // WEIGHT TRACKING
+    // =============================================================================
+
+    /**
+     * Toggle weight tracking section visibility
+     */
+    async toggleWeightTracking() {
+        const weightContent = document.getElementById('weightContent');
+        const weightBtnText = document.getElementById('weightBtnText');
+        
+        const isVisible = weightContent.style.display !== 'none';
+        
+        if (isVisible) {
+            weightContent.style.display = 'none';
+            weightBtnText.textContent = 'Show Weight Tracker';
+        } else {
+            weightContent.style.display = 'block';
+            weightBtnText.textContent = 'Hide Weight Tracker';
+            
+            // Load weight data when opening
+            await this.loadWeightHistory();
+        }
+    }
+
+    /**
+     * Handle weight logging form submission
+     */
+    async handleLogWeight() {
+        const form = document.getElementById('weightForm');
+        const submitButton = form.querySelector('[type="submit"]');
+        
+        try {
+            // Get form values
+            const weightKg = parseFloat(document.getElementById('weightKg').value);
+            const logDate = document.getElementById('weightDate').value;
+            const notes = document.getElementById('weightNotes').value.trim() || null;
+            
+            // Validation
+            if (!weightKg || weightKg < 20 || weightKg > 300) {
+                this.notifications.error('Please enter a valid weight between 20 and 300 kg');
+                return;
+            }
+            
+            // Set loading state
+            this.setButtonLoading(submitButton, true);
+            
+            // Submit to API
+            const response = await this.apiCall('/weight/log', 'POST', {
+                weight_kg: weightKg,
+                log_date: logDate,
+                notes: notes
+            });
+            
+            if (response.success) {
+                this.notifications.success(`Weight logged: ${weightKg} kg`);
+                form.reset();
+                // Reset date to today
+                document.getElementById('weightDate').value = new Date().toISOString().split('T')[0];
+                
+                // Reload weight history to show new entry
+                await this.loadWeightHistory();
+            }
+        } catch (error) {
+            logger.error('Error logging weight:', error);
+            // Error notification handled by apiCall
+        } finally {
+            this.setButtonLoading(submitButton, false);
+        }
+    }
+
+    /**
+     * Load weight history from API
+     */
+    async loadWeightHistory(days = 90) {
+        try {
+            const response = await this.apiCall(`/weight/history?days=${days}`);
+            
+            if (response.success) {
+                const { data, summary } = response;
+                
+                // Update statistics
+                this.updateWeightStats(summary);
+                
+                // Render weight chart
+                this.renderWeightChart(data);
+                
+                // Render weight history list
+                this.renderWeightHistory(data);
+            }
+        } catch (error) {
+            logger.error('Error loading weight history:', error);
+            document.getElementById('weightHistoryList').innerHTML = 
+                '<p class="error-message">Failed to load weight history</p>';
+        }
+    }
+
+    /**
+     * Update weight statistics display
+     */
+    updateWeightStats(summary) {
+        const statsDiv = document.getElementById('weightStats');
+        if (!summary || !summary.current_weight) {
+            statsDiv.style.display = 'none';
+            return;
+        }
+        
+        statsDiv.style.display = 'flex';
+        
+        document.getElementById('currentWeight').textContent = `${summary.current_weight} kg`;
+        
+        const totalChange = summary.total_change;
+        const changeElement = document.getElementById('totalChange');
+        changeElement.textContent = `${totalChange >= 0 ? '+' : ''}${totalChange} kg`;
+        changeElement.className = 'stat-value ' + (totalChange > 0 ? 'positive' : totalChange < 0 ? 'negative' : 'neutral');
+        
+        document.getElementById('weeklyAverage').textContent = 
+            `${summary.average_change_per_week >= 0 ? '+' : ''}${summary.average_change_per_week} kg/week`;
+        
+        const trendElement = document.getElementById('weightTrend');
+        const trendIcons = {
+            'decreasing': '📉 Decreasing',
+            'increasing': '📈 Increasing',
+            'stable': '➡️ Stable'
+        };
+        trendElement.textContent = trendIcons[summary.trend] || summary.trend;
+    }
+
+    /**
+     * Render weight chart using Chart.js
+     */
+    renderWeightChart(data) {
+        const canvas = document.getElementById('weightChart');
+        if (!canvas || !data || data.length === 0) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Destroy existing chart if any
+        if (this.weightChart) {
+            this.weightChart.destroy();
+        }
+        
+        // Prepare chart data
+        const labels = data.map(entry => new Date(entry.log_date).toLocaleDateString());
+        const weights = data.map(entry => entry.weight_kg);
+        
+        // Create new chart
+        this.weightChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: weights,
+                    borderColor: 'rgb(102, 126, 234)',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Weight Trend'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' kg';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Render weight history list
+     */
+    renderWeightHistory(data) {
+        const listDiv = document.getElementById('weightHistoryList');
+        
+        if (!data || data.length === 0) {
+            listDiv.innerHTML = '<p class="empty-message">No weight entries yet. Start tracking your weight!</p>';
+            return;
+        }
+        
+        listDiv.innerHTML = data.map(entry => {
+            const date = new Date(entry.log_date).toLocaleDateString();
+            const change = entry.change_from_previous;
+            const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
+            const changeText = change !== null ? 
+                `<span class="weight-change ${changeClass}">${change >= 0 ? '+' : ''}${change} kg</span>` : 
+                '';
+            
+            return `
+                <div class="weight-entry">
+                    <div class="weight-entry-main">
+                        <div class="weight-date">${date}</div>
+                        <div class="weight-value">${entry.weight_kg} kg ${changeText}</div>
+                    </div>
+                    ${entry.notes ? `<div class="weight-notes">${this.escapeHtml(entry.notes)}</div>` : ''}
+                    <div class="weight-actions">
+                        <button class="btn-icon" data-action="edit-weight" data-weight-id="${entry.id}" title="Edit">✏️</button>
+                        <button class="btn-icon" data-action="delete-weight" data-weight-id="${entry.id}" title="Delete">🗑️</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Edit weight entry
+     */
+    async editWeightEntry(weightId) {
+        const newWeight = prompt('Enter new weight (kg):');
+        if (!newWeight) return;
+        
+        const weight = parseFloat(newWeight);
+        if (isNaN(weight) || weight < 20 || weight > 300) {
+            this.notifications.error('Please enter a valid weight between 20 and 300 kg');
+            return;
+        }
+        
+        try {
+            const response = await this.apiCall(`/weight/${weightId}`, 'PUT', {
+                weight_kg: weight
+            });
+            
+            if (response.success) {
+                this.notifications.success('Weight updated successfully');
+                await this.loadWeightHistory();
+            }
+        } catch (error) {
+            logger.error('Error updating weight:', error);
+        }
+    }
+
+    /**
+     * Delete weight entry
+     */
+    async deleteWeightEntry(weightId) {
+        if (!confirm('Are you sure you want to delete this weight entry?')) {
+            return;
+        }
+        
+        try {
+            const response = await this.apiCall(`/weight/${weightId}`, 'DELETE');
+            
+            if (response.success) {
+                this.notifications.success('Weight entry deleted');
+                await this.loadWeightHistory();
+            }
+        } catch (error) {
+            logger.error('Error deleting weight:', error);
+        }
     }
 
     // =============================================================================

@@ -381,6 +381,7 @@ body {
 .summary-card,
 .add-food-card,
 .food-log-card,
+.weight-tracking-card,
 .history-card {
     background: var(--bg-card);
     border-radius: 12px;
@@ -392,6 +393,7 @@ body {
 .summary-card h2,
 .add-food-card h3,
 .food-log-card h3,
+.weight-tracking-card h3,
 .history-card h3 {
     margin-bottom: 20px;
     color: var(--text-primary);
@@ -1653,6 +1655,226 @@ body {
     background: #c82333;
 }
 
+/* ============================================================================
+   MEAL CATEGORY & TIME STYLES
+   ========================================================================== */
+
+.meal-info-row {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border: 2px solid var(--border-primary);
+}
+
+.meal-info-row .input-group label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Meal category badges */
+.meal-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.meal-badge.breakfast {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.meal-badge.lunch {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.meal-badge.dinner {
+    background: #ffe5d0;
+    color: #bd5a00;
+}
+
+.meal-badge.snack {
+    background: #d1e7dd;
+    color: #0a3622;
+}
+
+.meal-badge.other {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+.meal-time {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-left: 8px;
+}
+
+/* ============================================================================
+   WEIGHT TRACKING STYLES
+   ========================================================================== */
+
+.weight-content {
+    margin-top: 20px;
+}
+
+.weight-log-form {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+}
+
+.weight-log-form h4 {
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.weight-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-card .stat-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.stat-card .stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--accent-primary);
+}
+
+.stat-card .stat-value.positive {
+    color: var(--accent-danger);
+}
+
+.stat-card .stat-value.negative {
+    color: var(--accent-success);
+}
+
+.stat-card .stat-value.neutral {
+    color: var(--text-secondary);
+}
+
+.weight-chart-container {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+}
+
+.weight-chart-container canvas {
+    max-height: 300px;
+}
+
+.weight-history {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.weight-history h4 {
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.weight-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.weight-entry {
+    background: var(--bg-card);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.weight-entry-main {
+    flex: 1;
+}
+
+.weight-date {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.weight-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.weight-change {
+    font-size: 14px;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.weight-change.positive {
+    color: var(--accent-danger);
+}
+
+.weight-change.negative {
+    color: var(--accent-success);
+}
+
+.weight-change.neutral {
+    color: var(--text-secondary);
+}
+
+.weight-notes {
+    width: 100%;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 5px;
+}
+
+.weight-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    padding: 4px;
+}
+
+.btn-icon:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .header .container {
@@ -1665,8 +1887,22 @@ body {
         grid-template-columns: 1fr;
     }
     
-    .stats-grid {
+    .meal-info-row {
+        padding: 12px;
+    }
+    
+    .stats-grid,
+    .weight-stats {
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+    
+    .weight-chart-container canvas {
+        max-height: 250px;
+    }
+    
+    .weight-entry {
+        flex-direction: column;
+        align-items: flex-start;
     }
     
     .food-item {

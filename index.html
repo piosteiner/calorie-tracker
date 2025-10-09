@@ -8,6 +8,7 @@
     <meta name="description" content="Track your daily nutrition intake with our easy-to-use calorie tracker">
     <meta name="keywords" content="calorie tracker, nutrition, diet, health, food logging">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- Login Section -->
@@ -95,6 +96,30 @@
                         </button>
                     </div>
                     <form id="foodForm">
+                        <!-- Date and Meal Info Row -->
+                        <div class="form-row meal-info-row">
+                            <div class="input-group">
+                                <label for="logDate">📅 Date</label>
+                                <input type="date" id="logDate" name="logDate" required>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="mealCategory">🍽️ Meal</label>
+                                <select id="mealCategory" name="mealCategory" required>
+                                    <option value="breakfast">🌅 Breakfast</option>
+                                    <option value="lunch">☀️ Lunch</option>
+                                    <option value="dinner">🌙 Dinner</option>
+                                    <option value="snack">🍿 Snack</option>
+                                    <option value="other">📝 Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="mealTime">🕐 Time (optional)</label>
+                                <input type="time" id="mealTime" name="mealTime">
+                            </div>
+                        </div>
+                        
                         <div class="form-row">
                             <div class="input-group">
                                 <label for="foodName">Food Item</label>
@@ -167,6 +192,76 @@
                     <h3>Today's Food Log</h3>
                     <div id="foodLog" class="food-log">
                         <p class="empty-message">No food logged yet today. Start by adding your first meal!</p>
+                    </div>
+                </div>
+
+                <!-- Weight Tracking Section -->
+                <div class="weight-tracking-card">
+                    <div class="card-header-with-action">
+                        <h3>⚖️ Weight Tracking</h3>
+                        <button id="toggleWeightBtn" class="btn btn-secondary" data-action="toggle-weight-tracking">
+                            <span id="weightBtnText">Show Weight Tracker</span>
+                        </button>
+                    </div>
+                    
+                    <div id="weightContent" class="weight-content" style="display: none;">
+                        <!-- Weight Logging Form -->
+                        <div class="weight-log-form">
+                            <h4>📝 Log Your Weight</h4>
+                            <form id="weightForm">
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="weightDate">Date</label>
+                                        <input type="date" id="weightDate" name="weightDate" required>
+                                    </div>
+                                    
+                                    <div class="input-group">
+                                        <label for="weightKg">Weight (kg)</label>
+                                        <input type="number" id="weightKg" name="weightKg" min="20" max="300" step="0.1" placeholder="75.5" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="input-group">
+                                    <label for="weightNotes">Notes (optional)</label>
+                                    <input type="text" id="weightNotes" name="weightNotes" placeholder="Morning weight, before breakfast" maxlength="500">
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">Log Weight</button>
+                            </form>
+                        </div>
+
+                        <!-- Weight Statistics -->
+                        <div id="weightStats" class="weight-stats" style="display: none;">
+                            <div class="stat-card">
+                                <div class="stat-label">Current Weight</div>
+                                <div class="stat-value" id="currentWeight">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Total Change</div>
+                                <div class="stat-value" id="totalChange">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Weekly Average</div>
+                                <div class="stat-value" id="weeklyAverage">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Trend</div>
+                                <div class="stat-value" id="weightTrend">--</div>
+                            </div>
+                        </div>
+
+                        <!-- Weight Chart -->
+                        <div class="weight-chart-container">
+                            <canvas id="weightChart"></canvas>
+                        </div>
+
+                        <!-- Weight History Table -->
+                        <div class="weight-history">
+                            <h4>📊 Weight History</h4>
+                            <div id="weightHistoryList" class="weight-history-list">
+                                <p class="loading">Loading weight history...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
