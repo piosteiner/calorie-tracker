@@ -1923,8 +1923,10 @@ class CalorieTracker {
             const mealCategory = document.getElementById('mealCategory')?.value || 'other';
             const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
             const mealTimeInput = document.getElementById('mealTime')?.value || null;
+            console.log('🕐 Raw mealTimeInput from form:', mealTimeInput);
             // Convert HH:MM to HH:MM:SS format for backend
             const mealTime = mealTimeInput ? `${mealTimeInput}:00` : null;
+            console.log('🕐 Converted mealTime for backend:', mealTime);
 
             // Calculate calories (everything is now per 100g basis)
             const calories = Math.round((foodData.calories / 100) * quantity);
