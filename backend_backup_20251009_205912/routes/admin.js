@@ -355,10 +355,8 @@ router.put('/users/:id', async (req, res) => {
       });
     }
 
-    // Add updated_at timestamp (using JavaScript Date to avoid MySQL column dependency)
-    const now = new Date();
-    updates.push('updated_at = ?');
-    params.push(now);
+    // Add updated_at timestamp
+    updates.push('updated_at = NOW()');
 
     // Add userId to params for WHERE clause
     params.push(userId);
@@ -367,7 +365,7 @@ router.put('/users/:id', async (req, res) => {
     const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
     await db.query(sql, params);
 
-    // Get updated user data (include updated_at if column exists)
+    // Get updated user data
     const [updatedUser] = await db.query(`
       SELECT id, username, email, daily_calorie_goal, role, is_active, created_at, updated_at
       FROM users WHERE id = ?
@@ -423,13 +421,12 @@ router.put('/users/:id/change-password', async (req, res) => {
     const bcrypt = require('bcryptjs');
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    // Update password with timestamp
-    const now = new Date();
+    // Update password
     await db.query(`
       UPDATE users 
-      SET password_hash = ?, updated_at = ?
+      SET password_hash = ?, updated_at = NOW()
       WHERE id = ?
-    `, [passwordHash, now, userId]);
+    `, [passwordHash, userId]);
 
     // Log the password change for security audit
     console.log(`Admin ${req.admin.username} changed password for user ${existingUser.username} (ID: ${userId})`);
