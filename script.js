@@ -627,7 +627,7 @@ class CalorieTracker {
             });
         }
         
-        // Change Password Form
+        // Change Password Form (for current user)
         const changePasswordForm = document.getElementById('changePasswordForm');
         if (changePasswordForm) {
             changePasswordForm.addEventListener('submit', async (e) => {
@@ -647,6 +647,36 @@ class CalorieTracker {
                     });
                 });
             }
+        }
+        
+        // Admin Change Password Form (for any user)
+        const adminChangePasswordForm = document.getElementById('adminChangePasswordForm');
+        if (adminChangePasswordForm) {
+            adminChangePasswordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleAdminChangePassword();
+            });
+            
+            // Real-time password validation for admin form
+            const adminNewPassword = document.getElementById('adminNewPassword');
+            const adminConfirmPassword = document.getElementById('adminConfirmPassword');
+            
+            if (adminNewPassword && adminConfirmPassword) {
+                [adminNewPassword, adminConfirmPassword].forEach(input => {
+                    input.addEventListener('input', () => {
+                        this.updateAdminPasswordRequirements();
+                    });
+                });
+            }
+        }
+        
+        // Edit User Form
+        const editUserForm = document.getElementById('editUserForm');
+        if (editUserForm) {
+            editUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleEditUser();
+            });
         }
         
         // Password visibility toggles
@@ -815,6 +845,26 @@ class CalorieTracker {
                 case 'reset-user-password':
                     e.preventDefault();
                     this.resetUserPassword(parseInt(target.dataset.userId));
+                    break;
+                    
+                case 'admin-change-password':
+                    e.preventDefault();
+                    this.showAdminChangePasswordModal(parseInt(target.dataset.userId));
+                    break;
+                    
+                case 'close-admin-change-password-modal':
+                    e.preventDefault();
+                    this.closeAdminChangePasswordModal();
+                    break;
+                    
+                case 'edit-user':
+                    e.preventDefault();
+                    this.showEditUserModal(parseInt(target.dataset.userId));
+                    break;
+                    
+                case 'close-edit-user-modal':
+                    e.preventDefault();
+                    this.closeEditUserModal();
                     break;
                     
                 case 'browse-table':
@@ -4341,12 +4391,13 @@ class CalorieTracker {
         usersList.innerHTML = this.adminData.users.map(user => `
             <tr>
                 <td>${user.username}</td>
-                <td>${user.email}</td>
+                <td>${user.email || 'null'}</td>
                 <td>${user.role}</td>
-                <td>${user.totalLogs}</td>
-                <td>${user.lastLogin}</td>
+                <td>${user.totalLogs || 'undefined'}</td>
+                <td>${user.lastLogin || 'undefined'}</td>
                 <td>
-                    <button class="btn btn-small" data-action="reset-user-password" data-user-id="${user.id}">Reset Password</button>
+                    <button class="btn btn-small" data-action="edit-user" data-user-id="${user.id}">Edit</button>
+                    <button class="btn btn-small" data-action="admin-change-password" data-user-id="${user.id}">Change Password</button>
                     <button class="btn btn-small btn-danger" data-action="delete-user" data-user-id="${user.id}">Delete</button>
                 </td>
             </tr>
@@ -7401,6 +7452,212 @@ class CalorieTracker {
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Change Password';
+        }
+    }
+
+    /**
+     * Admin Change Password Modal Functions
+     */
+    
+    showAdminChangePasswordModal(userId) {
+        const user = this.adminData.users.find(u => u.id === userId);
+        if (!user) return;
+        
+        // Store current user ID for form submission
+        this.currentEditUserId = userId;
+        
+        const modal = document.getElementById('adminChangePasswordModal');
+        const usernameSpan = document.getElementById('adminPasswordUsername');
+        
+        if (modal && usernameSpan) {
+            // Set username in modal
+            usernameSpan.textContent = user.username;
+            
+            // Reset form
+            document.getElementById('adminChangePasswordForm').reset();
+            
+            // Clear error messages
+            document.querySelectorAll('#adminChangePasswordForm .error-message').forEach(el => el.textContent = '');
+            
+            // Reset requirements
+            document.querySelectorAll('#adminPasswordRequirements li').forEach(li => li.classList.remove('met'));
+            
+            // Show modal
+            modal.style.display = 'flex';
+        }
+    }
+    
+    closeAdminChangePasswordModal() {
+        const modal = document.getElementById('adminChangePasswordModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        this.currentEditUserId = null;
+    }
+    
+    updateAdminPasswordRequirements() {
+        const newPassword = document.getElementById('adminNewPassword').value;
+        const confirmPassword = document.getElementById('adminConfirmPassword').value;
+        
+        // Check length
+        const lengthReq = document.getElementById('admin-req-length');
+        if (lengthReq) {
+            if (newPassword.length >= 6) {
+                lengthReq.classList.add('met');
+            } else {
+                lengthReq.classList.remove('met');
+            }
+        }
+        
+        // Check if passwords match
+        const matchReq = document.getElementById('admin-req-match');
+        if (matchReq) {
+            if (newPassword && confirmPassword && newPassword === confirmPassword) {
+                matchReq.classList.add('met');
+            } else {
+                matchReq.classList.remove('met');
+            }
+        }
+    }
+    
+    async handleAdminChangePassword() {
+        if (!this.currentEditUserId) return;
+        
+        const newPassword = document.getElementById('adminNewPassword').value;
+        const confirmPassword = document.getElementById('adminConfirmPassword').value;
+        
+        // Clear previous errors
+        document.querySelectorAll('#adminChangePasswordForm .error-message').forEach(el => el.textContent = '');
+        
+        // Validation
+        let hasError = false;
+        
+        if (!newPassword || newPassword.length < 6) {
+            document.getElementById('adminNewPasswordError').textContent = 'Password must be at least 6 characters';
+            hasError = true;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            document.getElementById('adminConfirmPasswordError').textContent = 'Passwords do not match';
+            hasError = true;
+        }
+        
+        if (hasError) return;
+        
+        // Disable submit button
+        const submitBtn = document.getElementById('adminChangePasswordSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Changing Password...';
+        
+        try {
+            const response = await this.apiCall(`/admin/users/${this.currentEditUserId}/change-password`, 'PUT', {
+                newPassword
+            });
+            
+            if (response.success) {
+                this.notifications.success('User password changed successfully!');
+                this.closeAdminChangePasswordModal();
+            } else {
+                this.notifications.error(response.error || 'Failed to change password');
+            }
+        } catch (error) {
+            console.error('Admin change password error:', error);
+            this.notifications.error('Failed to change password. Please try again.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Change Password';
+        }
+    }
+
+    /**
+     * Edit User Modal Functions
+     */
+    
+    showEditUserModal(userId) {
+        const user = this.adminData.users.find(u => u.id === userId);
+        if (!user) return;
+        
+        // Store current user ID for form submission
+        this.currentEditUserId = userId;
+        
+        const modal = document.getElementById('editUserModal');
+        if (modal) {
+            // Pre-fill form with current values
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editEmail').value = user.email || '';
+            document.getElementById('editCalorieGoal').value = user.dailyCalorieGoal || 2200;
+            
+            // Clear error messages
+            document.querySelectorAll('#editUserForm .error-message').forEach(el => el.textContent = '');
+            
+            // Show modal
+            modal.style.display = 'flex';
+        }
+    }
+    
+    closeEditUserModal() {
+        const modal = document.getElementById('editUserModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        this.currentEditUserId = null;
+    }
+    
+    async handleEditUser() {
+        if (!this.currentEditUserId) return;
+        
+        const username = document.getElementById('editUsername').value.trim();
+        const email = document.getElementById('editEmail').value.trim();
+        const dailyCalorieGoal = parseInt(document.getElementById('editCalorieGoal').value) || 2200;
+        
+        // Clear previous errors
+        document.querySelectorAll('#editUserForm .error-message').forEach(el => el.textContent = '');
+        
+        // Validation
+        let hasError = false;
+        
+        if (!username || username.length < 3) {
+            document.getElementById('editUsernameError').textContent = 'Username must be at least 3 characters';
+            hasError = true;
+        }
+        
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            document.getElementById('editEmailError').textContent = 'Invalid email format';
+            hasError = true;
+        }
+        
+        if (dailyCalorieGoal < 1000 || dailyCalorieGoal > 5000) {
+            document.getElementById('editCalorieGoalError').textContent = 'Must be between 1000 and 5000';
+            hasError = true;
+        }
+        
+        if (hasError) return;
+        
+        // Disable submit button
+        const submitBtn = document.getElementById('editUserSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+        
+        try {
+            const response = await this.apiCall(`/admin/users/${this.currentEditUserId}`, 'PUT', {
+                username,
+                email: email || undefined,
+                dailyCalorieGoal
+            });
+            
+            if (response.success) {
+                this.notifications.success('User updated successfully!');
+                this.closeEditUserModal();
+                await this.loadAdminUsers(); // Refresh the list
+            } else {
+                this.notifications.error(response.error || 'Failed to update user');
+            }
+        } catch (error) {
+            console.error('Edit user error:', error);
+            this.notifications.error('Failed to update user. Please try again.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Save Changes';
         }
     }
 }
