@@ -200,6 +200,77 @@
                     </div>
                 </div>
 
+                <!-- Weight Tracking Section -->
+                <div class="weight-tracking-card">
+                    <div class="card-header-with-action">
+                        <h3>⚖️ Weight Tracking</h3>
+                        <button id="toggleWeightBtn" class="btn btn-secondary" data-action="toggle-weight-tracking">
+                            <span id="weightBtnText">Show Weight Tracker</span>
+                        </button>
+                    </div>
+                    
+                    <div id="weightContent" class="weight-content" style="display: none;">
+                        <!-- Weight Logging Form -->
+                        <div class="weight-log-form">
+                            <h4>📝 Log Your Weight</h4>
+                            <form id="weightForm">
+                                <!-- Compact grid layout -->
+                                <div class="weight-entry-grid">
+                                    <div class="input-group">
+                                        <label for="weightDate">Date</label>
+                                        <input type="date" id="weightDate" name="weightDate" required>
+                                    </div>
+                                    
+                                    <div class="input-group">
+                                        <label for="weightKg">Weight (kg)</label>
+                                        <input type="number" id="weightKg" name="weightKg" min="20" max="300" step="0.1" placeholder="75.5" required>
+                                    </div>
+                                    
+                                    <div class="input-group">
+                                        <label for="weightNotes">Notes (optional)</label>
+                                        <input type="text" id="weightNotes" name="weightNotes" placeholder="Morning weight, before breakfast" maxlength="500">
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-log-weight">Log Weight</button>
+                            </form>
+                        </div>
+
+                        <!-- Weight Statistics -->
+                        <div id="weightStats" class="weight-stats" style="display: none;">
+                            <div class="stat-card">
+                                <div class="stat-label">Current Weight</div>
+                                <div class="stat-value" id="currentWeight">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Total Change</div>
+                                <div class="stat-value" id="totalChange">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Weekly Average</div>
+                                <div class="stat-value" id="weeklyAverage">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Trend</div>
+                                <div class="stat-value" id="weightTrend">--</div>
+                            </div>
+                        </div>
+
+                        <!-- Weight Chart -->
+                        <div class="weight-chart-container">
+                            <canvas id="weightChart"></canvas>
+                        </div>
+
+                        <!-- Weight History Table -->
+                        <div class="weight-history">
+                            <h4>📊 Weight History</h4>
+                            <div id="weightHistoryList" class="weight-history-list">
+                                <p class="loading">Loading weight history...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Rewards Dashboard Card -->
                 <div id="rewardsCard" class="rewards-card" style="display: none;">
                     <div class="card-header-with-action">
@@ -283,77 +354,6 @@
                             <button class="btn btn-outline" data-action="show-rewards-shop">🛍️ Rewards Shop</button>
                             <button class="btn btn-outline" data-action="show-leaderboard">🏆 Leaderboard</button>
                             <button class="btn btn-outline" data-action="show-achievements">🏅 Achievements</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Weight Tracking Section -->
-                <div class="weight-tracking-card">
-                    <div class="card-header-with-action">
-                        <h3>⚖️ Weight Tracking</h3>
-                        <button id="toggleWeightBtn" class="btn btn-secondary" data-action="toggle-weight-tracking">
-                            <span id="weightBtnText">Show Weight Tracker</span>
-                        </button>
-                    </div>
-                    
-                    <div id="weightContent" class="weight-content" style="display: none;">
-                        <!-- Weight Logging Form -->
-                        <div class="weight-log-form">
-                            <h4>📝 Log Your Weight</h4>
-                            <form id="weightForm">
-                                <!-- Compact grid layout -->
-                                <div class="weight-entry-grid">
-                                    <div class="input-group">
-                                        <label for="weightDate">Date</label>
-                                        <input type="date" id="weightDate" name="weightDate" required>
-                                    </div>
-                                    
-                                    <div class="input-group">
-                                        <label for="weightKg">Weight (kg)</label>
-                                        <input type="number" id="weightKg" name="weightKg" min="20" max="300" step="0.1" placeholder="75.5" required>
-                                    </div>
-                                    
-                                    <div class="input-group">
-                                        <label for="weightNotes">Notes (optional)</label>
-                                        <input type="text" id="weightNotes" name="weightNotes" placeholder="Morning weight, before breakfast" maxlength="500">
-                                    </div>
-                                </div>
-                                
-                                <button type="submit" class="btn btn-primary btn-log-weight">Log Weight</button>
-                            </form>
-                        </div>
-
-                        <!-- Weight Statistics -->
-                        <div id="weightStats" class="weight-stats" style="display: none;">
-                            <div class="stat-card">
-                                <div class="stat-label">Current Weight</div>
-                                <div class="stat-value" id="currentWeight">--</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Total Change</div>
-                                <div class="stat-value" id="totalChange">--</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Weekly Average</div>
-                                <div class="stat-value" id="weeklyAverage">--</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Trend</div>
-                                <div class="stat-value" id="weightTrend">--</div>
-                            </div>
-                        </div>
-
-                        <!-- Weight Chart -->
-                        <div class="weight-chart-container">
-                            <canvas id="weightChart"></canvas>
-                        </div>
-
-                        <!-- Weight History Table -->
-                        <div class="weight-history">
-                            <h4>📊 Weight History</h4>
-                            <div id="weightHistoryList" class="weight-history-list">
-                                <p class="loading">Loading weight history...</p>
-                            </div>
                         </div>
                     </div>
                 </div>
