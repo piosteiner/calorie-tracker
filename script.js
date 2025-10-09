@@ -3455,6 +3455,9 @@ class CalorieTracker {
             this.calorieChart.destroy();
         }
         
+        // Debug: Log the received data
+        logger.debug('Calorie chart data received:', dataByDate);
+        
         // Prepare data for last 28 days
         const endDate = new Date();
         const dailyData = [];
@@ -3467,7 +3470,7 @@ class CalorieTracker {
             
             // Get data for this day from the response
             const dayData = dataByDate[dateStr];
-            const totalCalories = dayData ? dayData.total_calories : 0;
+            const totalCalories = dayData ? parseInt(dayData.total_calories) : 0;
             
             // Get the calorie goal for this day (use user's current goal)
             const calorieGoal = this.currentUser?.dailyCalorieGoal || 2000;
@@ -3479,6 +3482,10 @@ class CalorieTracker {
                 goal: calorieGoal,
                 isOverGoal: totalCalories > calorieGoal
             });
+            
+            if (totalCalories > 0) {
+                logger.debug(`Date ${dateStr}: ${totalCalories} kcal (goal: ${calorieGoal})`);
+            }
         }
         
         // Prepare chart data
@@ -3486,8 +3493,12 @@ class CalorieTracker {
         const caloriesData = dailyData.map(d => d.calories);
         const goalData = dailyData.map(d => d.goal);
         
-        // Color bars based on whether over or under goal
-        const barColors = dailyData.map(d => d.isOverGoal ? '#ef4444' : '#10b981');
+        // Color bars: green if at or under goal, red if over goal
+        // But also handle zero values (show green for empty days)
+        const barColors = dailyData.map(d => {
+            if (d.calories === 0) return '#10b981'; // Green for no data
+            return d.isOverGoal ? '#ef4444' : '#10b981';
+        });
         
         // Create new chart
         this.calorieChart = new Chart(ctx, {
