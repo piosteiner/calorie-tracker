@@ -4923,8 +4923,15 @@ body {
     border-radius: 8px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     z-index: 10000;
-    animation: slideInRight 0.3s ease, slideOutRight 0.3s ease 3s forwards;
     min-width: 200px;
+    transform: translateX(400px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.points-toast.show {
+    transform: translateX(0);
+    opacity: 1;
 }
 
 .points-toast-header {
@@ -4976,7 +4983,7 @@ body {
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 40px;
@@ -4984,7 +4991,13 @@ body {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     z-index: 10001;
     text-align: center;
-    animation: celebrationPop 0.5s ease;
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.level-up-celebration.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
 }
 
 .level-up-icon {
@@ -5008,6 +5021,14 @@ body {
     font-size: 1.5rem;
     font-weight: 700;
     color: #ffd700;
+    margin-bottom: 10px;
+}
+
+.level-up-multiplier {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #90EE90;
+    margin-top: 5px;
 }
 
 @keyframes celebrationPop {

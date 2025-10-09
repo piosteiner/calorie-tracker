@@ -1883,7 +1883,20 @@ class CalorieTracker {
                         breakdown: pointsDetails
                     });
                     
-                    // Check for level-up
+                    // Check for milestone level-up in pointsDetails
+                    if (pointsDetails && Array.isArray(pointsDetails)) {
+                        const levelUp = pointsDetails.find(d => d.reason === 'milestone_level_up');
+                        if (levelUp) {
+                            this.showLevelUpCelebration({
+                                icon: '🍽️',
+                                message: `Food Logging Level ${levelUp.newLevel}!`,
+                                bonus: levelUp.points,
+                                multiplier: levelUp.newMultiplier
+                            });
+                        }
+                    }
+                    
+                    // Legacy check for level-up
                     if (milestoneLevel) {
                         this.showLevelUpCelebration({
                             icon: '🍽️',
@@ -1990,6 +2003,20 @@ class CalorieTracker {
                         breakdown: pointsDetails
                     });
                     
+                    // Check for milestone level-up in pointsDetails
+                    if (pointsDetails && Array.isArray(pointsDetails)) {
+                        const levelUp = pointsDetails.find(d => d.reason === 'milestone_level_up');
+                        if (levelUp) {
+                            this.showLevelUpCelebration({
+                                icon: '🍽️',
+                                message: `Food Logging Level ${levelUp.newLevel}!`,
+                                bonus: levelUp.points,
+                                multiplier: levelUp.newMultiplier
+                            });
+                        }
+                    }
+                    
+                    // Legacy check for level-up
                     if (milestoneLevel) {
                         this.showLevelUpCelebration({
                             icon: '🍽️',
@@ -6287,9 +6314,9 @@ class CalorieTracker {
             
             logger.info('Rewards API response:', response);
             
-            if (response && response.success && response.data) {
-                logger.info('Updating rewards display with data:', response.data);
-                this.updateRewardsDisplay(response.data);
+            if (response && response.success && response.points) {
+                logger.info('Updating rewards display with data:', response.points);
+                this.updateRewardsDisplay(response.points);
             } else {
                 logger.info('Rewards API returned no data, showing default state');
                 this.showDefaultRewardsState();
@@ -6464,14 +6491,43 @@ class CalorieTracker {
         toast.className = 'points-toast';
 
         let breakdownHTML = '';
+        
+        // Handle both old format (breakdown object) and new format (array of pointsDetails)
         if (pointsData.breakdown) {
-            breakdownHTML = `
-                <div class="points-toast-breakdown">
-                    <div class="points-toast-item">${pointsData.breakdown.base} base points</div>
-                    ${pointsData.breakdown.multiplier ? `<div class="points-toast-item">× ${pointsData.breakdown.multiplier.toFixed(1)} multiplier</div>` : ''}
-                    ${pointsData.breakdown.bonus ? `<div class="points-toast-item">+ ${pointsData.breakdown.bonus} bonus</div>` : ''}
-                </div>
-            `;
+            if (Array.isArray(pointsData.breakdown)) {
+                // New format: array of {reason, points, basePoints, multiplier, newLevel, etc.}
+                breakdownHTML = '<div class="points-toast-breakdown">';
+                pointsData.breakdown.forEach(detail => {
+                    let itemText = '';
+                    if (detail.reason === 'food_log') {
+                        itemText = `${detail.basePoints || detail.points} base points`;
+                        if (detail.multiplier && detail.multiplier > 1.0) {
+                            itemText += ` × ${detail.multiplier.toFixed(1)}`;
+                        }
+                    } else if (detail.reason === 'complete_day') {
+                        itemText = `🎯 Complete day bonus: +${detail.points}`;
+                    } else if (detail.reason === 'early_bird') {
+                        itemText = `🌅 Early bird bonus: +${detail.points}`;
+                    } else if (detail.reason === 'first_food_log') {
+                        itemText = `🏆 First food log: +${detail.points}`;
+                    } else if (detail.reason === 'milestone_level_up') {
+                        itemText = `⭐ Level ${detail.newLevel || ''} bonus: +${detail.points}`;
+                    } else {
+                        itemText = `+${detail.points} ${detail.reason.replace(/_/g, ' ')}`;
+                    }
+                    breakdownHTML += `<div class="points-toast-item">${itemText}</div>`;
+                });
+                breakdownHTML += '</div>';
+            } else {
+                // Old format: {base, multiplier, bonus}
+                breakdownHTML = `
+                    <div class="points-toast-breakdown">
+                        <div class="points-toast-item">${pointsData.breakdown.base} base points</div>
+                        ${pointsData.breakdown.multiplier ? `<div class="points-toast-item">× ${pointsData.breakdown.multiplier.toFixed(1)} multiplier</div>` : ''}
+                        ${pointsData.breakdown.bonus ? `<div class="points-toast-item">+ ${pointsData.breakdown.bonus} bonus</div>` : ''}
+                    </div>
+                `;
+            }
         }
 
         toast.innerHTML = `
@@ -6482,11 +6538,17 @@ class CalorieTracker {
 
         document.body.appendChild(toast);
 
+        // Trigger animation
+        setTimeout(() => toast.classList.add('show'), 10);
+
         // Remove toast after animation
         setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
         }, 3500);
     }
 
@@ -6502,15 +6564,22 @@ class CalorieTracker {
             <div class="level-up-title">Level Up!</div>
             <div class="level-up-message">${levelData.message}</div>
             ${levelData.bonus ? `<div class="level-up-bonus">+${levelData.bonus} Bonus Points!</div>` : ''}
+            ${levelData.multiplier ? `<div class="level-up-multiplier">New multiplier: ${levelData.multiplier.toFixed(1)}×</div>` : ''}
         `;
 
         document.body.appendChild(celebration);
+        
+        // Trigger animation
+        setTimeout(() => celebration.classList.add('show'), 10);
 
         // Remove celebration after 3 seconds
         setTimeout(() => {
-            if (celebration.parentNode) {
-                celebration.parentNode.removeChild(celebration);
-            }
+            celebration.classList.remove('show');
+            setTimeout(() => {
+                if (celebration.parentNode) {
+                    celebration.parentNode.removeChild(celebration);
+                }
+            }, 300);
         }, 3000);
     }
 
