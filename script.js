@@ -523,7 +523,9 @@ class CalorieTracker {
 
         // Food form
         document.getElementById('foodForm').addEventListener('submit', (e) => {
+            console.log('🟢 FORM SUBMIT EVENT TRIGGERED!');
             e.preventDefault();
+            console.log('🟢 Calling handleAddFood()...');
             this.handleAddFood();
         });
 
@@ -1686,16 +1688,24 @@ class CalorieTracker {
     }
 
     async handleAddFood() {
+        console.log('🔴 handleAddFood() called - START');
         const form = document.getElementById('foodForm');
         const submitButton = form.querySelector('[type="submit"]') || form.querySelector('button');
+        
+        console.log('Form:', form);
+        console.log('Submit button:', submitButton);
         
         // Clear any existing form errors
         this.clearFormErrors(form);
         
         try {
+            console.log('🔵 Starting validation...');
             // Validate inputs
             const foodNameInput = document.getElementById('foodName');
             const quantityInput = document.getElementById('quantity');
+            
+            console.log('Food name input:', foodNameInput?.value);
+            console.log('Quantity input:', quantityInput?.value);
             
             let hasErrors = false;
             
@@ -6814,16 +6824,24 @@ class CalorieTracker {
 // Initialize the app when DOM is ready
 let app;
 
+console.log('🟣 Script loaded, document.readyState:', document.readyState);
+
 if (document.readyState === 'loading') {
     // DOM is still loading
     document.addEventListener('DOMContentLoaded', () => {
+        console.log('🟣 DOMContentLoaded event fired');
         app = new CalorieTracker();
+        console.log('🟣 CalorieTracker instance created');
         app.init(); // Call init() after DOM is ready
+        console.log('🟣 CalorieTracker.init() called');
         window.app = app;
     });
 } else {
     // DOM is already loaded
+    console.log('🟣 DOM already loaded, initializing immediately');
     app = new CalorieTracker();
+    console.log('🟣 CalorieTracker instance created');
     app.init(); // Call init() after DOM is ready
+    console.log('🟣 CalorieTracker.init() called');
     window.app = app;
 }
