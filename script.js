@@ -1274,6 +1274,12 @@ class CalorieTracker {
                 if (showError && !silent) {
                     logger.error(`API Error (${response.status}):`, errorData.error || errorData.message);
                     
+                    // Log validation details if present
+                    if (errorData.details) {
+                        logger.error('Validation errors:', errorData.details);
+                        console.error('📋 Full validation details:', errorData.details);
+                    }
+                    
                     // Show error notification
                     const errorMessage = this.getHttpErrorMessage(response.status, errorData);
                     this.notifications.error(errorMessage);
@@ -1749,7 +1755,9 @@ class CalorieTracker {
             // Get new meal category, date, and time fields
             const mealCategory = document.getElementById('mealCategory')?.value || 'other';
             const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
-            const mealTime = document.getElementById('mealTime')?.value || null;
+            const mealTimeInput = document.getElementById('mealTime')?.value || null;
+            // Convert HH:MM to HH:MM:SS format for backend
+            const mealTime = mealTimeInput ? `${mealTimeInput}:00` : null;
 
             // Check if we have enhanced food data from selection
             if (this.selectedFoodData) {
@@ -1914,7 +1922,9 @@ class CalorieTracker {
             // Get meal category, date, and time from form
             const mealCategory = document.getElementById('mealCategory')?.value || 'other';
             const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
-            const mealTime = document.getElementById('mealTime')?.value || null;
+            const mealTimeInput = document.getElementById('mealTime')?.value || null;
+            // Convert HH:MM to HH:MM:SS format for backend
+            const mealTime = mealTimeInput ? `${mealTimeInput}:00` : null;
 
             // Calculate calories (everything is now per 100g basis)
             const calories = Math.round((foodData.calories / 100) * quantity);
