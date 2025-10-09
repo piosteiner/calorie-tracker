@@ -4652,6 +4652,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    position: relative;
 }
 
 .btn-outline:hover {
@@ -4659,6 +4660,44 @@ body {
     border-color: var(--accent-primary);
     color: var(--accent-primary);
     transform: translateY(-2px);
+}
+
+/* Coming Soon Badge */
+.coming-soon-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+    color: #333;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.6);
+    }
+}
+
+.coming-soon-btn {
+    position: relative;
+    overflow: visible;
+}
+
+.coming-soon-btn:hover .coming-soon-badge {
+    animation: none;
+    transform: scale(1.1);
 }
 
 /* Rewards Shop */
@@ -5573,6 +5612,12 @@ body {
     background: var(--bg-input);
     color: var(--text-primary);
     border-color: var(--border-primary);
+}
+
+[data-theme="dark"] .coming-soon-badge {
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+    color: #1a1a1a;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
 }
 
 [data-theme="dark"] .goal-input {

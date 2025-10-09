@@ -7172,33 +7172,51 @@ class CalorieTracker {
      * Show rewards shop modal
      */
     showRewardsShop() {
-        const modal = document.getElementById('rewardsShopModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            this.loadShopItems();
-        }
+        // Show "Coming Soon" notification
+        this.notifications.info('🛍️ Rewards Shop is coming soon! We\'re working hard to bring you awesome rewards.', {
+            duration: 5000
+        });
+        
+        // TODO: Uncomment when shop is ready
+        // const modal = document.getElementById('rewardsShopModal');
+        // if (modal) {
+        //     modal.style.display = 'flex';
+        //     this.loadShopItems();
+        // }
     }
 
     /**
      * Show leaderboard modal
      */
     showLeaderboard() {
-        const modal = document.getElementById('leaderboardModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            this.loadLeaderboard();
-        }
+        // Show "Coming Soon" notification
+        this.notifications.info('🏆 Leaderboard is under development! Soon you\'ll be able to compete with other users.', {
+            duration: 5000
+        });
+        
+        // TODO: Uncomment when leaderboard is ready
+        // const modal = document.getElementById('leaderboardModal');
+        // if (modal) {
+        //     modal.style.display = 'flex';
+        //     this.loadLeaderboard();
+        // }
     }
 
     /**
      * Show achievements modal
      */
     showAchievements() {
-        const modal = document.getElementById('achievementsModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            this.loadAchievements();
-        }
+        // Show "Coming Soon" notification
+        this.notifications.info('🏅 Achievements system is coming soon! Get ready to unlock badges and rewards.', {
+            duration: 5000
+        });
+        
+        // TODO: Uncomment when achievements are ready
+        // const modal = document.getElementById('achievementsModal');
+        // if (modal) {
+        //     modal.style.display = 'flex';
+        //     this.loadAchievements();
+        // }
     }
 
     /**
