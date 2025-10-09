@@ -6105,68 +6105,152 @@ class CalorieTracker {
      * Load rewards data and update UI
      */
     async loadRewardsData() {
-        if (!this.currentUser) return;
+        if (!this.currentUser) {
+            logger.info('No current user, skipping rewards data load');
+            return;
+        }
+
+        logger.info('Loading rewards data for user:', this.currentUser.username);
 
         try {
             const response = await this.apiCall('/rewards/points', 'GET', null, {
                 showError: false, // Don't show errors if rewards system not available
                 silent: true
             });
-            if (response && response.success) {
+            
+            logger.info('Rewards API response:', response);
+            
+            if (response && response.success && response.data) {
+                logger.info('Updating rewards display with data:', response.data);
                 this.updateRewardsDisplay(response.data);
+            } else {
+                logger.info('Rewards API returned no data, showing default state');
+                this.showDefaultRewardsState();
             }
         } catch (error) {
             // Silently fail if rewards system is not available
-            logger.info('Rewards system not available or not implemented yet');
-            // Hide rewards display if it exists
-            const rewardsDisplay = document.getElementById('rewardsDisplay');
-            if (rewardsDisplay) {
-                rewardsDisplay.style.display = 'none';
+            logger.info('Rewards system not available or not implemented yet:', error.message);
+            // Show default state instead of hiding
+            this.showDefaultRewardsState();
+        }
+    }
+
+    /**
+     * Show rewards UI with default/placeholder values
+     */
+    showDefaultRewardsState() {
+        logger.info('Showing default rewards state');
+        
+        // Show header rewards display with default values
+        const rewardsDisplay = document.getElementById('rewardsDisplay');
+        if (rewardsDisplay) {
+            rewardsDisplay.style.display = 'flex';
+            document.getElementById('userPoints').textContent = '0';
+            document.getElementById('foodMilestoneLevel').textContent = 'Lv1';
+            document.getElementById('foodMultiplier').textContent = '1.0x';
+            document.getElementById('weightMilestoneLevel').textContent = 'Lv1';
+            document.getElementById('weightMultiplier').textContent = '1.0x';
+        }
+
+        // Show rewards card with default values
+        const rewardsCard = document.getElementById('rewardsCard');
+        if (rewardsCard) {
+            rewardsCard.style.display = 'block';
+            document.getElementById('rewardsCurrentPoints').textContent = '0';
+            document.getElementById('rewardsLifetimePoints').textContent = '0';
+            document.getElementById('rewardsLevel').textContent = '1';
+            
+            // Disable daily reward button with placeholder text
+            const dailyRewardBtn = document.getElementById('claimDailyRewardBtn');
+            if (dailyRewardBtn) {
+                dailyRewardBtn.disabled = true;
+                dailyRewardBtn.textContent = '🎮 Rewards System Coming Soon';
             }
         }
+
+        // Set default milestone progress
+        this.updateMilestoneProgress('food', {
+            level: 1,
+            multiplier: 1.0,
+            currentCount: 0,
+            nextLevel: { level: 2, threshold: 10 }
+        });
+
+        this.updateMilestoneProgress('weight', {
+            level: 1,
+            multiplier: 1.0,
+            currentCount: 0,
+            nextLevel: { level: 2, threshold: 5 }
+        });
     }
 
     /**
      * Update rewards display in header and card
      */
     updateRewardsDisplay(data) {
+        logger.info('Updating rewards display with data:', data);
+        
         const rewardsDisplay = document.getElementById('rewardsDisplay');
-        if (!rewardsDisplay) return;
+        const rewardsCard = document.getElementById('rewardsCard');
+        
+        if (!rewardsDisplay) {
+            logger.error('rewardsDisplay element not found');
+            return;
+        }
 
         // Show rewards display
         rewardsDisplay.style.display = 'flex';
+        
+        // Show rewards card
+        if (rewardsCard) {
+            rewardsCard.style.display = 'block';
+        }
 
         // Update header badges
-        document.getElementById('userPoints').textContent = data.currentPoints;
+        document.getElementById('userPoints').textContent = data.currentPoints || 0;
         
         // Update food milestone
-        document.getElementById('foodMilestoneLevel').textContent = `Lv${data.foodMilestone.level}`;
-        document.getElementById('foodMultiplier').textContent = `${data.foodMilestone.multiplier.toFixed(1)}x`;
+        if (data.foodMilestone) {
+            document.getElementById('foodMilestoneLevel').textContent = `Lv${data.foodMilestone.level}`;
+            document.getElementById('foodMultiplier').textContent = `${data.foodMilestone.multiplier.toFixed(1)}x`;
+        }
         
         // Update weight milestone
-        document.getElementById('weightMilestoneLevel').textContent = `Lv${data.weightMilestone.level}`;
-        document.getElementById('weightMultiplier').textContent = `${data.weightMilestone.multiplier.toFixed(1)}x`;
+        if (data.weightMilestone) {
+            document.getElementById('weightMilestoneLevel').textContent = `Lv${data.weightMilestone.level}`;
+            document.getElementById('weightMultiplier').textContent = `${data.weightMilestone.multiplier.toFixed(1)}x`;
+        }
 
-        // Update rewards card stats
-        document.getElementById('currentPoints').textContent = data.currentPoints;
-        document.getElementById('lifetimePoints').textContent = data.lifetimePoints;
-        document.getElementById('userLevel').textContent = data.level.currentLevel;
+        // Update rewards card stats (note: using correct IDs from HTML)
+        const currentPointsEl = document.getElementById('rewardsCurrentPoints');
+        const lifetimePointsEl = document.getElementById('rewardsLifetimePoints');
+        const userLevelEl = document.getElementById('rewardsLevel');
+        
+        if (currentPointsEl) currentPointsEl.textContent = data.currentPoints || 0;
+        if (lifetimePointsEl) lifetimePointsEl.textContent = data.lifetimePoints || 0;
+        if (userLevelEl) userLevelEl.textContent = data.level?.currentLevel || 1;
 
         // Update milestone details
-        this.updateMilestoneProgress('food', data.foodMilestone);
-        this.updateMilestoneProgress('weight', data.weightMilestone);
+        if (data.foodMilestone) {
+            this.updateMilestoneProgress('food', data.foodMilestone);
+        }
+        if (data.weightMilestone) {
+            this.updateMilestoneProgress('weight', data.weightMilestone);
+        }
 
         // Update daily reward button
-        const dailyRewardBtn = document.getElementById('claimDailyReward');
+        const dailyRewardBtn = document.getElementById('claimDailyRewardBtn');
         if (dailyRewardBtn) {
             if (data.dailyRewardAvailable) {
                 dailyRewardBtn.disabled = false;
-                dailyRewardBtn.textContent = '🎁 Claim Daily Reward (100 pts)';
+                dailyRewardBtn.textContent = '🎁 Claim Daily Reward (+100 pts)';
             } else {
                 dailyRewardBtn.disabled = true;
                 dailyRewardBtn.textContent = '✓ Daily Reward Claimed';
             }
         }
+        
+        logger.info('Rewards display updated successfully');
     }
 
     /**
@@ -6524,16 +6608,25 @@ class CalorieTracker {
     /**
      * Toggle rewards details section
      */
+    /**
+     * Toggle rewards details section
+     */
     toggleRewardsDetails() {
         const details = document.getElementById('rewardsDetails');
-        const toggleBtn = document.getElementById('toggleRewards');
+        const toggleBtn = document.getElementById('toggleRewardsBtn');
+        const btnText = document.getElementById('rewardsBtnText');
         
-        if (!details) return;
+        if (!details) {
+            logger.error('rewardsDetails element not found');
+            return;
+        }
 
         const isHidden = details.style.display === 'none' || !details.style.display;
         details.style.display = isHidden ? 'block' : 'none';
         
-        if (toggleBtn) {
+        if (btnText) {
+            btnText.textContent = isHidden ? 'Hide Details' : 'Show Details';
+        } else if (toggleBtn) {
             toggleBtn.textContent = isHidden ? '▲ Hide Details' : '▼ Show Details';
         }
     }
