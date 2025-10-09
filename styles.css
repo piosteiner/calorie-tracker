@@ -5323,3 +5323,246 @@ body {
     font-style: italic;
 }
 
+/* ============================================================================
+   USER MANAGEMENT MODALS (Create User & Change Password)
+   ============================================================================ */
+
+/* Admin section header with button */
+.admin-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.admin-section-header h3 {
+    margin: 0;
+}
+
+/* Form groups for user management */
+#createUserForm .form-group,
+#changePasswordForm .form-group {
+    margin-bottom: 1.25rem;
+}
+
+#createUserForm label,
+#changePasswordForm label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.required {
+    color: var(--accent-danger);
+}
+
+#createUserForm input,
+#changePasswordForm input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-primary);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+#createUserForm input:focus,
+#changePasswordForm input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+#createUserForm input.error,
+#changePasswordForm input.error {
+    border-color: var(--accent-danger);
+}
+
+.error-message {
+    display: block;
+    color: var(--accent-danger);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+    min-height: 1rem;
+}
+
+.help-text {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Password input wrapper for toggle button */
+.password-input-wrapper {
+    position: relative;
+}
+
+.password-input-wrapper input {
+    padding-right: 3rem;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.toggle-password:hover {
+    opacity: 1;
+}
+
+/* Password requirements checklist */
+.password-requirements {
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    margin-top: 1rem;
+}
+
+.requirements-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.password-requirements ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.password-requirements li {
+    padding: 0.25rem 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.password-requirements li::before {
+    content: '○';
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.password-requirements li.met {
+    color: var(--accent-success);
+    font-weight: 500;
+}
+
+.password-requirements li.met::before {
+    content: '✓';
+    color: var(--accent-success);
+    font-weight: 700;
+}
+
+/* Form actions */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--border-primary);
+}
+
+.form-actions .btn {
+    flex: 1;
+    padding: 0.875rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.form-actions .btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-primary);
+}
+
+.form-actions .btn-secondary:hover:not(:disabled) {
+    background: var(--bg-hover);
+}
+
+.form-actions .btn-primary {
+    background: var(--bg-gradient);
+    color: white;
+    border: none;
+}
+
+.form-actions .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.form-actions .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Modal description text */
+.modal-description {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Success message animation */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.success-message {
+    padding: 1rem;
+    background: #d1fae5;
+    border: 2px solid var(--accent-success);
+    border-radius: 8px;
+    color: #065f46;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    animation: slideDown 0.3s ease-out;
+}
+
+/* Dark mode specific overrides */
+[data-theme="dark"] #createUserForm input,
+[data-theme="dark"] #changePasswordForm input {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border-color: var(--border-primary);
+}
+
+[data-theme="dark"] .password-requirements {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .success-message {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--accent-success);
+    border-color: var(--accent-success);
+}
+

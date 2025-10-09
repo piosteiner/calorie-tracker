@@ -611,6 +611,56 @@ class CalorieTracker {
         
         // Initialize inline editing for admin food table
         this.initInlineEditing();
+        
+        // Initialize user management forms
+        this.initUserManagementForms();
+    }
+    
+    // Initialize user management forms
+    initUserManagementForms() {
+        // Create User Form
+        const createUserForm = document.getElementById('createUserForm');
+        if (createUserForm) {
+            createUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleCreateUser();
+            });
+        }
+        
+        // Change Password Form
+        const changePasswordForm = document.getElementById('changePasswordForm');
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleChangePassword();
+            });
+            
+            // Real-time password validation
+            const newPassword = document.getElementById('newPassword');
+            const confirmNewPassword = document.getElementById('confirmNewPassword');
+            const currentPassword = document.getElementById('currentPassword');
+            
+            if (newPassword && confirmNewPassword && currentPassword) {
+                [newPassword, confirmNewPassword, currentPassword].forEach(input => {
+                    input.addEventListener('input', () => {
+                        this.updatePasswordRequirements();
+                    });
+                });
+            }
+        }
+        
+        // Password visibility toggles
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', () => {
+                const targetId = button.dataset.target;
+                const input = document.getElementById(targetId);
+                if (input) {
+                    const isPassword = input.type === 'password';
+                    input.type = isPassword ? 'text' : 'password';
+                    button.textContent = isPassword ? '👁️' : '👁️‍🗨️';
+                }
+            });
+        });
     }
 
     // Initialize event delegation for all data-action elements
@@ -902,6 +952,27 @@ class CalorieTracker {
                 case 'filter-shop':
                     e.preventDefault();
                     this.filterShopByCategory(target.dataset.category);
+                    break;
+                    
+                // User Management
+                case 'show-create-user-modal':
+                    e.preventDefault();
+                    this.showCreateUserModal();
+                    break;
+                    
+                case 'close-create-user-modal':
+                    e.preventDefault();
+                    this.closeCreateUserModal();
+                    break;
+                    
+                case 'show-change-password-modal':
+                    e.preventDefault();
+                    this.showChangePasswordModal();
+                    break;
+                    
+                case 'close-change-password-modal':
+                    e.preventDefault();
+                    this.closeChangePasswordModal();
                     break;
             }
         });
@@ -7093,6 +7164,244 @@ class CalorieTracker {
 
         // Load filtered items
         this.loadShopItems(category === 'all' ? null : category);
+    }
+    
+    // =========================================================================
+    // USER MANAGEMENT FUNCTIONS
+    // =========================================================================
+    
+    /**
+     * Show Create User Modal (Admin Only)
+     */
+    showCreateUserModal() {
+        const modal = document.getElementById('createUserModal');
+        if (modal) {
+            // Reset form
+            document.getElementById('createUserForm').reset();
+            document.getElementById('newUserCalorieGoal').value = 2200;
+            
+            // Clear all error messages
+            document.querySelectorAll('#createUserForm .error-message').forEach(el => el.textContent = '');
+            
+            // Show modal
+            modal.style.display = 'flex';
+        }
+    }
+    
+    /**
+     * Close Create User Modal
+     */
+    closeCreateUserModal() {
+        const modal = document.getElementById('createUserModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Handle Create User Form Submission
+     */
+    async handleCreateUser() {
+        // Get form values
+        const username = document.getElementById('newUsername').value.trim();
+        const password = document.getElementById('newUserPassword').value;
+        const confirmPassword = document.getElementById('newUserPasswordConfirm').value;
+        const email = document.getElementById('newUserEmail').value.trim();
+        const dailyCalorieGoal = parseInt(document.getElementById('newUserCalorieGoal').value) || 2200;
+        
+        // Clear previous errors
+        document.querySelectorAll('#createUserForm .error-message').forEach(el => el.textContent = '');
+        
+        // Validation
+        let hasError = false;
+        
+        if (!username || username.length < 3) {
+            document.getElementById('newUsernameError').textContent = 'Username must be at least 3 characters';
+            hasError = true;
+        }
+        
+        if (!password || password.length < 6) {
+            document.getElementById('newUserPasswordError').textContent = 'Password must be at least 6 characters';
+            hasError = true;
+        }
+        
+        if (password !== confirmPassword) {
+            document.getElementById('newUserPasswordConfirmError').textContent = 'Passwords do not match';
+            hasError = true;
+        }
+        
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            document.getElementById('newUserEmailError').textContent = 'Invalid email format';
+            hasError = true;
+        }
+        
+        if (dailyCalorieGoal < 1000 || dailyCalorieGoal > 5000) {
+            document.getElementById('newUserCalorieGoalError').textContent = 'Must be between 1000 and 5000';
+            hasError = true;
+        }
+        
+        if (hasError) return;
+        
+        // Disable submit button
+        const submitBtn = document.getElementById('createUserSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating...';
+        
+        try {
+            const response = await this.apiCall('/admin/users', 'POST', {
+                username,
+                password,
+                email: email || undefined,
+                dailyCalorieGoal
+            });
+            
+            if (response.success) {
+                this.showNotification(`✅ User created successfully!\n\nUsername: ${response.user.username}\nID: ${response.user.id}`, 'success');
+                
+                // Close modal
+                this.closeCreateUserModal();
+                
+                // Refresh user list
+                await this.loadAdminUsers();
+            } else {
+                this.showNotification(`❌ Failed to create user: ${response.error || response.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Create user error:', error);
+            this.showNotification('❌ Failed to create user. Please try again.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create User';
+        }
+    }
+    
+    /**
+     * Show Change Password Modal
+     */
+    showChangePasswordModal() {
+        const modal = document.getElementById('changePasswordModal');
+        if (modal) {
+            // Reset form
+            document.getElementById('changePasswordForm').reset();
+            
+            // Clear all error messages
+            document.querySelectorAll('#changePasswordForm .error-message').forEach(el => el.textContent = '');
+            
+            // Reset requirements
+            document.querySelectorAll('#passwordRequirements li').forEach(li => li.classList.remove('met'));
+            
+            // Show modal
+            modal.style.display = 'flex';
+        }
+    }
+    
+    /**
+     * Close Change Password Modal
+     */
+    closeChangePasswordModal() {
+        const modal = document.getElementById('changePasswordModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Update password requirements checklist
+     */
+    updatePasswordRequirements() {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+        
+        // Check length requirement
+        const lengthReq = document.getElementById('req-length');
+        if (newPassword.length >= 6) {
+            lengthReq.classList.add('met');
+        } else {
+            lengthReq.classList.remove('met');
+        }
+        
+        // Check different from current
+        const differentReq = document.getElementById('req-different');
+        if (newPassword && currentPassword && newPassword !== currentPassword) {
+            differentReq.classList.add('met');
+        } else {
+            differentReq.classList.remove('met');
+        }
+        
+        // Check passwords match
+        const matchReq = document.getElementById('req-match');
+        if (newPassword && confirmNewPassword && newPassword === confirmNewPassword) {
+            matchReq.classList.add('met');
+        } else {
+            matchReq.classList.remove('met');
+        }
+    }
+    
+    /**
+     * Handle Change Password Form Submission
+     */
+    async handleChangePassword() {
+        // Get form values
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmNewPassword').value;
+        
+        // Clear previous errors
+        document.querySelectorAll('#changePasswordForm .error-message').forEach(el => el.textContent = '');
+        
+        // Validation
+        let hasError = false;
+        
+        if (!currentPassword) {
+            document.getElementById('currentPasswordError').textContent = 'Current password is required';
+            hasError = true;
+        }
+        
+        if (!newPassword || newPassword.length < 6) {
+            document.getElementById('newPasswordError').textContent = 'New password must be at least 6 characters';
+            hasError = true;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            document.getElementById('confirmNewPasswordError').textContent = 'Passwords do not match';
+            hasError = true;
+        }
+        
+        if (currentPassword === newPassword) {
+            document.getElementById('newPasswordError').textContent = 'New password must be different from current password';
+            hasError = true;
+        }
+        
+        if (hasError) return;
+        
+        // Disable submit button
+        const submitBtn = document.getElementById('changePasswordSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Changing Password...';
+        
+        try {
+            const response = await this.apiCall('/user/change-password', 'PUT', {
+                currentPassword,
+                newPassword,
+                confirmPassword
+            });
+            
+            if (response.success) {
+                this.showNotification('✅ Password changed successfully!', 'success');
+                
+                // Close modal
+                this.closeChangePasswordModal();
+            } else {
+                this.showNotification(`❌ ${response.error || 'Failed to change password'}`, 'error');
+            }
+        } catch (error) {
+            console.error('Change password error:', error);
+            this.showNotification('❌ Failed to change password. Please try again.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Change Password';
+        }
     }
 }
 
