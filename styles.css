@@ -1067,6 +1067,7 @@ body {
     padding: 20px;
 }
 
+.modal-content,
 .modal-content-edit,
 .modal-content-confirm {
     background: var(--card-bg);
@@ -5341,12 +5342,16 @@ body {
 
 /* Form groups for user management */
 #createUserForm .form-group,
-#changePasswordForm .form-group {
+#changePasswordForm .form-group,
+#adminChangePasswordForm .form-group,
+#editUserForm .form-group {
     margin-bottom: 1.25rem;
 }
 
 #createUserForm label,
-#changePasswordForm label {
+#changePasswordForm label,
+#adminChangePasswordForm label,
+#editUserForm label {
     display: block;
     font-weight: 600;
     color: var(--text-primary);
@@ -5359,7 +5364,9 @@ body {
 }
 
 #createUserForm input,
-#changePasswordForm input {
+#changePasswordForm input,
+#adminChangePasswordForm input,
+#editUserForm input {
     width: 100%;
     padding: 0.75rem;
     border: 2px solid var(--border-primary);
@@ -5371,14 +5378,18 @@ body {
 }
 
 #createUserForm input:focus,
-#changePasswordForm input:focus {
+#changePasswordForm input:focus,
+#adminChangePasswordForm input:focus,
+#editUserForm input:focus {
     outline: none;
     border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 #createUserForm input.error,
-#changePasswordForm input.error {
+#changePasswordForm input.error,
+#adminChangePasswordForm input.error,
+#editUserForm input.error {
     border-color: var(--accent-danger);
 }
 
@@ -5550,7 +5561,9 @@ body {
 
 /* Dark mode specific overrides */
 [data-theme="dark"] #createUserForm input,
-[data-theme="dark"] #changePasswordForm input {
+[data-theme="dark"] #changePasswordForm input,
+[data-theme="dark"] #adminChangePasswordForm input,
+[data-theme="dark"] #editUserForm input {
     background: var(--bg-input);
     color: var(--text-primary);
     border-color: var(--border-primary);
