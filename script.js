@@ -1752,16 +1752,28 @@ class CalorieTracker {
 
         if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
             try {
+                logger.info('=== FOOD LOGGING STARTED ===');
+                logger.info('Food name:', foodName);
+                logger.info('Quantity:', quantity);
+                logger.info('Meal category:', mealCategory);
+                logger.info('Log date:', logDate);
+                logger.info('Meal time:', mealTime);
+                
                 // Search for food in backend
+                logger.info('Searching for food in backend...');
                 const searchResponse = await this.apiCall(`/foods/search?q=${encodeURIComponent(foodName)}`);
+                logger.info('Search response:', searchResponse);
                 const foods = searchResponse.success ? searchResponse.foods : [];
+                logger.info('Found foods:', foods.length);
                 
                 let logData, calories;
                 
                 if (foods.length > 0) {
                     // Found in database - use foodId
                     const food = foods[0]; // Use first match
+                    logger.info('Using food from database:', food);
                     calories = this.calculateCalories(food.calories_per_100g, quantity, unit, food.default_unit);
+                    logger.info('Calculated calories:', calories);
                     
                     logData = {
                         foodId: food.id,
@@ -1776,10 +1788,13 @@ class CalorieTracker {
                     };
                 } else {
                     // Not found in database - use custom food name
+                    logger.info('Food not found in database, asking for custom calories');
                     // Show custom modal for calories since we don't have food data
                     try {
                         const customCalories = await this.showCalorieInputModal(foodName);
+                        logger.info('User entered custom calories:', customCalories);
                         calories = this.calculateCalories(customCalories, quantity, unit, 'g');
+                        logger.info('Calculated calories:', calories);
                         
                         logData = {
                             name: foodName,
@@ -1794,12 +1809,14 @@ class CalorieTracker {
                         };
                     } catch (error) {
                         // User cancelled calorie input
+                        logger.info('User cancelled calorie input');
                         this.notifications.info('Food entry cancelled');
                         return;
                     }
                 }
 
-                logger.info('Sending food log data to backend:', logData);
+                logger.info('📤 Sending food log data to backend:', logData);
+                logger.info('API endpoint:', CONFIG.API_BASE_URL + '/logs');
 
                 // Add to backend with notifications
                 const logResponse = await this.apiCall('/logs', 'POST', logData, {
@@ -1808,18 +1825,23 @@ class CalorieTracker {
                     successMessage: `Successfully logged ${quantity}g of ${foodName} (${Math.round(calories)} kcal)`
                 });
 
-                logger.info('Food log API response:', logResponse);
+                logger.info('✅ Food log API response:', logResponse);
+                logger.info('Response success flag:', logResponse?.success);
+                logger.info('Response logId:', logResponse?.logId);
 
                 // Verify the backend save was successful
                 if (!logResponse || !logResponse.success) {
-                    logger.error('Backend save failed, not updating local state');
+                    logger.error('❌ Backend save failed, not updating local state');
+                    logger.error('Response was:', logResponse);
                     throw new Error('Failed to save food log to backend');
                 }
 
+                logger.info('🔄 Reloading today\'s data from backend...');
                 // Reload data from server to get the accurate state (including rewards)
                 await this.loadTodaysData();
                 
-                logger.info('Food log reloaded from backend after adding');
+                logger.info('✅ Food log reloaded from backend after adding');
+                logger.info('=== FOOD LOGGING COMPLETED ===');
                 logger.info('Food log reloaded from backend after adding');
                 
                 // Check for rewards data in response (optional, may not be present)
@@ -1989,7 +2011,10 @@ class CalorieTracker {
             try {
                 const today = new Date().toISOString().split('T')[0];
                 
-                logger.info('Loading today\'s data for date:', today);
+                logger.info('=== LOADING TODAY\'S DATA ===');
+                logger.info('Loading data for date:', today);
+                logger.info('API URL:', CONFIG.API_BASE_URL);
+                logger.info('Auth token present:', !!this.authToken);
                 
                 // Load both food logs and daily goal
                 const [logsResponse, goalResponse] = await Promise.all([
@@ -1997,45 +2022,54 @@ class CalorieTracker {
                     this.apiCall(`/user/daily-goal/${today}`).catch(() => ({ goal: this.calorieGoal }))
                 ]);
                 
-                logger.info('Logs response:', logsResponse);
-                logger.info('Goal response:', goalResponse);
+                logger.info('📥 Raw logs response:', logsResponse);
+                logger.info('📥 Raw goal response:', goalResponse);
                 
                 // Update goal if found
                 if (goalResponse && goalResponse.goal) {
                     this.calorieGoal = goalResponse.goal;
+                    logger.info('Updated calorie goal to:', this.calorieGoal);
                 }
                 
                 // Handle different response formats
                 const logs = logsResponse.logs || logsResponse.data?.logs || logsResponse.data || [];
                 
-                logger.info('Parsed logs array:', logs);
+                logger.info('📋 Parsed logs array (length:', logs.length, '):', logs);
                 
-                this.foodLog = logs.map(log => ({
-                    id: log.id,
-                    name: log.food_name,
-                    quantity: log.quantity,
-                    unit: log.unit,
-                    calories: parseFloat(log.calories),
-                    brand: log.brand || null,
-                    distributor: log.distributor || null,
-                    timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
-                }));
+                this.foodLog = logs.map(log => {
+                    const mapped = {
+                        id: log.id,
+                        name: log.food_name,
+                        quantity: log.quantity,
+                        unit: log.unit,
+                        calories: parseFloat(log.calories),
+                        brand: log.brand || null,
+                        distributor: log.distributor || null,
+                        timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
+                    };
+                    logger.info('Mapped log entry:', mapped);
+                    return mapped;
+                });
                 
-                logger.info('Mapped food log:', this.foodLog);
+                logger.info('🍽️ Mapped food log (length:', this.foodLog.length, '):', this.foodLog);
                 
                 this.dailyCalories = this.foodLog.reduce((sum, food) => sum + parseFloat(food.calories), 0);
                 
-                logger.info('Total daily calories:', this.dailyCalories);
+                logger.info('🔢 Total daily calories calculated:', this.dailyCalories);
                 
+                logger.info('🔄 Updating dashboard and food log display...');
                 this.updateDashboard();
                 this.updateFoodLog();
                 
+                logger.info('=== LOADING TODAY\'S DATA COMPLETED ===');
+                
             } catch (error) {
-                logger.error('Failed to load today\'s data:', error);
+                logger.error('❌ Failed to load today\'s data:', error);
+                logger.error('Error details:', error.message, error.stack);
                 this.showMessage('Failed to load data from server', 'error');
             }
         } else {
-            logger.info('Skipping loadTodaysData - offline or development mode');
+            logger.info('⚠️ Skipping loadTodaysData - offline:', !this.isOnline, 'or development mode:', CONFIG.DEVELOPMENT_MODE);
         }
     }
 
