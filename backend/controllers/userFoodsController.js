@@ -22,60 +22,71 @@ class UserFoodsController {
                 minUsage = 0 // Minimum usage count filter
             } = req.query;
             
-            const offset = (page - 1) * limit;
+            const pageInt = parseInt(page);
+            const limitInt = parseInt(limit);
+            const offset = (pageInt - 1) * limitInt;
+            const minUsageInt = parseInt(minUsage) || 0;
             
             // Build sort clause
-            let orderBy = 'times_logged DESC, f.created_at DESC'; // default: popularity
+            let orderBy = 'times_logged DESC, created_at DESC'; // default: popularity
             if (sortBy === 'recent') {
-                orderBy = 'f.created_at DESC';
+                orderBy = 'created_at DESC';
             } else if (sortBy === 'alphabetical') {
-                orderBy = 'f.name ASC';
+                orderBy = 'name ASC';
             }
             
+            // Use string interpolation instead of prepared statements to avoid MySQL issues
             const sql = `
-                SELECT 
-                    f.*,
-                    u.username as creator_username,
-                    u.email as creator_email,
-                    COUNT(DISTINCT fl.id) as times_logged,
-                    COUNT(DISTINCT fl.user_id) as unique_users,
-                    MAX(fl.created_at) as last_used_at
-                FROM foods f
-                LEFT JOIN users u ON f.created_by = u.id
-                LEFT JOIN food_logs fl ON f.id = fl.food_id
-                WHERE f.source = 'custom' 
-                  AND f.is_verified = 0
-                  AND f.created_by IS NOT NULL
-                GROUP BY f.id
-                HAVING times_logged >= ?
+                SELECT * FROM (
+                    SELECT 
+                        f.*,
+                        u.username as creator_username,
+                        u.email as creator_email,
+                        COUNT(DISTINCT fl.id) as times_logged,
+                        COUNT(DISTINCT fl.user_id) as unique_users,
+                        MAX(fl.logged_at) as last_used_at
+                    FROM foods f
+                    LEFT JOIN users u ON f.created_by = u.id
+                    LEFT JOIN food_logs fl ON f.id = fl.food_id
+                    WHERE f.source = 'custom' 
+                      AND f.is_verified = 0
+                      AND f.created_by IS NOT NULL
+                    GROUP BY f.id
+                ) as food_stats
+                WHERE times_logged >= ${minUsageInt}
                 ORDER BY ${orderBy}
-                LIMIT ? OFFSET ?
+                LIMIT ${limitInt} OFFSET ${offset}
             `;
             
-            const foods = await db.query(sql, [minUsage, parseInt(limit), parseInt(offset)]);
+            const foods = await db.query(sql);
             
             // Get total count
             const countSql = `
-                SELECT COUNT(DISTINCT f.id) as total
-                FROM foods f
-                LEFT JOIN food_logs fl ON f.id = fl.food_id
-                WHERE f.source = 'custom' 
-                  AND f.is_verified = 0
-                  AND f.created_by IS NOT NULL
-                GROUP BY f.id
-                HAVING COUNT(DISTINCT fl.id) >= ?
+                SELECT COUNT(*) as total
+                FROM (
+                    SELECT 
+                        f.id,
+                        COUNT(DISTINCT fl.id) as times_logged
+                    FROM foods f
+                    LEFT JOIN food_logs fl ON f.id = fl.food_id
+                    WHERE f.source = 'custom' 
+                      AND f.is_verified = 0
+                      AND f.created_by IS NOT NULL
+                    GROUP BY f.id
+                ) as food_stats
+                WHERE times_logged >= ${minUsageInt}
             `;
-            const countResult = await db.query(countSql, [minUsage]);
-            const total = countResult.length;
+            const countResult = await db.query(countSql);
+            const total = countResult[0].total;
             
             res.json({
                 success: true,
                 foods,
                 pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
+                    page: pageInt,
+                    limit: limitInt,
                     total,
-                    totalPages: Math.ceil(total / limit)
+                    totalPages: Math.ceil(total / limitInt)
                 }
             });
             
@@ -90,158 +101,113 @@ class UserFoodsController {
     }
     
     /**
-     * Get statistics about user contributions
+     * Get statistics about user-contributed foods
      * GET /api/admin/user-foods/stats
      */
-    async getContributionStats(req, res) {
+    async getStats(req, res) {
         try {
-            const stats = await db.query(`
+            const statsSql = `
                 SELECT 
-                    COUNT(DISTINCT f.id) as total_user_foods,
-                    COUNT(DISTINCT f.created_by) as total_contributors,
-                    COUNT(DISTINCT fl.id) as total_logs_of_user_foods,
-                    AVG(usage_counts.times_logged) as avg_usage_per_food,
-                    SUM(CASE WHEN usage_counts.times_logged >= 5 THEN 1 ELSE 0 END) as popular_foods_count,
-                    SUM(CASE WHEN usage_counts.times_logged >= 10 THEN 1 ELSE 0 END) as very_popular_foods_count
+                    COUNT(DISTINCT f.id) as total_contributions,
+                    COUNT(DISTINCT f.created_by) as unique_contributors,
+                    COALESCE(SUM(log_counts.times_logged), 0) as total_usage
                 FROM foods f
-                LEFT JOIN food_logs fl ON f.id = fl.food_id
                 LEFT JOIN (
                     SELECT food_id, COUNT(*) as times_logged
                     FROM food_logs
                     GROUP BY food_id
-                ) usage_counts ON f.id = usage_counts.food_id
+                ) log_counts ON f.id = log_counts.food_id
                 WHERE f.source = 'custom' 
                   AND f.is_verified = 0
                   AND f.created_by IS NOT NULL
-            `);
+            `;
             
-            const topContributors = await db.query(`
+            const stats = await db.query(statsSql);
+            
+            // Get top contributors
+            const topContributorsSql = `
                 SELECT 
                     u.id,
                     u.username,
                     COUNT(DISTINCT f.id) as foods_contributed,
-                    SUM(usage_counts.times_logged) as total_usage
+                    COALESCE(SUM(log_counts.times_logged), 0) as total_usage
                 FROM users u
                 JOIN foods f ON u.id = f.created_by
                 LEFT JOIN (
                     SELECT food_id, COUNT(*) as times_logged
                     FROM food_logs
                     GROUP BY food_id
-                ) usage_counts ON f.id = usage_counts.food_id
+                ) log_counts ON f.id = log_counts.food_id
                 WHERE f.source = 'custom' 
                   AND f.is_verified = 0
                 GROUP BY u.id
-                ORDER BY foods_contributed DESC
+                ORDER BY total_usage DESC, foods_contributed DESC
                 LIMIT 10
-            `);
+            `;
+            
+            const topContributors = await db.query(topContributorsSql);
             
             res.json({
                 success: true,
-                stats: stats[0],
+                stats: {
+                    total_user_foods: stats[0].total_contributions,
+                    total_contributors: stats[0].unique_contributors,
+                    total_logs_of_user_foods: stats[0].total_usage,
+                    avg_usage_per_food: stats[0].total_contributions > 0 
+                        ? parseFloat((stats[0].total_usage / stats[0].total_contributions).toFixed(1))
+                        : 0
+                },
                 topContributors
             });
             
         } catch (error) {
-            console.error('Get contribution stats error:', error);
+            console.error('Get stats error:', error);
             res.status(500).json({
                 success: false,
-                message: 'Failed to fetch contribution statistics',
+                message: 'Failed to fetch statistics',
                 error: error.message
             });
         }
     }
     
     /**
-     * Promote/adopt a user-contributed food to Pios Food DB
+     * Promote a user-contributed food to "Pios Food DB"
      * POST /api/admin/user-foods/:id/promote
      */
     async promoteFood(req, res) {
         try {
             const { id } = req.params;
-            const { 
-                editedData, // Optional: edited food data before promotion
-                notes // Admin notes about this food
-            } = req.body;
-            
+            const { notes } = req.body;
             const adminId = req.user.id;
             
-            // Get the food
-            const foods = await db.query('SELECT * FROM foods WHERE id = ?', [id]);
-            if (foods.length === 0) {
+            // Verify food exists and is eligible for promotion
+            const food = await db.query(
+                'SELECT * FROM foods WHERE id = ? AND source = ? AND is_verified = 0',
+                [id, 'custom']
+            );
+            
+            if (!food || food.length === 0) {
                 return res.status(404).json({
                     success: false,
-                    message: 'Food not found'
+                    message: 'Food not found or not eligible for promotion'
                 });
             }
             
-            const food = foods[0];
-            
-            // Check if already verified
-            if (food.is_verified) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Food is already verified in Pios Food DB'
-                });
-            }
-            
-            // If admin provided edited data, apply it
-            if (editedData) {
-                const updateFields = [];
-                const updateValues = [];
-                
-                const allowedFields = [
-                    'name', 'calories_per_100g', 'protein_per_100g', 'carbs_per_100g',
-                    'fat_per_100g', 'fiber_per_100g', 'sodium_per_100g', 'sugar_per_100g',
-                    'brand', 'distributor', 'description', 'category_id', 'barcode'
-                ];
-                
-                allowedFields.forEach(field => {
-                    if (editedData[field] !== undefined) {
-                        updateFields.push(`${field} = ?`);
-                        updateValues.push(editedData[field]);
-                    }
-                });
-                
-                if (updateFields.length > 0) {
-                    const updateSql = `
-                        UPDATE foods 
-                        SET ${updateFields.join(', ')}
-                        WHERE id = ?
-                    `;
-                    updateValues.push(id);
-                    await db.query(updateSql, updateValues);
-                }
-            }
-            
-            // Promote to Pios Food DB
-            await db.query(`
-                UPDATE foods 
-                SET 
-                    is_verified = 1,
-                    verified_by = ?,
-                    verified_at = NOW(),
-                    contribution_notes = ?,
-                    is_public = 1,
-                    source = 'system'
-                WHERE id = ?
-            `, [adminId, notes || null, id]);
-            
-            // Get updated food
-            const updatedFoods = await db.query(`
-                SELECT 
-                    f.*,
-                    u.username as creator_username,
-                    v.username as verified_by_username
-                FROM foods f
-                LEFT JOIN users u ON f.created_by = u.id
-                LEFT JOIN users v ON f.verified_by = v.id
-                WHERE f.id = ?
-            `, [id]);
+            // Promote the food
+            await db.query(
+                `UPDATE foods 
+                 SET is_verified = 1,
+                     verified_by = ?,
+                     verified_at = NOW(),
+                     contribution_notes = ?,
+                     source = 'system'
+                 WHERE id = ?`,
+                [adminId, notes || null, id]
+            );
             
             res.json({
                 success: true,
-                message: `"${food.name}" has been promoted to Pios Food DB`,
-                food: updatedFoods[0]
+                message: 'Food successfully promoted to Pios Food DB'
             });
             
         } catch (error) {
@@ -255,24 +221,29 @@ class UserFoodsController {
     }
     
     /**
-     * Reject a user-contributed food (don't promote it)
+     * Reject a user-contributed food
      * POST /api/admin/user-foods/:id/reject
      */
     async rejectFood(req, res) {
         try {
             const { id } = req.params;
             const { reason } = req.body;
+            const adminId = req.user.id;
             
-            // Add rejection note
-            await db.query(`
-                UPDATE foods 
-                SET contribution_notes = ?
-                WHERE id = ?
-            `, [`REJECTED: ${reason || 'No reason provided'}`, id]);
+            // Mark as rejected
+            await db.query(
+                `UPDATE foods 
+                 SET is_verified = -1,
+                     verified_by = ?,
+                     verified_at = NOW(),
+                     contribution_notes = ?
+                 WHERE id = ? AND source = 'custom'`,
+                [adminId, reason || 'Rejected by admin', id]
+            );
             
             res.json({
                 success: true,
-                message: 'Food contribution rejected and noted'
+                message: 'Food rejected'
             });
             
         } catch (error) {
@@ -293,22 +264,28 @@ class UserFoodsController {
         try {
             const { id } = req.params;
             
-            // Check if food is used in logs
-            const logs = await db.query('SELECT COUNT(*) as count FROM food_logs WHERE food_id = ?', [id]);
+            // Check if food is being used in logs
+            const logs = await db.query(
+                'SELECT COUNT(*) as count FROM food_logs WHERE food_id = ?',
+                [id]
+            );
             
             if (logs[0].count > 0) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Cannot delete food that has been logged by users. Consider rejecting it instead.',
-                    logsCount: logs[0].count
+                    message: 'Cannot delete food that is being used in logs. Consider rejecting it instead.'
                 });
             }
             
-            await db.query('DELETE FROM foods WHERE id = ? AND is_verified = 0', [id]);
+            // Delete the food
+            await db.query(
+                'DELETE FROM foods WHERE id = ? AND source = ? AND is_verified = 0',
+                [id, 'custom']
+            );
             
             res.json({
                 success: true,
-                message: 'User-contributed food deleted'
+                message: 'Food deleted successfully'
             });
             
         } catch (error) {
@@ -322,40 +299,41 @@ class UserFoodsController {
     }
     
     /**
-     * Get Pios Food DB (all verified foods)
-     * GET /api/admin/pios-food-db
+     * Get all foods in "Pios Food DB" (verified foods)
+     * GET /api/admin/user-foods/pios-food-db
      */
     async getPiosFoodDb(req, res) {
         try {
-            const { page = 1, limit = 100, search = '' } = req.query;
-            const offset = (page - 1) * limit;
+            const { 
+                page = 1, 
+                limit = 50,
+                search = ''
+            } = req.query;
             
-            let whereClauses = ['f.is_verified = 1'];
+            const pageInt = parseInt(page);
+            const limitInt = parseInt(limit);
+            const offset = (pageInt - 1) * limitInt;
+            
+            let whereClauses = ['f.source = "system"', 'f.is_verified = 1'];
             let params = [];
             
             if (search) {
-                whereClauses.push('(f.name LIKE ? OR f.brand LIKE ? OR f.distributor LIKE ?)');
-                params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+                whereClauses.push('f.name LIKE ?');
+                params.push(`%${search}%`);
             }
             
             const sql = `
                 SELECT 
                     f.*,
-                    u.username as creator_username,
-                    v.username as verified_by_username,
-                    COUNT(DISTINCT fl.id) as total_logs,
-                    COUNT(DISTINCT fl.user_id) as unique_users
+                    u.username as verified_by_username
                 FROM foods f
-                LEFT JOIN users u ON f.created_by = u.id
-                LEFT JOIN users v ON f.verified_by = v.id
-                LEFT JOIN food_logs fl ON f.id = fl.food_id
+                LEFT JOIN users u ON f.verified_by = u.id
                 WHERE ${whereClauses.join(' AND ')}
-                GROUP BY f.id
-                ORDER BY f.name ASC
+                ORDER BY f.verified_at DESC, f.name ASC
                 LIMIT ? OFFSET ?
             `;
+            params.push(limitInt, offset);
             
-            params.push(parseInt(limit), parseInt(offset));
             const foods = await db.query(sql, params);
             
             // Get total count
@@ -364,17 +342,18 @@ class UserFoodsController {
                 FROM foods f
                 WHERE ${whereClauses.join(' AND ')}
             `;
-            const countResult = await db.query(countSql, params.slice(0, -2));
+            const countParams = search ? [`%${search}%`] : [];
+            const countResult = await db.query(countSql, countParams);
             const total = countResult[0].total;
             
             res.json({
                 success: true,
                 foods,
                 pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
+                    page: pageInt,
+                    limit: limitInt,
                     total,
-                    totalPages: Math.ceil(total / limit)
+                    totalPages: Math.ceil(total / limitInt)
                 }
             });
             
