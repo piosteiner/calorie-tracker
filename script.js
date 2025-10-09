@@ -2827,6 +2827,20 @@ class CalorieTracker {
         // Calculate min/max for better y-axis range
         const minWeight = Math.min(...weights);
         const maxWeight = Math.max(...weights);
+        const range = maxWeight - minWeight;
+        
+        // Adaptive step size based on data range
+        let stepSize;
+        if (range < 1) {
+            stepSize = 0.1;  // Very small range: 0.1 kg steps
+        } else if (range < 5) {
+            stepSize = 0.5;  // Small range: 0.5 kg steps
+        } else if (range < 10) {
+            stepSize = 1;    // Medium range: 1 kg steps
+        } else {
+            stepSize = 2;    // Large range: 2 kg steps
+        }
+        
         const yMin = Math.floor(minWeight - 1);
         const yMax = Math.ceil(maxWeight + 1);
         
@@ -2863,11 +2877,12 @@ class CalorieTracker {
                         min: yMin,
                         max: yMax,
                         ticks: {
-                            stepSize: 0.5,
+                            stepSize: stepSize,
                             callback: function(value) {
-                                // Only show values that are multiples of 0.5
-                                if (value % 0.5 === 0) {
-                                    return value + ' kg';
+                                // Only show clean increments based on step size
+                                const remainder = Math.abs(value % stepSize);
+                                if (remainder < 0.001 || Math.abs(remainder - stepSize) < 0.001) {
+                                    return value.toFixed(1) + ' kg';
                                 }
                                 return '';
                             }
