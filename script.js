@@ -2817,9 +2817,18 @@ class CalorieTracker {
             this.weightChart.destroy();
         }
         
+        // Reverse data so earliest date is on the left
+        const reversedData = [...data].reverse();
+        
         // Prepare chart data
-        const labels = data.map(entry => new Date(entry.log_date).toLocaleDateString());
-        const weights = data.map(entry => entry.weight_kg);
+        const labels = reversedData.map(entry => new Date(entry.log_date).toLocaleDateString());
+        const weights = reversedData.map(entry => entry.weight_kg);
+        
+        // Calculate min/max for better y-axis range
+        const minWeight = Math.min(...weights);
+        const maxWeight = Math.max(...weights);
+        const yMin = Math.floor(minWeight - 1);
+        const yMax = Math.ceil(maxWeight + 1);
         
         // Create new chart
         this.weightChart = new Chart(ctx, {
@@ -2851,9 +2860,16 @@ class CalorieTracker {
                 scales: {
                     y: {
                         beginAtZero: false,
+                        min: yMin,
+                        max: yMax,
                         ticks: {
+                            stepSize: 0.5,
                             callback: function(value) {
-                                return value + ' kg';
+                                // Only show values that are multiples of 0.5
+                                if (value % 0.5 === 0) {
+                                    return value + ' kg';
+                                }
+                                return '';
                             }
                         }
                     }
