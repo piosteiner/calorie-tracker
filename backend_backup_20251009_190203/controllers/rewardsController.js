@@ -17,67 +17,83 @@ class RewardsController {
      */
     static async getMyPoints(req, res) {
         try {
+            console.log('🔍 [getMyPoints] Fetching points for user ID:', req.user.id);
             const points = await PointsService.getUserPoints(req.user.id);
+            console.log('🔍 [getMyPoints] Retrieved points from PointsService:', points);
             
             if (!points) {
+                console.log('⚠️ [getMyPoints] No points found, initializing for user:', req.user.id);
                 // Initialize points for new user
                 await PointsService.initializeUserPoints(req.user.id);
                 const newPoints = await PointsService.getUserPoints(req.user.id);
                 
-                // Get milestones
+                // Get milestones for new user
                 const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
                 const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
                 
                 return res.json({ 
                     success: true, 
                     points: {
-                        ...newPoints,
                         currentPoints: newPoints.current_points,
                         lifetimePoints: newPoints.lifetime_points,
                         pointsSpent: newPoints.points_spent,
+                        level: newPoints.level,
                         currentStreak: newPoints.current_streak,
                         longestStreak: newPoints.longest_streak,
-                        foodMilestone: {
+                        lastActivityDate: newPoints.last_activity_date,
+                        achievementsCount: newPoints.achievements_count,
+                        itemsOwned: newPoints.items_owned,
+                        foodMilestone: foodMilestone ? {
                             level: foodMilestone.milestone_level,
                             multiplier: parseFloat(foodMilestone.points_multiplier),
                             currentCount: foodMilestone.total_logs
-                        },
-                        weightMilestone: {
+                        } : null,
+                        weightMilestone: weightMilestone ? {
                             level: weightMilestone.milestone_level,
                             multiplier: parseFloat(weightMilestone.points_multiplier),
                             currentCount: weightMilestone.total_logs
-                        }
+                        } : null
                     }
                 });
             }
 
-            // Get milestones for existing user
+            // Get milestones
             const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
             const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
+            
+            console.log('🔍 [getMyPoints] Food milestone:', foodMilestone);
+            console.log('🔍 [getMyPoints] Weight milestone:', weightMilestone);
 
-            res.json({ 
+            const response = { 
                 success: true, 
                 points: {
-                    ...points,
                     currentPoints: points.current_points,
                     lifetimePoints: points.lifetime_points,
                     pointsSpent: points.points_spent,
+                    level: points.level,
                     currentStreak: points.current_streak,
                     longestStreak: points.longest_streak,
-                    foodMilestone: {
+                    lastActivityDate: points.last_activity_date,
+                    achievementsCount: points.achievements_count,
+                    itemsOwned: points.items_owned,
+                    foodMilestone: foodMilestone ? {
                         level: foodMilestone.milestone_level,
                         multiplier: parseFloat(foodMilestone.points_multiplier),
                         currentCount: foodMilestone.total_logs
-                    },
-                    weightMilestone: {
+                    } : null,
+                    weightMilestone: weightMilestone ? {
                         level: weightMilestone.milestone_level,
                         multiplier: parseFloat(weightMilestone.points_multiplier),
                         currentCount: weightMilestone.total_logs
-                    }
+                    } : null
                 }
-            });
+            };
+            
+            console.log('✅ [getMyPoints] Sending response:', JSON.stringify(response, null, 2));
+            res.json(response);
         } catch (error) {
-            console.error('Get my points error:', error);
+            console.error('Get my points error:', error.message);
+            console.error('Stack trace:', error.stack);
             res.status(500).json({ success: false, error: 'Failed to retrieve points' });
         }
     }

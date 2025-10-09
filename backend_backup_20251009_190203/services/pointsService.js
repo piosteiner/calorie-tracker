@@ -318,7 +318,7 @@ class PointsService {
                 VALUES (?, 0, 1, 1.00)
             `, [userId]);
 
-            const [milestone] = await db.query(`
+            const milestone = await db.query(`
                 SELECT total_logs, milestone_level, points_multiplier, created_at, last_updated
                 FROM user_weight_milestones
                 WHERE user_id = ?
@@ -552,13 +552,13 @@ class PointsService {
      */
     static async getUserPoints(userId) {
         try {
-            const [points] = await db.query(`
+            const points = await db.query(`
                 SELECT * FROM v_user_points_summary WHERE user_id = ?
             `, [userId]);
 
             return points[0] || null;
         } catch (error) {
-            console.error('Error getting user points:', error);
+            console.error('Error getting user points:', error.message);
             throw error;
         }
     }
