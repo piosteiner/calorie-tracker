@@ -96,28 +96,25 @@
                         </button>
                     </div>
                     <form id="foodForm">
-                        <!-- Compact Food Entry Row -->
-                        <div class="form-row compact-entry">
-                            <div class="input-group flex-grow">
+                        <!-- Food Entry Grid -->
+                        <div class="food-entry-grid">
+                            <div class="input-group">
                                 <label for="foodName">Food Item</label>
                                 <input type="text" id="foodName" name="foodName" placeholder="e.g., Apple, Chicken Breast" required>
                                 <div id="foodSuggestions" class="suggestions"></div>
                             </div>
                             
-                            <div class="input-group compact">
+                            <div class="input-group">
                                 <label for="quantity">Grams</label>
                                 <input type="number" id="quantity" name="quantity" min="1" value="100" required>
                             </div>
-                        </div>
-                        
-                        <!-- Compact Meal Info Row -->
-                        <div class="form-row compact-meal-info">
-                            <div class="input-group compact">
+                            
+                            <div class="input-group">
                                 <label for="logDate">Date</label>
                                 <input type="date" id="logDate" name="logDate" required>
                             </div>
                             
-                            <div class="input-group flex-grow">
+                            <div class="input-group">
                                 <label for="mealCategory">Meal</label>
                                 <select id="mealCategory" name="mealCategory" required>
                                     <option value="breakfast">🌅 Breakfast</option>
@@ -128,7 +125,7 @@
                                 </select>
                             </div>
                             
-                            <div class="input-group compact">
+                            <div class="input-group">
                                 <label for="mealTime">Time</label>
                                 <input type="time" id="mealTime" name="mealTime">
                             </div>

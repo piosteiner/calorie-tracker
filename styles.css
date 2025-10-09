@@ -1660,40 +1660,27 @@ body {
    MEAL CATEGORY & TIME STYLES
    ========================================================================== */
 
-/* Compact form layout */
-.compact-entry,
-.compact-meal-info {
-    display: flex;
+/* Food entry grid - clean and space-efficient */
+.food-entry-grid {
+    display: grid;
+    grid-template-columns: 2fr 100px 120px 1.5fr 100px;
     gap: 10px;
-    align-items: flex-end;
-    margin-bottom: 12px;
+    align-items: end;
+    margin-bottom: 15px;
 }
 
-.input-group.compact {
-    min-width: 90px;
-    max-width: 120px;
-}
-
-.input-group.flex-grow {
-    flex: 1;
-    min-width: 150px;
-}
-
-.compact-entry .input-group,
-.compact-meal-info .input-group {
+.food-entry-grid .input-group {
     margin-bottom: 0;
 }
 
-.compact-entry label,
-.compact-meal-info label {
-    font-size: 13px;
+.food-entry-grid label {
+    font-size: 0.85rem;
     margin-bottom: 4px;
+    font-weight: 500;
 }
 
-.compact-entry input,
-.compact-entry select,
-.compact-meal-info input,
-.compact-meal-info select {
+.food-entry-grid input,
+.food-entry-grid select {
     padding: 8px 10px;
     font-size: 14px;
 }
@@ -1994,6 +1981,21 @@ body {
 }
 
 /* Responsive Design */
+
+/* Tablet breakpoint - optimize grid for medium screens */
+@media (max-width: 1024px) {
+    .food-entry-grid {
+        grid-template-columns: 2fr 100px 120px;
+        gap: 10px;
+    }
+    
+    .food-entry-grid .input-group:nth-child(4),
+    .food-entry-grid .input-group:nth-child(5) {
+        grid-column: span 1;
+    }
+}
+
+/* Mobile breakpoint */
 @media (max-width: 768px) {
     .header .container {
         flex-direction: column;
@@ -2005,23 +2007,21 @@ body {
         grid-template-columns: 1fr;
     }
     
-    /* Compact form stays inline on mobile if space allows */
-    .compact-entry {
-        flex-wrap: wrap;
+    /* Food entry grid responsive */
+    .food-entry-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
     }
     
-    .compact-meal-info {
-        flex-wrap: wrap;
+    .food-entry-grid label {
+        font-size: 0.8rem;
+        margin-bottom: 3px;
     }
     
-    .input-group.compact {
-        min-width: 80px;
-        max-width: 100px;
-    }
-    
-    .input-group.flex-grow {
-        flex: 1 1 100%;
-        min-width: 100%;
+    .food-entry-grid input,
+    .food-entry-grid select {
+        padding: 8px;
+        font-size: 14px;
     }
     
     .optional-details .form-row {
