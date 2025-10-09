@@ -3631,11 +3631,6 @@ class CalorieTracker {
 
     // Search/filter foods in the food database
     searchFoodDatabase(searchQuery) {
-        // Clear any existing timer
-        if (this.searchDebounceTimers.foodDb) {
-            clearTimeout(this.searchDebounceTimers.foodDb);
-        }
-        
         const query = searchQuery.toLowerCase().trim();
         
         // Show/hide clear button immediately
@@ -3644,28 +3639,26 @@ class CalorieTracker {
             clearBtn.style.display = query ? 'flex' : 'none';
         }
         
-        // Debounce the actual search
-        this.searchDebounceTimers.foodDb = setTimeout(() => {
-            // If no search query, show all foods
-            if (!query) {
-                this.adminData.filteredFoods = null;
-                this.updatePiosFoodDBDisplay();
-                return;
-            }
-            
-            // Filter foods based on search query
-            this.adminData.filteredFoods = this.adminData.foods.filter(food => {
-                const name = (food.name || '').toLowerCase();
-                const brand = (food.brand || '').toLowerCase();
-                const distributor = (food.distributor || '').toLowerCase();
-                
-                return name.includes(query) || 
-                       brand.includes(query) || 
-                       distributor.includes(query);
-            });
-            
+        // If no search query, show all foods
+        if (!query) {
+            this.adminData.filteredFoods = null;
             this.updatePiosFoodDBDisplay();
-        }, 300); // 300ms debounce delay
+            return;
+        }
+        
+        // Filter foods based on search query - NO DEBOUNCE, instant filtering
+        this.adminData.filteredFoods = this.adminData.foods.filter(food => {
+            const name = (food.name || '').toLowerCase();
+            const brand = (food.brand || '').toLowerCase();
+            const distributor = (food.distributor || '').toLowerCase();
+            
+            return name.includes(query) || 
+                   brand.includes(query) || 
+                   distributor.includes(query);
+        });
+        
+        // Update display immediately
+        this.updatePiosFoodDBDisplay();
     }
 
     // Clear food database search
@@ -5208,11 +5201,11 @@ class CalorieTracker {
         // Reset to first page when searching
         this.contributionsData.pagination.page = 1;
         
-        // Debounce the API call
+        // Debounce the API call to avoid too many requests while typing
         this.searchDebounceTimers.contributions = setTimeout(() => {
             // Reload with search filter
             this.loadUserFoods();
-        }, 500); // 500ms debounce delay for API calls
+        }, 300); // Reduced to 300ms for faster response
     }
 
     /**
