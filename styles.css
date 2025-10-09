@@ -5641,3 +5641,80 @@ body {
     border-color: var(--accent-success);
 }
 
+/* =============================================================================
+   CONTACT/SUPPORT BUTTON
+   ============================================================================= */
+
+.contact-button {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-info));
+    color: white;
+    text-decoration: none;
+    border-radius: 50px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    z-index: 999;
+    cursor: pointer;
+}
+
+.contact-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #5a7ae0, var(--primary-color));
+}
+
+.contact-button:active {
+    transform: translateY(0);
+}
+
+.contact-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.contact-text {
+    font-size: 14px;
+    letter-spacing: 0.3px;
+}
+
+/* Responsive: Show only icon on mobile */
+@media (max-width: 768px) {
+    .contact-button {
+        width: 56px;
+        height: 56px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
+        bottom: 20px;
+        left: 20px;
+    }
+    
+    .contact-text {
+        display: none;
+    }
+    
+    .contact-icon {
+        font-size: 24px;
+    }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .contact-button {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+}
+
+[data-theme="dark"] .contact-button:hover {
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+    background: linear-gradient(135deg, #7c8ff5, #667eea);
+}
+
+
