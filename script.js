@@ -1806,8 +1806,13 @@ class CalorieTracker {
                     successMessage: `Successfully logged ${quantity}g of ${foodName} (${Math.round(calories)} kcal)`
                 });
 
+                logger.info('Food log API response:', logResponse);
+
+                // Extract log ID from response (handle different response formats)
+                const logId = logResponse.logId || logResponse.id || logResponse.data?.id || Date.now();
+                
                 const foodEntry = {
-                    id: logResponse.logId,
+                    id: logId,
                     name: foodName,
                     quantity,
                     unit,
@@ -1821,26 +1826,40 @@ class CalorieTracker {
                 this.updateDashboard();
                 this.updateFoodLog();
                 
+                logger.info('Current food log after adding:', this.foodLog);
+                
                 // Check for rewards data in response (optional, may not be present)
-                if (logResponse.pointsAwarded && logResponse.pointsAwarded > 0) {
+                const pointsAwarded = logResponse.pointsAwarded || logResponse.data?.pointsAwarded;
+                const pointsDetails = logResponse.pointsDetails || logResponse.data?.pointsDetails;
+                const milestoneLevel = logResponse.milestoneLevel || logResponse.data?.milestoneLevel;
+                
+                logger.info('Rewards data from response:', { pointsAwarded, pointsDetails, milestoneLevel });
+                
+                if (pointsAwarded && pointsAwarded > 0) {
+                    logger.info('Showing points toast for:', pointsAwarded);
                     this.showPointsToast({
-                        total: logResponse.pointsAwarded,
+                        total: pointsAwarded,
                         reason: 'Food logged!',
-                        breakdown: logResponse.pointsDetails
+                        breakdown: pointsDetails
                     });
                     
                     // Check for level-up
-                    if (logResponse.milestoneLevel) {
+                    if (milestoneLevel) {
                         this.showLevelUpCelebration({
                             icon: '🍽️',
-                            message: `Food Logging Level ${logResponse.milestoneLevel.level}!`,
-                            bonus: logResponse.milestoneLevel.bonusPoints
+                            message: `Food Logging Level ${milestoneLevel.level}!`,
+                            bonus: milestoneLevel.bonusPoints
                         });
                     }
                     
                     // Refresh rewards display (silently fail if not available)
                     await this.loadRewardsData();
+                } else {
+                    logger.info('No points awarded in response');
                 }
+                
+                // Reload today's data from server to ensure we have the latest
+                await this.loadTodaysData();
                 
                 // Reset form
                 form.reset();
@@ -1910,18 +1929,28 @@ class CalorieTracker {
             try {
                 const today = new Date().toISOString().split('T')[0];
                 
+                logger.info('Loading today\'s data for date:', today);
+                
                 // Load both food logs and daily goal
                 const [logsResponse, goalResponse] = await Promise.all([
                     this.apiCall(`/logs?date=${today}`),
                     this.apiCall(`/user/daily-goal/${today}`).catch(() => ({ goal: this.calorieGoal }))
                 ]);
                 
+                logger.info('Logs response:', logsResponse);
+                logger.info('Goal response:', goalResponse);
+                
                 // Update goal if found
                 if (goalResponse && goalResponse.goal) {
                     this.calorieGoal = goalResponse.goal;
                 }
                 
-                this.foodLog = logsResponse.logs.map(log => ({
+                // Handle different response formats
+                const logs = logsResponse.logs || logsResponse.data?.logs || logsResponse.data || [];
+                
+                logger.info('Parsed logs array:', logs);
+                
+                this.foodLog = logs.map(log => ({
                     id: log.id,
                     name: log.food_name,
                     quantity: log.quantity,
@@ -1932,7 +1961,12 @@ class CalorieTracker {
                     timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
                 }));
                 
+                logger.info('Mapped food log:', this.foodLog);
+                
                 this.dailyCalories = this.foodLog.reduce((sum, food) => sum + parseFloat(food.calories), 0);
+                
+                logger.info('Total daily calories:', this.dailyCalories);
+                
                 this.updateDashboard();
                 this.updateFoodLog();
                 
@@ -1940,6 +1974,8 @@ class CalorieTracker {
                 logger.error('Failed to load today\'s data:', error);
                 this.showMessage('Failed to load data from server', 'error');
             }
+        } else {
+            logger.info('Skipping loadTodaysData - offline or development mode');
         }
     }
 
