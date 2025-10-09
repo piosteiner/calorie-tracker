@@ -1923,6 +1923,9 @@ class CalorieTracker {
     // Handle adding enhanced food from Pios Food DB or offline database
     async handleAddEnhancedFood(foodData, quantity, unit) {
         try {
+            console.log('🔵 handleAddEnhancedFood START');
+            console.log('🔵 foodData:', foodData);
+            console.log('🔵 quantity:', quantity);
             logger.info('Adding enhanced food:', foodData);
             
             // Get meal category, date, and time from form
