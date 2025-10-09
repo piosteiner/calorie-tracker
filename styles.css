@@ -2450,8 +2450,8 @@ body {
 
 .card-header-with-info h3 {
     margin: 0;
-    color: #495057;
-    font-size: 20px;
+    color: var(--text-primary);
+    font-size: 1.3rem;
     font-weight: 600;
 }
 
