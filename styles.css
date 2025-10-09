@@ -625,10 +625,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px;
+    padding: 12px;
     border: 1px solid var(--border-secondary);
     border-radius: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     background: var(--bg-secondary);
 }
 
@@ -639,18 +639,19 @@ body {
 .food-name {
     font-weight: 600;
     color: var(--text-primary);
+    font-size: 0.95rem;
 }
 
 .food-details {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     margin-top: 2px;
 }
 
 .food-calories {
     font-weight: bold;
     color: var(--accent-primary);
-    font-size: 1.1rem;
+    font-size: 1.05rem;
 }
 
 .delete-btn {
@@ -732,7 +733,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .card-header-with-action h3 {
@@ -746,7 +747,7 @@ body {
 .history-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .history-day-card {
@@ -770,13 +771,13 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 12px 15px;
     cursor: pointer;
 }
 
 .day-info h4 {
-    margin: 0 0 8px 0;
-    font-size: 16px;
+    margin: 0 0 6px 0;
+    font-size: 15px;
     color: var(--text-primary);
     font-weight: 600;
 }
@@ -786,7 +787,7 @@ body {
     align-items: center;
     gap: 8px;
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-secondary);
 }
 
@@ -1830,13 +1831,44 @@ body {
     background: var(--bg-secondary);
     padding: 15px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .weight-log-form h4 {
     color: var(--text-primary);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     font-size: 1.05rem;
+}
+
+/* Compact weight entry grid - matches food entry style */
+.weight-entry-grid {
+    display: grid;
+    grid-template-columns: 140px 140px 1fr;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+
+.weight-entry-grid .input-group {
+    margin-bottom: 0;
+}
+
+.weight-entry-grid label {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.weight-entry-grid input {
+    padding: 8px 10px;
+    font-size: 14px;
+}
+
+.btn-log-weight {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .weight-stats {
@@ -1879,43 +1911,43 @@ body {
 
 .weight-chart-container {
     background: var(--bg-secondary);
-    padding: 20px;
+    padding: 15px;
     border-radius: 8px;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 
 .weight-chart-container canvas {
-    max-height: 300px;
+    max-height: 280px;
 }
 
 .weight-history {
     background: var(--bg-secondary);
-    padding: 20px;
+    padding: 15px;
     border-radius: 8px;
 }
 
 .weight-history h4 {
     color: var(--text-primary);
-    margin-bottom: 15px;
-    font-size: 1.1rem;
+    margin-bottom: 12px;
+    font-size: 1.05rem;
 }
 
 .weight-history-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .weight-entry {
     background: var(--bg-card);
-    padding: 15px;
+    padding: 12px;
     border-radius: 8px;
     border: 1px solid var(--border-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
 }
 
 .weight-entry-main {
@@ -1993,6 +2025,11 @@ body {
     .food-entry-grid .input-group:nth-child(5) {
         grid-column: span 1;
     }
+    
+    .weight-entry-grid {
+        grid-template-columns: 140px 140px 1fr;
+        gap: 10px;
+    }
 }
 
 /* Mobile breakpoint */
@@ -2041,6 +2078,27 @@ body {
         font-size: 14px;
     }
     
+    /* Weight entry grid responsive - stack on mobile */
+    .weight-entry-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    
+    /* Notes field takes full width on mobile */
+    .weight-entry-grid .input-group:nth-child(3) {
+        grid-column: span 2;
+    }
+    
+    .weight-entry-grid label {
+        font-size: 0.8rem;
+        margin-bottom: 3px;
+    }
+    
+    .weight-entry-grid input {
+        padding: 8px;
+        font-size: 14px;
+    }
+    
     .optional-details .form-row {
         padding: 10px;
     }
@@ -2057,15 +2115,25 @@ body {
     .stats-grid,
     .weight-stats {
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+    }
+    
+    .weight-chart-container {
+        padding: 12px;
     }
     
     .weight-chart-container canvas {
         max-height: 250px;
     }
     
+    .weight-history {
+        padding: 12px;
+    }
+    
     .weight-entry {
         flex-direction: column;
         align-items: flex-start;
+        padding: 10px;
     }
     
     .food-item {
