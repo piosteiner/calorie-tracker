@@ -1191,7 +1191,7 @@ class CalorieTracker {
         // Set the token before making API calls
         this.authToken = token;
 
-        if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+        if (this.isOnline) {
             try {
                 const response = await this.apiCall('/auth/verify', 'GET');
                 if (response.valid) {
@@ -1239,8 +1239,8 @@ class CalorieTracker {
         }
 
         try {
-            if (CONFIG.DEVELOPMENT_MODE || !this.isOnline) {
-                throw new Error('API not available in development/offline mode');
+            if (!this.isOnline) {
+                throw new Error('API not available in offline mode');
             }
 
             const fetchOptions = {
@@ -1750,7 +1750,7 @@ class CalorieTracker {
                 return;
             }
 
-        if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+        if (this.isOnline) {
             try {
                 logger.info('=== FOOD LOGGING STARTED ===');
                 logger.info('Food name:', foodName);
@@ -1909,7 +1909,7 @@ class CalorieTracker {
             // Calculate calories (everything is now per 100g basis)
             const calories = Math.round((foodData.calories / 100) * quantity);
 
-            if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+            if (this.isOnline) {
                 // Send to backend
                 const logData = {
                     foodId: foodData.id || undefined,
@@ -2007,7 +2007,7 @@ class CalorieTracker {
     }
 
     async loadTodaysData() {
-        if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+        if (this.isOnline) {
             try {
                 const today = new Date().toISOString().split('T')[0];
                 
@@ -2069,7 +2069,7 @@ class CalorieTracker {
                 this.showMessage('Failed to load data from server', 'error');
             }
         } else {
-            logger.info('⚠️ Skipping loadTodaysData - offline:', !this.isOnline, 'or development mode:', CONFIG.DEVELOPMENT_MODE);
+            logger.info('⚠️ Skipping loadTodaysData - offline');
         }
     }
 
@@ -2108,7 +2108,7 @@ class CalorieTracker {
             }
 
             // 2. Search backend for comprehensive results if enabled
-            if (this.isOnline && !CONFIG.DEVELOPMENT_MODE) {
+            if (this.isOnline) {
                 logger.info('🌐 Attempting backend search...');
                 try {
                     // Search Pios Food DB in backend database if enabled

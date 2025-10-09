@@ -5,9 +5,9 @@
 
 class Logger {
     constructor() {
-        // Access CONFIG from window if available, otherwise use default
-        const CONFIG = typeof window !== 'undefined' && window.CONFIG ? window.CONFIG : { DEVELOPMENT_MODE: false };
-        this.isDevelopment = CONFIG.DEVELOPMENT_MODE || false;
+        // Access CONFIG from window if available, otherwise default to debug on
+        const CONFIG = typeof window !== 'undefined' && window.CONFIG ? window.CONFIG : {};
+        this.enableDebug = CONFIG.ENABLE_DEBUG_LOGGING !== undefined ? CONFIG.ENABLE_DEBUG_LOGGING : true;
         this.levels = {
             ERROR: 'error',
             WARN: 'warn',
@@ -31,37 +31,37 @@ class Logger {
     }
 
     /**
-     * Log info messages (only in development)
+     * Log info messages (controlled by ENABLE_DEBUG_LOGGING)
      */
     info(message, ...args) {
-        if (this.isDevelopment) {
+        if (this.enableDebug) {
             console.log(`[INFO] ${message}`, ...args);
         }
     }
 
     /**
-     * Log debug messages (only in development)
+     * Log debug messages (controlled by ENABLE_DEBUG_LOGGING)
      */
     debug(message, ...args) {
-        if (this.isDevelopment) {
+        if (this.enableDebug) {
             console.log(`[DEBUG] ${message}`, ...args);
         }
     }
 
     /**
-     * Log with emoji prefix for better visibility (dev only)
+     * Log with emoji prefix for better visibility (controlled by ENABLE_DEBUG_LOGGING)
      */
     emoji(emoji, message, ...args) {
-        if (this.isDevelopment) {
+        if (this.enableDebug) {
             console.log(`${emoji} ${message}`, ...args);
         }
     }
 
     /**
-     * Group related logs together (dev only)
+     * Group related logs together (controlled by ENABLE_DEBUG_LOGGING)
      */
     group(label, callback) {
-        if (this.isDevelopment) {
+        if (this.enableDebug) {
             console.group(label);
             callback();
             console.groupEnd();
@@ -72,22 +72,22 @@ class Logger {
      * Performance timing utility
      */
     time(label) {
-        if (this.isDevelopment) {
+        if (this.enableDebug) {
             console.time(label);
         }
     }
 
     timeEnd(label) {
-        if (this.isDevelopment) {
+        if (this.enableDebug) {
             console.timeEnd(label);
         }
     }
 
     /**
-     * Table display for objects/arrays (dev only)
+     * Table display for objects/arrays (controlled by ENABLE_DEBUG_LOGGING)
      */
     table(data) {
-        if (this.isDevelopment && data) {
+        if (this.enableDebug && data) {
             console.table(data);
         }
     }
