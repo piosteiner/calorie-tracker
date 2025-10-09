@@ -1205,6 +1205,9 @@ class CalorieTracker {
                     await this.checkAdminStatus();
                     this.toggleAdminInterface();
                     
+                    // Load rewards data
+                    await this.loadRewardsData();
+                    
                     return;
                 }
             } catch (error) {
@@ -1265,15 +1268,13 @@ class CalorieTracker {
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ error: 'Network error' }));
                 
-                // Don't log auth errors as they're expected when not logged in
-                if (response.status !== 401 || endpoint !== '/auth/verify') {
+                // Don't log expected errors (auth failures, admin checks for non-admins)
+                if (showError && !silent) {
                     logger.error(`API Error (${response.status}):`, errorData.error || errorData.message);
                     
-                    // Show error notification for non-silent calls
-                    if (showError && !silent) {
-                        const errorMessage = this.getHttpErrorMessage(response.status, errorData);
-                        this.notifications.error(errorMessage);
-                    }
+                    // Show error notification
+                    const errorMessage = this.getHttpErrorMessage(response.status, errorData);
+                    this.notifications.error(errorMessage);
                 }
                 
                 // Create an error object with both message and full data
@@ -1820,7 +1821,7 @@ class CalorieTracker {
                 this.updateDashboard();
                 this.updateFoodLog();
                 
-                // Check for rewards data in response
+                // Check for rewards data in response (optional, may not be present)
                 if (logResponse.pointsAwarded && logResponse.pointsAwarded > 0) {
                     this.showPointsToast({
                         total: logResponse.pointsAwarded,
@@ -1837,7 +1838,7 @@ class CalorieTracker {
                         });
                     }
                     
-                    // Refresh rewards display
+                    // Refresh rewards display (silently fail if not available)
                     await this.loadRewardsData();
                 }
                 
@@ -2810,7 +2811,7 @@ class CalorieTracker {
                 // Reset date to today
                 document.getElementById('weightDate').value = new Date().toISOString().split('T')[0];
                 
-                // Check for rewards data in response
+                // Check for rewards data in response (optional, may not be present)
                 if (response.pointsAwarded && response.pointsAwarded > 0) {
                     this.showPointsToast({
                         total: response.pointsAwarded,
@@ -2827,7 +2828,7 @@ class CalorieTracker {
                         });
                     }
                     
-                    // Refresh rewards display
+                    // Refresh rewards display (silently fail if not available)
                     await this.loadRewardsData();
                 }
                 
@@ -3969,10 +3970,14 @@ class CalorieTracker {
         // Fallback: For users with valid token, try to verify admin status with backend
         if (!CONFIG.DEVELOPMENT_MODE && this.authToken) {
             try {
-                const response = await this.apiCall('/admin/stats');
+                const response = await this.apiCall('/admin/stats', 'GET', null, { 
+                    showError: false, // Don't show error for non-admin users
+                    silent: true 
+                });
                 this.isAdmin = response !== null;
                 return this.isAdmin;
             } catch (error) {
+                // Expected for non-admin users, don't log as error
                 this.isAdmin = false;
                 return false;
             }
@@ -6103,12 +6108,21 @@ class CalorieTracker {
         if (!this.currentUser) return;
 
         try {
-            const response = await this.apiCall('/rewards/points');
-            if (response.success) {
+            const response = await this.apiCall('/rewards/points', 'GET', null, {
+                showError: false, // Don't show errors if rewards system not available
+                silent: true
+            });
+            if (response && response.success) {
                 this.updateRewardsDisplay(response.data);
             }
         } catch (error) {
-            logger.error('Error loading rewards data:', error);
+            // Silently fail if rewards system is not available
+            logger.info('Rewards system not available or not implemented yet');
+            // Hide rewards display if it exists
+            const rewardsDisplay = document.getElementById('rewardsDisplay');
+            if (rewardsDisplay) {
+                rewardsDisplay.style.display = 'none';
+            }
         }
     }
 
