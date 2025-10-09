@@ -6304,7 +6304,7 @@ class CalorieTracker {
             return;
         }
 
-        logger.info('Loading rewards data for user:', this.currentUser.username);
+        console.log('🎮 Loading rewards data for user:', this.currentUser.username);
 
         try {
             const response = await this.apiCall('/rewards/points', 'GET', null, {
@@ -6312,18 +6312,26 @@ class CalorieTracker {
                 silent: true
             });
             
-            logger.info('Rewards API response:', response);
+            console.log('🎮 Raw Rewards API response:', response);
+            console.log('🎮 response.success:', response?.success);
+            console.log('🎮 response.points:', response?.points);
             
             if (response && response.success && response.points) {
-                logger.info('Updating rewards display with data:', response.points);
+                console.log('🎮 Points data received:', {
+                    currentPoints: response.points.currentPoints,
+                    lifetimePoints: response.points.lifetimePoints,
+                    level: response.points.level,
+                    foodMilestone: response.points.foodMilestone,
+                    weightMilestone: response.points.weightMilestone
+                });
                 this.updateRewardsDisplay(response.points);
             } else {
-                logger.info('Rewards API returned no data, showing default state');
+                console.warn('🎮 Rewards API returned no data, showing default state');
                 this.showDefaultRewardsState();
             }
         } catch (error) {
             // Silently fail if rewards system is not available
-            logger.info('Rewards system not available or not implemented yet:', error.message);
+            console.error('🎮 Rewards system error:', error.message, error);
             // Show default state instead of hiding
             this.showDefaultRewardsState();
         }
@@ -6382,13 +6390,16 @@ class CalorieTracker {
      * Update rewards display in header and card
      */
     updateRewardsDisplay(data) {
-        logger.info('Updating rewards display with data:', data);
+        console.log('🎮 updateRewardsDisplay called with data:', data);
+        console.log('🎮 currentPoints:', data.currentPoints);
+        console.log('🎮 lifetimePoints:', data.lifetimePoints);
+        console.log('🎮 level:', data.level);
         
         const rewardsDisplay = document.getElementById('rewardsDisplay');
         const rewardsCard = document.getElementById('rewardsCard');
         
         if (!rewardsDisplay) {
-            logger.error('rewardsDisplay element not found');
+            console.error('🎮 rewardsDisplay element not found!');
             return;
         }
 
@@ -6398,21 +6409,35 @@ class CalorieTracker {
         // Show rewards card
         if (rewardsCard) {
             rewardsCard.style.display = 'block';
+        } else {
+            console.warn('🎮 rewardsCard element not found');
         }
 
         // Update header badges
-        document.getElementById('userPoints').textContent = data.currentPoints || 0;
+        const userPointsEl = document.getElementById('userPoints');
+        if (userPointsEl) {
+            userPointsEl.textContent = data.currentPoints || 0;
+            console.log('🎮 Updated userPoints to:', data.currentPoints);
+        } else {
+            console.error('🎮 userPoints element not found!');
+        }
         
         // Update food milestone
         if (data.foodMilestone) {
-            document.getElementById('foodMilestoneLevel').textContent = `Lv${data.foodMilestone.level}`;
-            document.getElementById('foodMultiplier').textContent = `${data.foodMilestone.multiplier.toFixed(1)}x`;
+            const foodLevelEl = document.getElementById('foodMilestoneLevel');
+            const foodMultiplierEl = document.getElementById('foodMultiplier');
+            if (foodLevelEl) foodLevelEl.textContent = `Lv${data.foodMilestone.level}`;
+            if (foodMultiplierEl) foodMultiplierEl.textContent = `${data.foodMilestone.multiplier.toFixed(1)}x`;
+            console.log('🎮 Updated food milestone to Level', data.foodMilestone.level);
         }
         
         // Update weight milestone
         if (data.weightMilestone) {
-            document.getElementById('weightMilestoneLevel').textContent = `Lv${data.weightMilestone.level}`;
-            document.getElementById('weightMultiplier').textContent = `${data.weightMilestone.multiplier.toFixed(1)}x`;
+            const weightLevelEl = document.getElementById('weightMilestoneLevel');
+            const weightMultiplierEl = document.getElementById('weightMultiplier');
+            if (weightLevelEl) weightLevelEl.textContent = `Lv${data.weightMilestone.level}`;
+            if (weightMultiplierEl) weightMultiplierEl.textContent = `${data.weightMilestone.multiplier.toFixed(1)}x`;
+            console.log('🎮 Updated weight milestone to Level', data.weightMilestone.level);
         }
 
         // Update rewards card stats (note: using correct IDs from HTML)
@@ -6420,9 +6445,26 @@ class CalorieTracker {
         const lifetimePointsEl = document.getElementById('rewardsLifetimePoints');
         const userLevelEl = document.getElementById('rewardsLevel');
         
-        if (currentPointsEl) currentPointsEl.textContent = data.currentPoints || 0;
-        if (lifetimePointsEl) lifetimePointsEl.textContent = data.lifetimePoints || 0;
-        if (userLevelEl) userLevelEl.textContent = data.level?.currentLevel || 1;
+        if (currentPointsEl) {
+            currentPointsEl.textContent = data.currentPoints || 0;
+            console.log('🎮 Updated rewardsCurrentPoints to:', data.currentPoints);
+        } else {
+            console.error('🎮 rewardsCurrentPoints element not found!');
+        }
+        
+        if (lifetimePointsEl) {
+            lifetimePointsEl.textContent = data.lifetimePoints || 0;
+            console.log('🎮 Updated rewardsLifetimePoints to:', data.lifetimePoints);
+        } else {
+            console.error('🎮 rewardsLifetimePoints element not found!');
+        }
+        
+        if (userLevelEl) {
+            userLevelEl.textContent = data.level?.currentLevel || data.level || 1;
+            console.log('🎮 Updated rewardsLevel to:', data.level);
+        } else {
+            console.error('🎮 rewardsLevel element not found!');
+        }
 
         // Update milestone details
         if (data.foodMilestone) {
