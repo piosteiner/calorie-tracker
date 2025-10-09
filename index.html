@@ -104,93 +104,6 @@
                     </div>
                 </div>
 
-                <!-- Rewards Dashboard Card -->
-                <div id="rewardsCard" class="rewards-card" style="display: none;">
-                    <div class="card-header-with-action">
-                        <h3>🎮 Your Progress</h3>
-                        <button id="toggleRewardsBtn" class="btn btn-secondary-small" data-action="toggle-rewards">
-                            <span id="rewardsBtnText">Show Details</span>
-                        </button>
-                    </div>
-
-                    <div class="rewards-summary">
-                        <div class="rewards-stats-grid">
-                            <div class="reward-stat">
-                                <div class="reward-stat-value" id="rewardsCurrentPoints">0</div>
-                                <div class="reward-stat-label">Current Points</div>
-                            </div>
-                            <div class="reward-stat">
-                                <div class="reward-stat-value" id="rewardsLifetimePoints">0</div>
-                                <div class="reward-stat-label">Lifetime Points</div>
-                            </div>
-                            <div class="reward-stat">
-                                <div class="reward-stat-value" id="rewardsLevel">1</div>
-                                <div class="reward-stat-label">Level</div>
-                            </div>
-                        </div>
-                        
-                        <button id="claimDailyRewardBtn" class="btn btn-reward" data-action="claim-daily-reward">
-                            🎁 Claim Daily Reward (+100 pts)
-                        </button>
-                    </div>
-
-                    <div id="rewardsDetails" class="rewards-details" style="display: none;">
-                        <!-- Milestone Progress -->
-                        <div class="milestone-progress-section">
-                            <h4>📊 Milestone Progress</h4>
-                            
-                            <div class="milestone-card">
-                                <div class="milestone-header">
-                                    <div class="milestone-title">
-                                        <span class="milestone-icon">🍽️</span>
-                                        <span>Food Logging - Level <span id="foodMilestoneDetailLevel">1</span></span>
-                                    </div>
-                                    <div class="milestone-multiplier">
-                                        <span id="foodMilestoneMultiplierDetail">1.0x</span> multiplier
-                                    </div>
-                                </div>
-                                <div class="milestone-info">
-                                    <span>Earning <strong><span id="foodPointsPerLog">50</span> pts</strong> per log</span>
-                                </div>
-                                <div class="milestone-progress-bar">
-                                    <div class="progress-bar-fill" id="foodMilestoneProgress" style="width: 0%"></div>
-                                </div>
-                                <div class="milestone-next">
-                                    <span id="foodLogsUntilNext">10</span> logs until Level <span id="foodNextLevel">2</span>
-                                </div>
-                            </div>
-
-                            <div class="milestone-card">
-                                <div class="milestone-header">
-                                    <div class="milestone-title">
-                                        <span class="milestone-icon">⚖️</span>
-                                        <span>Weight Logging - Level <span id="weightMilestoneDetailLevel">1</span></span>
-                                    </div>
-                                    <div class="milestone-multiplier">
-                                        <span id="weightMilestoneMultiplierDetail">1.0x</span> multiplier
-                                    </div>
-                                </div>
-                                <div class="milestone-info">
-                                    <span>Earning <strong><span id="weightPointsPerLog">150</span> pts</strong> per log</span>
-                                </div>
-                                <div class="milestone-progress-bar">
-                                    <div class="progress-bar-fill" id="weightMilestoneProgress" style="width: 0%"></div>
-                                </div>
-                                <div class="milestone-next">
-                                    <span id="weightLogsUntilNext">5</span> logs until Level <span id="weightNextLevel">2</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Quick Links -->
-                        <div class="rewards-quick-links">
-                            <button class="btn btn-outline" data-action="show-rewards-shop">🛍️ Rewards Shop</button>
-                            <button class="btn btn-outline" data-action="show-leaderboard">🏆 Leaderboard</button>
-                            <button class="btn btn-outline" data-action="show-achievements">🏅 Achievements</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Add Food Section -->
                 <div class="add-food-card">
                     <div class="card-header-with-info">
@@ -354,6 +267,93 @@
                             <div id="weightHistoryList" class="weight-history-list">
                                 <p class="loading">Loading weight history...</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rewards Dashboard Card -->
+                <div id="rewardsCard" class="rewards-card" style="display: none;">
+                    <div class="card-header-with-action">
+                        <h3>🎮 Your Progress</h3>
+                        <button id="toggleRewardsBtn" class="btn btn-secondary-small" data-action="toggle-rewards">
+                            <span id="rewardsBtnText">Show Details</span>
+                        </button>
+                    </div>
+
+                    <div class="rewards-summary">
+                        <div class="rewards-stats-grid">
+                            <div class="reward-stat">
+                                <div class="reward-stat-value" id="rewardsCurrentPoints">0</div>
+                                <div class="reward-stat-label">Current Points</div>
+                            </div>
+                            <div class="reward-stat">
+                                <div class="reward-stat-value" id="rewardsLifetimePoints">0</div>
+                                <div class="reward-stat-label">Lifetime Points</div>
+                            </div>
+                            <div class="reward-stat">
+                                <div class="reward-stat-value" id="rewardsLevel">1</div>
+                                <div class="reward-stat-label">Level</div>
+                            </div>
+                        </div>
+                        
+                        <button id="claimDailyRewardBtn" class="btn btn-reward" data-action="claim-daily-reward">
+                            🎁 Claim Daily Reward (+100 pts)
+                        </button>
+                    </div>
+
+                    <div id="rewardsDetails" class="rewards-details" style="display: none;">
+                        <!-- Milestone Progress -->
+                        <div class="milestone-progress-section">
+                            <h4>📊 Milestone Progress</h4>
+                            
+                            <div class="milestone-card">
+                                <div class="milestone-header">
+                                    <div class="milestone-title">
+                                        <span class="milestone-icon">🍽️</span>
+                                        <span>Food Logging - Level <span id="foodMilestoneDetailLevel">1</span></span>
+                                    </div>
+                                    <div class="milestone-multiplier">
+                                        <span id="foodMilestoneMultiplierDetail">1.0x</span> multiplier
+                                    </div>
+                                </div>
+                                <div class="milestone-info">
+                                    <span>Earning <strong><span id="foodPointsPerLog">50</span> pts</strong> per log</span>
+                                </div>
+                                <div class="milestone-progress-bar">
+                                    <div class="progress-bar-fill" id="foodMilestoneProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="milestone-next">
+                                    <span id="foodLogsUntilNext">10</span> logs until Level <span id="foodNextLevel">2</span>
+                                </div>
+                            </div>
+
+                            <div class="milestone-card">
+                                <div class="milestone-header">
+                                    <div class="milestone-title">
+                                        <span class="milestone-icon">⚖️</span>
+                                        <span>Weight Logging - Level <span id="weightMilestoneDetailLevel">1</span></span>
+                                    </div>
+                                    <div class="milestone-multiplier">
+                                        <span id="weightMilestoneMultiplierDetail">1.0x</span> multiplier
+                                    </div>
+                                </div>
+                                <div class="milestone-info">
+                                    <span>Earning <strong><span id="weightPointsPerLog">150</span> pts</strong> per log</span>
+                                </div>
+                                <div class="milestone-progress-bar">
+                                    <div class="progress-bar-fill" id="weightMilestoneProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="milestone-next">
+                                    <span id="weightLogsUntilNext">5</span> logs until Level <span id="weightNextLevel">2</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Links -->
+                        <div class="rewards-quick-links">
+                            <button class="btn btn-outline" data-action="show-rewards-shop">🛍️ Rewards Shop</button>
+                            <button class="btn btn-outline" data-action="show-leaderboard">🏆 Leaderboard</button>
+                            <button class="btn btn-outline" data-action="show-achievements">🏅 Achievements</button>
                         </div>
                     </div>
                 </div>
