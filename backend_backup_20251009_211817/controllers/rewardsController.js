@@ -31,6 +31,15 @@ class RewardsController {
                 const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
                 const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
                 
+                // Find next milestone levels for new user
+                const nextFoodMilestone = foodMilestone ? PointsService.FOOD_MILESTONE_THRESHOLDS.find(
+                    m => m.logs > foodMilestone.total_logs
+                ) : null;
+
+                const nextWeightMilestone = weightMilestone ? PointsService.WEIGHT_MILESTONE_THRESHOLDS.find(
+                    m => m.logs > weightMilestone.total_logs
+                ) : null;
+                
                 return res.json({ 
                     success: true, 
                     points: {
@@ -46,12 +55,20 @@ class RewardsController {
                         foodMilestone: foodMilestone ? {
                             level: foodMilestone.milestone_level,
                             multiplier: parseFloat(foodMilestone.points_multiplier),
-                            currentCount: foodMilestone.total_logs
+                            currentCount: foodMilestone.total_logs,
+                            nextLevel: nextFoodMilestone ? {
+                                level: nextFoodMilestone.level,
+                                threshold: nextFoodMilestone.logs
+                            } : null
                         } : null,
                         weightMilestone: weightMilestone ? {
                             level: weightMilestone.milestone_level,
                             multiplier: parseFloat(weightMilestone.points_multiplier),
-                            currentCount: weightMilestone.total_logs
+                            currentCount: weightMilestone.total_logs,
+                            nextLevel: nextWeightMilestone ? {
+                                level: nextWeightMilestone.level,
+                                threshold: nextWeightMilestone.logs
+                            } : null
                         } : null
                     }
                 });
@@ -63,6 +80,16 @@ class RewardsController {
             
             console.log('🔍 [getMyPoints] Food milestone:', foodMilestone);
             console.log('🔍 [getMyPoints] Weight milestone:', weightMilestone);
+
+            // Find next food milestone level
+            const nextFoodMilestone = foodMilestone ? PointsService.FOOD_MILESTONE_THRESHOLDS.find(
+                m => m.logs > foodMilestone.total_logs
+            ) : null;
+
+            // Find next weight milestone level
+            const nextWeightMilestone = weightMilestone ? PointsService.WEIGHT_MILESTONE_THRESHOLDS.find(
+                m => m.logs > weightMilestone.total_logs
+            ) : null;
 
             const response = { 
                 success: true, 
@@ -79,12 +106,20 @@ class RewardsController {
                     foodMilestone: foodMilestone ? {
                         level: foodMilestone.milestone_level,
                         multiplier: parseFloat(foodMilestone.points_multiplier),
-                        currentCount: foodMilestone.total_logs
+                        currentCount: foodMilestone.total_logs,
+                        nextLevel: nextFoodMilestone ? {
+                            level: nextFoodMilestone.level,
+                            threshold: nextFoodMilestone.logs
+                        } : null
                     } : null,
                     weightMilestone: weightMilestone ? {
                         level: weightMilestone.milestone_level,
                         multiplier: parseFloat(weightMilestone.points_multiplier),
-                        currentCount: weightMilestone.total_logs
+                        currentCount: weightMilestone.total_logs,
+                        nextLevel: nextWeightMilestone ? {
+                            level: nextWeightMilestone.level,
+                            threshold: nextWeightMilestone.logs
+                        } : null
                     } : null
                 }
             };
