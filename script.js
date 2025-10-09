@@ -6837,6 +6837,7 @@ class CalorieTracker {
 let app;
 
 console.log('🟣 Script loaded, document.readyState:', document.readyState);
+console.log('🔖 Script version: 2025-10-09-v2 (meal_time HH:MM:SS fix)');
 
 if (document.readyState === 'loading') {
     // DOM is still loading
