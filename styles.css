@@ -2009,8 +2009,21 @@ body {
     
     /* Food entry grid responsive */
     .food-entry-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 8px;
+    }
+    
+    /* Food name and grams take full width */
+    .food-entry-grid .input-group:nth-child(1),
+    .food-entry-grid .input-group:nth-child(2),
+    .food-entry-grid .input-group:nth-child(4) {
+        grid-column: span 2;
+    }
+    
+    /* Date and time share a row */
+    .food-entry-grid .input-group:nth-child(3),
+    .food-entry-grid .input-group:nth-child(5) {
+        grid-column: span 1;
     }
     
     .food-entry-grid label {
