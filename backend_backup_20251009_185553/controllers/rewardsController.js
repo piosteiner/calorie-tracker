@@ -23,10 +23,59 @@ class RewardsController {
                 // Initialize points for new user
                 await PointsService.initializeUserPoints(req.user.id);
                 const newPoints = await PointsService.getUserPoints(req.user.id);
-                return res.json({ success: true, points: newPoints });
+                
+                // Get milestones
+                const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
+                const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
+                
+                return res.json({ 
+                    success: true, 
+                    points: {
+                        ...newPoints,
+                        currentPoints: newPoints.current_points,
+                        lifetimePoints: newPoints.lifetime_points,
+                        pointsSpent: newPoints.points_spent,
+                        currentStreak: newPoints.current_streak,
+                        longestStreak: newPoints.longest_streak,
+                        foodMilestone: {
+                            level: foodMilestone.milestone_level,
+                            multiplier: parseFloat(foodMilestone.points_multiplier),
+                            currentCount: foodMilestone.total_logs
+                        },
+                        weightMilestone: {
+                            level: weightMilestone.milestone_level,
+                            multiplier: parseFloat(weightMilestone.points_multiplier),
+                            currentCount: weightMilestone.total_logs
+                        }
+                    }
+                });
             }
 
-            res.json({ success: true, points });
+            // Get milestones for existing user
+            const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
+            const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
+
+            res.json({ 
+                success: true, 
+                points: {
+                    ...points,
+                    currentPoints: points.current_points,
+                    lifetimePoints: points.lifetime_points,
+                    pointsSpent: points.points_spent,
+                    currentStreak: points.current_streak,
+                    longestStreak: points.longest_streak,
+                    foodMilestone: {
+                        level: foodMilestone.milestone_level,
+                        multiplier: parseFloat(foodMilestone.points_multiplier),
+                        currentCount: foodMilestone.total_logs
+                    },
+                    weightMilestone: {
+                        level: weightMilestone.milestone_level,
+                        multiplier: parseFloat(weightMilestone.points_multiplier),
+                        currentCount: weightMilestone.total_logs
+                    }
+                }
+            });
         } catch (error) {
             console.error('Get my points error:', error);
             res.status(500).json({ success: false, error: 'Failed to retrieve points' });

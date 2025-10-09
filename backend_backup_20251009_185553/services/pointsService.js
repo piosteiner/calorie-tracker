@@ -293,14 +293,14 @@ class PointsService {
                 INSERT IGNORE INTO user_food_milestones (user_id, total_logs, milestone_level, points_multiplier)
                 VALUES (?, 0, 1, 1.00)
             `, [userId]);
-
-            const [milestone] = await db.query(`
+            
+            const milestoneResult = await db.query(`
                 SELECT total_logs, milestone_level, points_multiplier, created_at, last_updated
                 FROM user_food_milestones
                 WHERE user_id = ?
             `, [userId]);
-
-            return milestone[0];
+            
+            return milestoneResult[0];
         } catch (error) {
             console.error('Error getting food milestone:', error);
             throw error;
@@ -348,7 +348,7 @@ class PointsService {
             if (!current[0]) {
                 // Initialize if doesn't exist
                 await executeQuery(`
-                    INSERT INTO user_food_milestones (user_id, total_logs, milestone_level, points_multiplier)
+                    INSERT IGNORE INTO user_food_milestones (user_id, total_logs, milestone_level, points_multiplier)
                     VALUES (?, 1, 1, 1.00)
                 `, [userId]);
                 return { newTotalLogs: 1, milestone_level: 1, multiplier: 1.0, leveledUp: false };
@@ -429,7 +429,7 @@ class PointsService {
             if (!current[0]) {
                 // Initialize if doesn't exist
                 await executeQuery(`
-                    INSERT INTO user_weight_milestones (user_id, total_logs, milestone_level, points_multiplier)
+                    INSERT IGNORE INTO user_weight_milestones (user_id, total_logs, milestone_level, points_multiplier)
                     VALUES (?, 1, 1, 1.00)
                 `, [userId]);
                 return { newTotalLogs: 1, milestone_level: 1, multiplier: 1.0, leveledUp: false };
