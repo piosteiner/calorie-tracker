@@ -3426,14 +3426,14 @@ class CalorieTracker {
             startDate.setDate(startDate.getDate() - 27); // 28 days including today
             
             const response = await this.apiCall(
-                `/logs/date-range?start=${startDate.toISOString().split('T')[0]}&end=${endDate.toISOString().split('T')[0]}`,
+                `/logs/range?start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}`,
                 'GET',
                 null,
                 { silent: true }
             );
             
-            if (response.success && response.logs) {
-                this.renderCalorieChart(response.logs);
+            if (response.success && response.data) {
+                this.renderCalorieChart(response.data);
             }
         } catch (error) {
             logger.error('Error loading calorie chart data:', error);
@@ -3444,7 +3444,7 @@ class CalorieTracker {
     /**
      * Render calorie chart as a bar chart
      */
-    renderCalorieChart(logs) {
+    renderCalorieChart(dataByDate) {
         const canvas = document.getElementById('calorieChart');
         if (!canvas) return;
         
@@ -3465,9 +3465,9 @@ class CalorieTracker {
             date.setDate(endDate.getDate() - i);
             const dateStr = date.toISOString().split('T')[0];
             
-            // Find logs for this day
-            const dayLogs = logs.filter(log => log.log_date.startsWith(dateStr));
-            const totalCalories = dayLogs.reduce((sum, log) => sum + (log.calories || 0), 0);
+            // Get data for this day from the response
+            const dayData = dataByDate[dateStr];
+            const totalCalories = dayData ? dayData.total_calories : 0;
             
             // Get the calorie goal for this day (use user's current goal)
             const calorieGoal = this.currentUser?.dailyCalorieGoal || 2000;
