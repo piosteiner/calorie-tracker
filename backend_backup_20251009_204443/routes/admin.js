@@ -140,6 +140,192 @@ router.post('/users/:userId/reset-password', async (req, res) => {
   }
 });
 
+// Edit user details (admin only)
+router.put('/users/:id', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { username, email, dailyCalorieGoal } = req.body;
+
+    // Validation
+    if (!username || username.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Username must be at least 3 characters long'
+      });
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    if (dailyCalorieGoal && (dailyCalorieGoal < 1000 || dailyCalorieGoal > 5000)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Daily calorie goal must be between 1000 and 5000'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await db.query('SELECT id, username FROM users WHERE id = ?', [userId]);
+    if (existingUser.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if new username is already taken by another user
+    if (username !== existingUser[0].username) {
+      const duplicateUsername = await db.query(
+        'SELECT id FROM users WHERE username = ? AND id != ?',
+        [username, userId]
+      );
+      if (duplicateUsername.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: 'Username already exists'
+        });
+      }
+    }
+
+    // Check if new email is already taken by another user (if provided)
+    if (email) {
+      const duplicateEmail = await db.query(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, userId]
+      );
+      if (duplicateEmail.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: 'Email already exists'
+        });
+      }
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const params = [];
+
+    if (username) {
+      updates.push('username = ?');
+      params.push(username);
+    }
+
+    if (email !== undefined) {
+      updates.push('email = ?');
+      params.push(email || null);
+    }
+
+    if (dailyCalorieGoal) {
+      updates.push('daily_calorie_goal = ?');
+      params.push(dailyCalorieGoal);
+    }
+
+    params.push(userId);
+
+    const result = await db.query(`
+      UPDATE users 
+      SET ${updates.join(', ')}
+      WHERE id = ?
+    `, params);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Get updated user data
+    const updatedUser = await db.query(`
+      SELECT id, username, email, daily_calorie_goal, role
+      FROM users
+      WHERE id = ?
+    `, [userId]);
+
+    // Log the user update
+    console.log(`Admin ${req.user.username} updated user: ${username} (ID: ${userId})`);
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: updatedUser[0].id,
+        username: updatedUser[0].username,
+        email: updatedUser[0].email,
+        dailyCalorieGoal: updatedUser[0].daily_calorie_goal,
+        role: updatedUser[0].role
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin update user error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update user',
+      details: error.message
+    });
+  }
+});
+
+// Admin change user password (admin only) - PUT endpoint
+router.put('/users/:id/change-password', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { newPassword } = req.body;
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await db.query('SELECT id, username FROM users WHERE id = ?', [userId]);
+    if (existingUser.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Hash the new password
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    
+    const result = await db.query(`
+      UPDATE users 
+      SET password_hash = ?
+      WHERE id = ?
+    `, [passwordHash, userId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Log the password change for security audit
+    console.log(`Admin ${req.user.username} changed password for user ${existingUser[0].username} (ID: ${userId})`);
+    
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Admin change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password'
+    });
+  }
+});
+
 // Create new user (admin only)
 router.post('/users', async (req, res) => {
   try {
