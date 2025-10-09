@@ -512,6 +512,21 @@ class CalorieTracker {
             this.handleSuggestionKeyboard(e);
         });
 
+        // Search inputs for admin panels
+        const foodDbSearchInput = document.getElementById('foodDbSearchInput');
+        if (foodDbSearchInput) {
+            foodDbSearchInput.addEventListener('input', (e) => {
+                this.searchFoodDatabase(e.target.value);
+            });
+        }
+
+        const contributionsSearchInput = document.getElementById('contributionsSearchInput');
+        if (contributionsSearchInput) {
+            contributionsSearchInput.addEventListener('input', (e) => {
+                this.searchUserContributions(e.target.value);
+            });
+        }
+
         // Hide suggestions when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#foodName') && !e.target.closest('#foodSuggestions')) {
