@@ -2779,7 +2779,7 @@ class CalorieTracker {
                 const distText  = food.distributor ? ` <span class="food-dist">@ ${this.escapeHtml(food.distributor)}</span>` : '';
                 const timeText  = food.meal_time ? ` • ${food.meal_time}` : '';
                 const imgHtml   = food.image_url
-                    ? `<img src="${this.escapeHtml(food.image_url)}?token=${this.getAuthToken()}" class="food-log-thumb" alt="Meal photo" loading="lazy">`
+                    ? `<img src="${this.escapeHtml(food.image_url)}?token=${this.authToken}" class="food-log-thumb" alt="Meal photo" loading="lazy">`
                     : '';
                 const macroHtml = (food.protein != null || food.carbs != null || food.fat != null)
                     ? (() => {
