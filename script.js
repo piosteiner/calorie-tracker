@@ -1092,7 +1092,7 @@ class CalorieTracker {
                 case 'delete-meal-photo': {
                     e.preventDefault();
                     const logId = Number(target.dataset.logId);
-                    if (logId) await this.detachMealPhoto(logId);
+                    if (logId) this.detachMealPhoto(logId);
                     break;
                 }
 
