@@ -5,10 +5,10 @@
 CREATE TABLE IF NOT EXISTS images (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     user_id     INT NOT NULL,
-    filename    VARCHAR(255) NOT NULL,
+    filename    VARCHAR(255) NULL,
     original_name VARCHAR(255),
     url         VARCHAR(2048),
-    type        ENUM('upload', 'url') NOT NULL DEFAULT 'upload',
+    type        ENUM('uploaded', 'url') NOT NULL DEFAULT 'uploaded',
     mime_type   VARCHAR(100),
     size        INT,
     original_size INT,
