@@ -509,12 +509,23 @@ class CalorieTracker {
             mealCategoryInput.value = suggestedCategory;
         }
         
-        // Set current time in meal time input
+        // Set current time in meal time input — use existing meal's time if already logged today
         const mealTimeInput = document.getElementById('mealTime');
-        if (mealTimeInput) {
-            const now = new Date();
-            mealTimeInput.value = now.toTimeString().slice(0, 5); // HH:MM format
+        if (mealTimeInput && mealCategoryInput) {
+            const existingTime = this.getMealTimeForCategory(mealCategoryInput.value);
+            if (existingTime) {
+                mealTimeInput.value = existingTime;
+            } else {
+                const now = new Date();
+                mealTimeInput.value = now.toTimeString().slice(0, 5); // HH:MM format
+            }
         }
+    }
+
+    // Returns HH:MM time of first existing log entry for the given meal category, or null
+    getMealTimeForCategory(category) {
+        const entry = this.foodLog.find(f => (f.meal_category || 'other') === category && f.meal_time);
+        return entry ? entry.meal_time : null; // meal_time is already HH:MM
     }
 
     bindEvents() {
@@ -1071,6 +1082,15 @@ class CalorieTracker {
             const action = target.dataset.action;
             
             switch (action) {
+                case 'meal-category-change': {
+                    const mealTimeEl = document.getElementById('mealTime');
+                    if (mealTimeEl) {
+                        const existing = this.getMealTimeForCategory(target.value);
+                        mealTimeEl.value = existing || new Date().toTimeString().slice(0, 5);
+                    }
+                    break;
+                }
+
                 case 'toggle-select-all':
                     this.toggleSelectAll(target);
                     break;
