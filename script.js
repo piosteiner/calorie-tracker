@@ -8617,12 +8617,13 @@ class CalorieTracker {
                     body: formData
                 });
                 const data = await resp.json();
-                if (!data.success) throw new Error(data.error || 'Image upload failed');
-                imageId = data.image.id;
+                if (!resp.ok) throw new Error(data.error || 'Image upload failed');
+                imageId = data.image?.id ?? data.id ?? data.data?.id;
+                if (!imageId) throw new Error('Image upload failed: no image ID in response');
             } else {
                 const data = await this.apiCall('/images/url', 'POST', { url: source });
-                if (!data.success) throw new Error(data.error || 'Image URL save failed');
-                imageId = data.image.id;
+                imageId = data.image?.id ?? data.id ?? data.data?.id;
+                if (!imageId) throw new Error('Image URL save failed: no image ID in response');
             }
             // Attach to log
             await this.apiCall(`/logs/${logId}`, 'PUT', { image_id: imageId });
