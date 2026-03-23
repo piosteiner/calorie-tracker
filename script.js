@@ -255,11 +255,22 @@ class CalorieTracker {
             hasMore: false,
             isExpanded: false // Track if history section is visible
         };
+
+        // Calendar state
+        const now = new Date();
+        this.calendarState = {
+            year: now.getFullYear(),
+            month: now.getMonth() + 1, // 1-based
+            isExpanded: false
+        };
         
         // CRUD operation context
         this.currentEditContext = null; // { date, logId, isNew }
         this.currentDeleteContext = null; // { logId, foodName, date }
         
+        // Cache properties
+        this.openFoodFactsCache = new Map(); // Cache for food search results
+
         // Hybrid storage properties
         this.syncQueue = []; // Queue for pending sync operations
         this.lastSyncTime = null;
@@ -523,9 +534,9 @@ class CalorieTracker {
 
         // Food form
         document.getElementById('foodForm').addEventListener('submit', (e) => {
-            console.log('🟢 FORM SUBMIT EVENT TRIGGERED!');
+            logger.debug('🟢 FORM SUBMIT EVENT TRIGGERED!');
             e.preventDefault();
-            console.log('🟢 Calling handleAddFood()...');
+            logger.debug('🟢 Calling handleAddFood()...');
             this.handleAddFood();
         });
 
@@ -1029,6 +1040,26 @@ class CalorieTracker {
                     e.preventDefault();
                     this.closeChangePasswordModal();
                     break;
+
+                case 'toggle-calendar':
+                    e.preventDefault();
+                    this.toggleCalendar();
+                    break;
+
+                case 'prev-month':
+                    e.preventDefault();
+                    this.navigateCalendar(-1);
+                    break;
+
+                case 'next-month':
+                    e.preventDefault();
+                    this.navigateCalendar(1);
+                    break;
+
+                case 'update-email':
+                    e.preventDefault();
+                    this.handleUpdateEmail();
+                    break;
             }
         });
         
@@ -1328,6 +1359,7 @@ class CalorieTracker {
                     document.getElementById('welcomeUser').textContent = `Welcome, ${response.user.username}!`;
                     this.showSection('dashboard');
                     await this.loadTodaysData();
+                    await this.loadUserProfile();
                     
                     // Check admin status and show admin interface if applicable
                     await this.checkAdminStatus();
@@ -1721,6 +1753,7 @@ class CalorieTracker {
                     document.getElementById('welcomeUser').textContent = `Welcome, ${response.user.username}!`;
                     this.showSection('dashboard');
                     await this.loadTodaysData();
+                    await this.loadUserProfile();
                     await this.checkAdminStatus();
                     this.toggleAdminInterface();
                     await this.loadRewardsData(); // Load rewards system data
@@ -1779,6 +1812,7 @@ class CalorieTracker {
                 document.getElementById('welcomeUser').textContent = `Welcome, ${response.user.username}!`;
                 this.showSection('dashboard');
                 await this.loadTodaysData();
+                await this.loadUserProfile();
                 
                 // Check admin status and show admin interface if applicable
                 await this.checkAdminStatus();
@@ -1820,24 +1854,24 @@ class CalorieTracker {
     }
 
     async handleAddFood() {
-        console.log('🔴 handleAddFood() called - START');
+        logger.debug('🔴 handleAddFood() called - START');
         const form = document.getElementById('foodForm');
         const submitButton = form.querySelector('[type="submit"]') || form.querySelector('button');
         
-        console.log('Form:', form);
-        console.log('Submit button:', submitButton);
+        logger.debug('Form:', form);
+        logger.debug('Submit button:', submitButton);
         
         // Clear any existing form errors
         this.clearFormErrors(form);
         
         try {
-            console.log('🔵 Starting validation...');
+            logger.debug('🔵 Starting validation...');
             // Validate inputs
             const foodNameInput = document.getElementById('foodName');
             const quantityInput = document.getElementById('quantity');
             
-            console.log('Food name input:', foodNameInput?.value);
-            console.log('Quantity input:', quantityInput?.value);
+            logger.debug('Food name input:', foodNameInput?.value);
+            logger.debug('Quantity input:', quantityInput?.value);
             
             let hasErrors = false;
             
@@ -1988,18 +2022,18 @@ class CalorieTracker {
                 logger.info('=== FOOD LOGGING COMPLETED ===');
                 
                 // Check for rewards data in response (optional, may not be present)
-                console.log('🎁 Full logResponse object:', logResponse);
-                console.log('🎁 logResponse.pointsAwarded:', logResponse.pointsAwarded);
-                console.log('🎁 logResponse.data?.pointsAwarded:', logResponse.data?.pointsAwarded);
+                logger.debug('🎁 Full logResponse object:', logResponse);
+                logger.debug('🎁 logResponse.pointsAwarded:', logResponse.pointsAwarded);
+                logger.debug('🎁 logResponse.data?.pointsAwarded:', logResponse.data?.pointsAwarded);
                 
                 const pointsAwarded = logResponse.pointsAwarded || logResponse.data?.pointsAwarded;
                 const pointsDetails = logResponse.pointsDetails || logResponse.data?.pointsDetails;
                 const milestoneLevel = logResponse.milestoneLevel || logResponse.data?.milestoneLevel;
                 
                 logger.info('Rewards data from response:', { pointsAwarded, pointsDetails, milestoneLevel });
-                console.log('🎁 Extracted pointsAwarded:', pointsAwarded);
-                console.log('🎁 Extracted pointsDetails:', pointsDetails);
-                console.log('🎁 Extracted milestoneLevel:', milestoneLevel);
+                logger.debug('🎁 Extracted pointsAwarded:', pointsAwarded);
+                logger.debug('🎁 Extracted pointsDetails:', pointsDetails);
+                logger.debug('🎁 Extracted milestoneLevel:', milestoneLevel);
                 
                 if (pointsAwarded && pointsAwarded > 0) {
                     logger.info('Showing points toast for:', pointsAwarded);
@@ -2062,19 +2096,19 @@ class CalorieTracker {
     // Handle adding enhanced food from Pios Food DB or offline database
     async handleAddEnhancedFood(foodData, quantity, unit) {
         try {
-            console.log('🔵 handleAddEnhancedFood START');
-            console.log('🔵 foodData:', foodData);
-            console.log('🔵 quantity:', quantity);
+            logger.debug('🔵 handleAddEnhancedFood START');
+            logger.debug('🔵 foodData:', foodData);
+            logger.debug('🔵 quantity:', quantity);
             logger.info('Adding enhanced food:', foodData);
             
             // Get meal category, date, and time from form
             const mealCategory = document.getElementById('mealCategory')?.value || 'other';
             const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
             const mealTimeInput = document.getElementById('mealTime')?.value || null;
-            console.log('🕐 Raw mealTimeInput from form:', mealTimeInput);
+            logger.debug('🕐 Raw mealTimeInput from form:', mealTimeInput);
             // Convert HH:MM to HH:MM:SS format for backend
             const mealTime = mealTimeInput ? `${mealTimeInput}:00` : null;
-            console.log('🕐 Converted mealTime for backend:', mealTime);
+            logger.debug('🕐 Converted mealTime for backend:', mealTime);
 
             // Calculate calories (everything is now per 100g basis)
             const calories = Math.round((foodData.calories / 100) * quantity);
@@ -2101,7 +2135,7 @@ class CalorieTracker {
                 });
                 
                 logger.info('Enhanced food log API response:', logResponse);
-                console.log('🎁 ENHANCED - Full logResponse:', logResponse);
+                logger.debug('🎁 ENHANCED - Full logResponse:', logResponse);
                 
                 // Verify the backend save was successful
                 if (!logResponse || !logResponse.success) {
@@ -2113,16 +2147,16 @@ class CalorieTracker {
                 await this.loadTodaysData();
                 
                 // Handle rewards
-                console.log('🎁 ENHANCED - logResponse.pointsAwarded:', logResponse.pointsAwarded);
+                logger.debug('🎁 ENHANCED - logResponse.pointsAwarded:', logResponse.pointsAwarded);
                 const pointsAwarded = logResponse.pointsAwarded || logResponse.data?.pointsAwarded;
                 const pointsDetails = logResponse.pointsDetails || logResponse.data?.pointsDetails;
                 const milestoneLevel = logResponse.milestoneLevel || logResponse.data?.milestoneLevel;
                 
-                console.log('🎁 ENHANCED - Extracted pointsAwarded:', pointsAwarded);
-                console.log('🎁 ENHANCED - pointsDetails:', pointsDetails);
+                logger.debug('🎁 ENHANCED - Extracted pointsAwarded:', pointsAwarded);
+                logger.debug('🎁 ENHANCED - pointsDetails:', pointsDetails);
                 
                 if (pointsAwarded && pointsAwarded > 0) {
-                    console.log('🎁 ENHANCED - Showing points toast!');
+                    logger.debug('🎁 ENHANCED - Showing points toast!');
                     this.showPointsToast({
                         total: pointsAwarded,
                         reason: 'Food logged!',
@@ -2443,9 +2477,13 @@ class CalorieTracker {
     }
 
     highlightMatch(text, search) {
-        if (!search || search.length < 2) return text;
+        // HTML-encode the raw text first to prevent XSS via food names from API
+        const div = document.createElement('div');
+        div.textContent = text;
+        const escaped = div.innerHTML;
+        if (!search || search.length < 2) return escaped;
         const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<mark>$1</mark>');
+        return escaped.replace(regex, '<mark>$1</mark>');
     }
 
     hideFoodSuggestions() {
@@ -2567,16 +2605,17 @@ class CalorieTracker {
         }
 
         foodLogDiv.innerHTML = this.foodLog.map(food => {
-            const brandText = food.brand ? ` by ${food.brand}` : '';
-            const distributorText = food.distributor ? ` @ ${food.distributor}` : '';
+            const escapedName = this.escapeHtml(this.capitalizeFirst(food.name));
+            const brandText = food.brand ? ` by ${this.escapeHtml(food.brand)}` : '';
+            const distributorText = food.distributor ? ` @ ${this.escapeHtml(food.distributor)}` : '';
             return `
             <div class="food-item">
                 <div class="food-info">
-                    <div class="food-name">${this.capitalizeFirst(food.name)}${brandText}${distributorText} ${food.offline ? '(Offline)' : ''}</div>
+                    <div class="food-name">${escapedName}${brandText}${distributorText} ${food.offline ? '(Offline)' : ''}</div>
                     <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit} • ${food.timestamp}</div>
                 </div>
                 <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
-                <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${food.name}" data-date="${new Date().toISOString().split('T')[0]}">×</button>
+                <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${this.escapeHtml(food.name)}" data-date="${new Date().toISOString().split('T')[0]}">×</button>
             </div>
         `;}).reverse().join('');
     }
@@ -2644,6 +2683,12 @@ class CalorieTracker {
 
     capitalizeFirst(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
     }
 
     showMessage(message, type) {
@@ -2795,6 +2840,8 @@ class CalorieTracker {
             if (this.historyData.days.length === 0) {
                 await this.loadHistory();
             }
+            // Load 30-day stats whenever history is opened
+            await this.loadUserStats();
         } else {
             historyContent.style.display = 'none';
             historyBtnText.textContent = 'Show History';
@@ -6633,7 +6680,7 @@ class CalorieTracker {
             return;
         }
 
-        console.log('🎮 Loading rewards data for user:', this.currentUser.username);
+        logger.debug('🎮 Loading rewards data for user:', this.currentUser.username);
 
         try {
             const response = await this.apiCall('/rewards/points', 'GET', null, {
@@ -6641,12 +6688,12 @@ class CalorieTracker {
                 silent: true
             });
             
-            console.log('🎮 Raw Rewards API response:', response);
-            console.log('🎮 response.success:', response?.success);
-            console.log('🎮 response.points:', response?.points);
+            logger.debug('🎮 Raw Rewards API response:', response);
+            logger.debug('🎮 response.success:', response?.success);
+            logger.debug('🎮 response.points:', response?.points);
             
             if (response && response.success && response.points) {
-                console.log('🎮 Points data received:', {
+                logger.debug('🎮 Points data received:', {
                     currentPoints: response.points.currentPoints,
                     lifetimePoints: response.points.lifetimePoints,
                     level: response.points.level,
@@ -6719,10 +6766,10 @@ class CalorieTracker {
      * Update rewards display in header and card
      */
     updateRewardsDisplay(data) {
-        console.log('🎮 updateRewardsDisplay called with data:', data);
-        console.log('🎮 currentPoints:', data.currentPoints);
-        console.log('🎮 lifetimePoints:', data.lifetimePoints);
-        console.log('🎮 level:', data.level);
+        logger.debug('🎮 updateRewardsDisplay called with data:', data);
+        logger.debug('🎮 currentPoints:', data.currentPoints);
+        logger.debug('🎮 lifetimePoints:', data.lifetimePoints);
+        logger.debug('🎮 level:', data.level);
         
         const rewardsDisplay = document.getElementById('rewardsDisplay');
         const rewardsCard = document.getElementById('rewardsCard');
@@ -6746,7 +6793,7 @@ class CalorieTracker {
         const userPointsEl = document.getElementById('userPoints');
         if (userPointsEl) {
             userPointsEl.textContent = data.currentPoints || 0;
-            console.log('🎮 Updated userPoints to:', data.currentPoints);
+            logger.debug('🎮 Updated userPoints to:', data.currentPoints);
         } else {
             console.error('🎮 userPoints element not found!');
         }
@@ -6757,7 +6804,7 @@ class CalorieTracker {
             const foodMultiplierEl = document.getElementById('foodMultiplier');
             if (foodLevelEl) foodLevelEl.textContent = `Lv${data.foodMilestone.level}`;
             if (foodMultiplierEl) foodMultiplierEl.textContent = `${data.foodMilestone.multiplier.toFixed(1)}x`;
-            console.log('🎮 Updated food milestone to Level', data.foodMilestone.level);
+            logger.debug('🎮 Updated food milestone to Level', data.foodMilestone.level);
         }
         
         // Update weight milestone
@@ -6766,7 +6813,7 @@ class CalorieTracker {
             const weightMultiplierEl = document.getElementById('weightMultiplier');
             if (weightLevelEl) weightLevelEl.textContent = `Lv${data.weightMilestone.level}`;
             if (weightMultiplierEl) weightMultiplierEl.textContent = `${data.weightMilestone.multiplier.toFixed(1)}x`;
-            console.log('🎮 Updated weight milestone to Level', data.weightMilestone.level);
+            logger.debug('🎮 Updated weight milestone to Level', data.weightMilestone.level);
         }
 
         // Update rewards card stats (note: using correct IDs from HTML)
@@ -6776,21 +6823,21 @@ class CalorieTracker {
         
         if (currentPointsEl) {
             currentPointsEl.textContent = data.currentPoints || 0;
-            console.log('🎮 Updated rewardsCurrentPoints to:', data.currentPoints);
+            logger.debug('🎮 Updated rewardsCurrentPoints to:', data.currentPoints);
         } else {
             console.error('🎮 rewardsCurrentPoints element not found!');
         }
         
         if (lifetimePointsEl) {
             lifetimePointsEl.textContent = data.lifetimePoints || 0;
-            console.log('🎮 Updated rewardsLifetimePoints to:', data.lifetimePoints);
+            logger.debug('🎮 Updated rewardsLifetimePoints to:', data.lifetimePoints);
         } else {
             console.error('🎮 rewardsLifetimePoints element not found!');
         }
         
         if (userLevelEl) {
             userLevelEl.textContent = data.level?.currentLevel || data.level || 1;
-            console.log('🎮 Updated rewardsLevel to:', data.level);
+            logger.debug('🎮 Updated rewardsLevel to:', data.level);
         } else {
             console.error('🎮 rewardsLevel element not found!');
         }
@@ -7552,7 +7599,7 @@ class CalorieTracker {
     }
     
     /**
-     * Show Change Password Modal
+     * Show Change Password Modal (also shows profile info)
      */
     showChangePasswordModal() {
         const modal = document.getElementById('changePasswordModal');
@@ -7565,6 +7612,16 @@ class CalorieTracker {
             
             // Reset requirements
             document.querySelectorAll('#passwordRequirements li').forEach(li => li.classList.remove('met'));
+
+            // Populate profile fields
+            const emailInput = document.getElementById('profileEmail');
+            const memberSinceEl = document.getElementById('profileMemberSince');
+            if (emailInput && this.currentUser) {
+                emailInput.value = this.currentUser.email || '';
+            }
+            if (memberSinceEl && this.currentUser?.createdAt) {
+                memberSinceEl.textContent = new Date(this.currentUser.createdAt).toLocaleDateString();
+            }
             
             // Show modal
             modal.style.display = 'flex';
@@ -7885,30 +7942,259 @@ class CalorieTracker {
             submitBtn.textContent = 'Save Changes';
         }
     }
+
+    // =============================================================================
+    // USER PROFILE
+    // =============================================================================
+
+    /**
+     * Load full user profile (email, createdAt) and merge into currentUser
+     */
+    async loadUserProfile() {
+        if (!this.isOnline || !this.authToken) return;
+        try {
+            const response = await this.apiCall('/user/profile', 'GET', null, { silent: true });
+            if (response.success && response.user) {
+                this.currentUser = { ...this.currentUser, ...response.user };
+            }
+        } catch (error) {
+            logger.debug('Could not load user profile:', error);
+        }
+    }
+
+    /**
+     * Save updated email via PUT /user/profile
+     */
+    async handleUpdateEmail() {
+        const emailInput = document.getElementById('profileEmail');
+        if (!emailInput) return;
+        const email = emailInput.value.trim();
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            this.notifications.error('Please enter a valid email address');
+            return;
+        }
+        try {
+            const response = await this.apiCall('/user/profile', 'PUT',
+                { email: email || null },
+                { showSuccess: true, successMessage: 'Email updated successfully' }
+            );
+            if (response.success && this.currentUser) {
+                this.currentUser.email = email || null;
+            }
+        } catch (error) {
+            this.notifications.error('Failed to update email');
+        }
+    }
+
+    // =============================================================================
+    // 30-DAY STATS & WEEKLY BREAKDOWN
+    // =============================================================================
+
+    /**
+     * Load user stats + weekly data and render the stats section
+     */
+    async loadUserStats() {
+        if (!this.isOnline || CONFIG.DEVELOPMENT_MODE) return;
+        try {
+            const [statsResponse, weeklyResponse] = await Promise.all([
+                this.apiCall('/user/stats', 'GET', null, { silent: true }),
+                this.apiCall('/logs/weekly', 'GET', null, { silent: true })
+            ]);
+
+            const statsSection = document.getElementById('statsSection');
+            if (!statsSection) return;
+            statsSection.style.display = 'block';
+
+            // Populate 30-day summary tiles
+            if (statsResponse.success && statsResponse.stats) {
+                const s = statsResponse.stats;
+                document.getElementById('statsAvgCalories').textContent =
+                    s.averageCaloriesPerDay.toLocaleString();
+                document.getElementById('statsGoalRate').textContent =
+                    `${s.goalAchievementRate}%`;
+                document.getElementById('statsTotalMeals').textContent =
+                    s.totalMeals.toLocaleString();
+                document.getElementById('statsDaysLogged').textContent =
+                    `${s.totalDays} / 30`;
+            }
+
+            // Populate weekly breakdown
+            if (weeklyResponse.success && weeklyResponse.weeklyData) {
+                this.renderWeeklyBreakdown(weeklyResponse.weeklyData);
+            }
+        } catch (error) {
+            logger.debug('Could not load stats:', error);
+        }
+    }
+
+    /**
+     * Render the weekly-day breakdown list
+     */
+    renderWeeklyBreakdown(weeklyData) {
+        const container = document.getElementById('weeklyBreakdown');
+        if (!container) return;
+
+        if (!weeklyData || weeklyData.length === 0) {
+            container.innerHTML = '<p class="empty-message">No data for this week yet.</p>';
+            return;
+        }
+
+        const goal = this.calorieGoal;
+        container.innerHTML = weeklyData.map(day => {
+            const calories = Math.round(parseFloat(day.total_calories || 0));
+            const dateObj = new Date(day.log_date || day.date);
+            const label = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+            const pct = goal > 0 ? Math.min(Math.round((calories / goal) * 100), 100) : 0;
+            const statusClass = calories === 0 ? 'no-data' : (calories >= goal * 0.9 && calories <= goal * 1.1 ? 'goal-met' : 'goal-missed');
+            return `
+                <div class="weekly-day ${statusClass}">
+                    <span class="weekly-day-label">${label}</span>
+                    <div class="weekly-day-bar-wrap">
+                        <div class="weekly-day-bar" style="width:${pct}%"></div>
+                    </div>
+                    <span class="weekly-day-kcal">${calories > 0 ? calories.toLocaleString() + ' kcal' : '—'}</span>
+                </div>`;
+        }).join('');
+    }
+
+    // =============================================================================
+    // MONTHLY CALENDAR
+    // =============================================================================
+
+    /**
+     * Toggle the monthly calendar card
+     */
+    toggleCalendar() {
+        const content = document.getElementById('calendarContent');
+        const btnText = document.getElementById('calendarBtnText');
+        if (!content) return;
+
+        this.calendarState.isExpanded = !this.calendarState.isExpanded;
+
+        if (this.calendarState.isExpanded) {
+            content.style.display = 'block';
+            btnText.textContent = 'Hide Calendar';
+            this.loadCalendar(this.calendarState.year, this.calendarState.month);
+        } else {
+            content.style.display = 'none';
+            btnText.textContent = 'Show Calendar';
+        }
+    }
+
+    /**
+     * Navigate to previous/next month
+     */
+    navigateCalendar(direction) {
+        this.calendarState.month += direction;
+        if (this.calendarState.month > 12) { this.calendarState.month = 1; this.calendarState.year++; }
+        if (this.calendarState.month < 1)  { this.calendarState.month = 12; this.calendarState.year--; }
+        this.loadCalendar(this.calendarState.year, this.calendarState.month);
+    }
+
+    /**
+     * Fetch calendar data from backend and render grid
+     */
+    async loadCalendar(year, month) {
+        const grid = document.getElementById('calendarGrid');
+        const label = document.getElementById('calendarMonthLabel');
+        if (!grid) return;
+
+        const monthName = new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        if (label) label.textContent = monthName;
+
+        grid.innerHTML = '<p class="loading">Loading…</p>';
+
+        if (!this.isOnline || CONFIG.DEVELOPMENT_MODE) {
+            grid.innerHTML = '<p class="empty-message">Calendar requires an online connection.</p>';
+            return;
+        }
+
+        try {
+            const response = await this.apiCall(
+                `/logs/calendar?year=${year}&month=${month}`,
+                'GET', null, { silent: true }
+            );
+            if (response.success && response.calendar) {
+                this.renderCalendarGrid(response.calendar, year, month);
+            } else {
+                grid.innerHTML = '<p class="empty-message">No data available.</p>';
+            }
+        } catch (error) {
+            logger.error('Failed to load calendar:', error);
+            grid.innerHTML = '<p class="empty-message">Could not load calendar data.</p>';
+        }
+    }
+
+    /**
+     * Render the calendar grid from the day-array returned by the backend
+     */
+    renderCalendarGrid(calendarDays, year, month) {
+        const grid = document.getElementById('calendarGrid');
+        if (!grid) return;
+
+        // Day-of-week headers
+        const headers = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            .map(d => `<div class="cal-header">${d}</div>`).join('');
+
+        // Blank cells before the first day (Mon = 0)
+        const firstDay = new Date(year, month - 1, 1).getDay(); // 0=Sun
+        const blanksBefore = (firstDay === 0 ? 6 : firstDay - 1); // shift to Mon-start
+        const blanks = Array(blanksBefore).fill('<div class="cal-cell cal-blank"></div>').join('');
+
+        // Day cells
+        const dayMap = {};
+        calendarDays.forEach(d => { dayMap[d.date] = d; });
+
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const today = new Date().toISOString().split('T')[0];
+        const dayCells = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const info = dayMap[dateStr];
+            const isToday = dateStr === today;
+            let cls = 'cal-cell';
+            let tooltip = '';
+            if (isToday) cls += ' cal-today';
+            if (info && info.total_calories > 0) {
+                cls += info.goal_met ? ' cal-goal-met' : ' cal-goal-missed';
+                tooltip = `${Math.round(info.total_calories)} kcal (${info.meals_count} meal${info.meals_count !== 1 ? 's' : ''})`;
+            }
+            dayCells.push(
+                `<div class="${cls}" title="${tooltip}">
+                    <span class="cal-day-num">${d}</span>
+                    ${info && info.total_calories > 0
+                        ? `<span class="cal-kcal">${Math.round(info.total_calories)}</span>`
+                        : ''}
+                </div>`
+            );
+        }
+
+        grid.innerHTML = `<div class="cal-grid-inner">${headers}${blanks}${dayCells.join('')}</div>`;
+    }
 }
 
 // Initialize the app when DOM is ready
 let app;
 
-console.log('🟣 Script loaded, document.readyState:', document.readyState);
-console.log('🔖 Script version: 2025-10-09-v2 (meal_time HH:MM:SS fix)');
+logger.debug('🟣 Script loaded, document.readyState:', document.readyState);
+logger.debug('🔖 Script version: 2025-10-09-v2 (meal_time HH:MM:SS fix)');
 
 if (document.readyState === 'loading') {
     // DOM is still loading
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('🟣 DOMContentLoaded event fired');
+        logger.debug('🟣 DOMContentLoaded event fired');
         app = new CalorieTracker();
-        console.log('🟣 CalorieTracker instance created');
+        logger.debug('🟣 CalorieTracker instance created');
         app.init(); // Call init() after DOM is ready
-        console.log('🟣 CalorieTracker.init() called');
+        logger.debug('🟣 CalorieTracker.init() called');
         window.app = app;
     });
 } else {
     // DOM is already loaded
-    console.log('🟣 DOM already loaded, initializing immediately');
+    logger.debug('🟣 DOM already loaded, initializing immediately');
     app = new CalorieTracker();
-    console.log('🟣 CalorieTracker instance created');
+    logger.debug('🟣 CalorieTracker instance created');
     app.init(); // Call init() after DOM is ready
-    console.log('🟣 CalorieTracker.init() called');
+    logger.debug('🟣 CalorieTracker.init() called');
     window.app = app;
 }

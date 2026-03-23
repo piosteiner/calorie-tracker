@@ -14,6 +14,9 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Set to true to re-enable public self-registration
+const REGISTRATION_ENABLED = false;
+
 // Login endpoint
 router.post('/login', [
     body('username').trim().notEmpty().withMessage('Username is required'),
@@ -151,6 +154,10 @@ router.post('/register', [
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('email').optional().isEmail().withMessage('Invalid email format')
 ], async (req, res) => {
+    if (!REGISTRATION_ENABLED) {
+        return res.status(403).json({ error: 'Registration is currently disabled.' });
+    }
+
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

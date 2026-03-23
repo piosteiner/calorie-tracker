@@ -1,7 +1,8 @@
 const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const db = require('../database');
-const { optionalAuth } = require('../middleware/auth');
+const { optionalAuth, authenticateToken } = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/admin');
 
 const router = express.Router();
 
@@ -74,15 +75,17 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
 });
 
-// Create new food (admin function - in future could be restricted)
+// Create new food — admin only (user submissions go via /admin/user-foods review flow)
 router.post('/', [
+    authenticateToken,
+    requireAdmin,
     body('name').trim().isLength({ min: 1, max: 100 }).withMessage('Food name is required (1-100 characters)'),
     body('caloriesPerUnit').isInt({ min: 0 }).withMessage('Calories per unit must be a positive whole number (kcal)'),
     body('defaultUnit').trim().isLength({ min: 1, max: 20 }).withMessage('Default unit is required (1-20 characters)'),
     body('category').optional().trim().isLength({ max: 50 }).withMessage('Category must be max 50 characters'),
     body('brand').optional().trim().isLength({ max: 100 }).withMessage('Brand must be max 100 characters'),
     body('distributor').optional().trim().isLength({ max: 100 }).withMessage('Distributor must be max 100 characters')
-], optionalAuth, async (req, res) => {
+], async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

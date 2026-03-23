@@ -116,8 +116,30 @@
     --modal-calorie-gradient: linear-gradient(135deg, #e91e63 0%, #f44336 100%);
 }
 
-/* Smooth theme transitions */
-* {
+/* Smooth theme transitions — scope to common themed elements instead of * for performance */
+body,
+.header,
+.summary-card,
+.add-food-card,
+.food-log-card,
+.weight-tracking-card,
+.history-card,
+.rewards-card,
+.admin-panel,
+.login-card,
+.modal-content,
+.modal-content-edit,
+.modal-content-confirm,
+.modal-content-large,
+input,
+select,
+textarea,
+button,
+.btn,
+.food-item,
+.suggestion-item,
+.admin-table th,
+.admin-table td {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
@@ -4944,6 +4966,280 @@ body {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-bottom: 8px;
+}
+
+.achievement-description,
+.stat-summary-item,
+.cal-cell,
+.weekly-day-bar-wrap {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* =============================================================================
+   PROFILE & SECURITY MODAL ADDITIONS
+   ============================================================================= */
+
+.profile-section {
+    margin-bottom: 16px;
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.email-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.email-input-row input[type="email"] {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid var(--border-primary);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    transition: border-color 0.3s ease;
+}
+
+.email-input-row input[type="email"]:focus {
+    outline: none;
+    border-color: var(--border-focus);
+}
+
+.btn-sm {
+    padding: 8px 14px;
+    font-size: 14px;
+}
+
+.profile-meta {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.modal-divider {
+    border: none;
+    border-top: 1px solid var(--border-primary);
+    margin: 16px 0;
+}
+
+/* =============================================================================
+   30-DAY STATS SECTION (inside history card)
+   ============================================================================= */
+
+.stats-section {
+    margin-bottom: 20px;
+}
+
+.stats-heading {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 12px 0 8px;
+}
+
+.stats-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.stat-summary-item {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 12px 8px;
+    text-align: center;
+}
+
+.stat-summary-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    line-height: 1.2;
+}
+
+.stat-summary-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Weekly breakdown bars */
+.weekly-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.weekly-day {
+    display: grid;
+    grid-template-columns: 110px 1fr 80px;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.weekly-day-label {
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.weekly-day-bar-wrap {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.weekly-day-bar {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--accent-primary);
+    transition: width 0.4s ease;
+}
+
+.weekly-day.goal-met   .weekly-day-bar { background: var(--accent-success); }
+.weekly-day.goal-missed .weekly-day-bar { background: var(--accent-warning); }
+.weekly-day.no-data    .weekly-day-bar { width: 0 !important; }
+
+.weekly-day-kcal {
+    text-align: right;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.stats-divider {
+    border: none;
+    border-top: 1px solid var(--border-primary);
+    margin: 16px 0 0;
+}
+
+/* =============================================================================
+   MONTHLY CALENDAR
+   ============================================================================= */
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.calendar-month-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.calendar-legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-item::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.legend-met::before    { background: #d4edda; border: 1px solid var(--accent-success); }
+.legend-missed::before { background: #fff3cd; border: 1px solid var(--accent-warning); }
+.legend-empty::before  { background: var(--bg-secondary); border: 1px solid var(--border-primary); }
+
+.cal-grid-inner {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.cal-header {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 4px 0;
+}
+
+.cal-cell {
+    border-radius: 6px;
+    padding: 6px 4px 4px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.8rem;
+    cursor: default;
+    transition: background-color 0.2s ease;
+}
+
+.cal-cell.cal-blank {
+    background: transparent;
+    border-color: transparent;
+}
+
+.cal-cell.cal-today {
+    border-color: var(--accent-primary);
+    border-width: 2px;
+}
+
+.cal-cell.cal-goal-met {
+    background: #d4edda;
+    border-color: var(--accent-success);
+}
+
+.cal-cell.cal-goal-missed {
+    background: #fff3cd;
+    border-color: var(--accent-warning);
+}
+
+.cal-day-num {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.cal-kcal {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    text-align: center;
+    line-height: 1.1;
+}
+
+/* Dark mode overrides for calendar */
+body.dark-mode .cal-cell.cal-goal-met    { background: #1a3a22; border-color: #2d6a3a; }
+body.dark-mode .cal-cell.cal-goal-missed { background: #3a2f00; border-color: #7a6000; }
+body.dark-mode .legend-met::before    { background: #1a3a22; }
+body.dark-mode .legend-missed::before { background: #3a2f00; }
+
+@media (max-width: 480px) {
+    .cal-cell { min-height: 42px; padding: 4px 2px 2px; }
+    .cal-day-num { font-size: 0.75rem; }
+    .cal-kcal { display: none; }
+    .weekly-day { grid-template-columns: 80px 1fr 60px; }
+    .stats-summary-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .achievement-points {

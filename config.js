@@ -43,8 +43,11 @@ const CONFIG = {
     USER_STORAGE_KEY: 'calorieTrackerUser',
     
     // Debug logging (set to false in production for performance)
-    ENABLE_DEBUG_LOGGING: true, // Set to true to see detailed logs in console
+    ENABLE_DEBUG_LOGGING: false, // Set to true to see detailed logs in console
     
+    // Development mode (set to true to use offline/demo mode without backend)
+    DEVELOPMENT_MODE: false,
+
     // Offline mode settings (when backend is not available)
     ENABLE_OFFLINE_MODE: true,
     OFFLINE_STORAGE_KEY: 'calorieTrackerOffline'
