@@ -1093,12 +1093,21 @@ class CalorieTracker {
                     e.preventDefault();
                     const btn = target;
                     this._mealPhotoTargetId = Number(btn.dataset.targetId);
-                    const mealCat = btn.dataset.mealCat || '';
-                    const label = document.getElementById('imageAttachLabel');
-                    if (label) label.textContent = `📷 Adding photo — ${mealCat.charAt(0).toUpperCase() + mealCat.slice(1)}`;
-                    this._clearPendingImage(false);
-                    this.toggleImageAttachPanel(true);
-                    document.getElementById('imageAttachPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    // Directly open file picker / camera — no panel
+                    const mealFileInput = document.getElementById('imageFileInput');
+                    if (!mealFileInput) break;
+                    // One-shot handler: upload immediately on file selection
+                    const onFilePicked = async () => {
+                        mealFileInput.removeEventListener('change', onFilePicked);
+                        const file = mealFileInput.files[0];
+                        if (!file || !this._mealPhotoTargetId) return;
+                        const targetId = this._mealPhotoTargetId;
+                        this._mealPhotoTargetId = null;
+                        await this.uploadAndAttachImage(targetId, file, 'file');
+                        mealFileInput.value = '';
+                    };
+                    mealFileInput.addEventListener('change', onFilePicked);
+                    mealFileInput.click();
                     break;
                 }
 
