@@ -2074,6 +2074,7 @@ class CalorieTracker {
                 // Reset form
                 form.reset();
                 document.getElementById('quantity').value = 100;
+                this.initializeFoodForm();
 
             } catch (error) {
                 // Error notification is handled by apiCall
@@ -2222,6 +2223,7 @@ class CalorieTracker {
             // Reset form
             document.getElementById('foodForm').reset();
             document.getElementById('quantity').value = 100;
+            this.initializeFoodForm();
             this.selectedFoodData = null;
 
         } catch (error) {
