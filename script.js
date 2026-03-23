@@ -1101,12 +1101,13 @@ class CalorieTracker {
                     this.closeDeletePhotoModal();
                     break;
 
-                case 'confirm-delete-photo':
+                case 'confirm-delete-photo': {
                     e.preventDefault();
+                    const pendingId = this._pendingDeletePhotoLogId;
                     this.closeDeletePhotoModal();
-                    if (this._pendingDeletePhotoLogId) this.detachMealPhoto(this._pendingDeletePhotoLogId);
-                    this._pendingDeletePhotoLogId = null;
+                    if (pendingId) this.detachMealPhoto(pendingId);
                     break;
+                }
 
                 case 'open-meal-photo': {
                     e.preventDefault();
