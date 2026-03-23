@@ -2778,12 +2778,6 @@ class CalorieTracker {
                 const brandText = food.brand ? ` <span class="food-brand">by ${this.escapeHtml(food.brand)}</span>` : '';
                 const distText  = food.distributor ? ` <span class="food-dist">@ ${this.escapeHtml(food.distributor)}</span>` : '';
                 const timeText  = food.meal_time ? ` • ${food.meal_time}` : '';
-                const imgSrc    = food.image_url
-                    ? (food.image_url.startsWith('http') ? food.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + food.image_url)
-                    : null;
-                const imgHtml   = imgSrc
-                    ? `<img src="${this.escapeHtml(imgSrc)}?token=${this.authToken}" class="food-log-thumb" alt="Meal photo" loading="lazy">`
-                    : '';
                 const macroHtml = (food.protein != null || food.carbs != null || food.fat != null)
                     ? (() => {
                         const qty = parseFloat(food.quantity) || 0;
@@ -2795,7 +2789,6 @@ class CalorieTracker {
                     : '';
                 html += `
                 <div class="food-item">
-                    ${imgHtml}
                     <div class="food-info">
                         <div class="food-name">${escapedName}${brandText}${distText}${food.offline ? ' <span class="badge-offline">(Offline)</span>' : ''}</div>
                         <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit}${timeText}</div>
@@ -2808,6 +2801,15 @@ class CalorieTracker {
                     </div>
                 </div>`;
             });
+            // Render group photos below all items
+            const groupPhotos = items
+                .filter(f => f.image_url)
+                .map(f => f.image_url.startsWith('http') ? f.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + f.image_url);
+            if (groupPhotos.length) {
+                html += `<div class="meal-group-photos">${
+                    groupPhotos.map(src => `<img src="${this.escapeHtml(src)}?token=${this.authToken}" class="food-log-thumb" alt="Meal photo" loading="lazy">`).join('')
+                }</div>`;
+            }
             html += '</div>';
         });
 
