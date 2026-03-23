@@ -125,11 +125,6 @@
                             </div>
                             
                             <div class="input-group">
-                                <label for="logDate">Date</label>
-                                <input type="date" id="logDate" name="logDate" required>
-                            </div>
-                            
-                            <div class="input-group">
                                 <label for="mealCategory">Meal</label>
                                 <select id="mealCategory" name="mealCategory" required data-action="meal-category-change">
                                     <option value="breakfast">🌅 Breakfast</option>
@@ -143,6 +138,11 @@
                             <div class="input-group">
                                 <label for="mealTime">Time</label>
                                 <input type="time" id="mealTime" name="mealTime">
+                            </div>
+
+                            <div class="input-group">
+                                <label for="logDate">Date</label>
+                                <input type="date" id="logDate" name="logDate" required>
                             </div>
                         </div>
                         
@@ -184,33 +184,6 @@
                                 </label>
                             </div>
 
-                            <!-- Optional meal photo -->
-                            <div class="image-attach-row">
-                                <button type="button" class="btn btn-image-attach" data-action="toggle-image-attach">
-                                    📷 Add Photo
-                                </button>
-                                <span id="imageAttachLabel" class="image-attach-label"></span>
-                            </div>
-                            <div id="imageAttachPanel" class="image-attach-panel" style="display:none">
-                                <label class="image-tab-label">
-                                    <input type="radio" name="imageSource" value="file" checked> Upload file
-                                </label>
-                                <label class="image-tab-label">
-                                    <input type="radio" name="imageSource" value="url"> Image URL
-                                </label>
-                                <input type="file" id="imageFileInput" accept="image/*" style="display:none">
-                                <div id="imageFileArea" class="image-drop-area" data-action="open-image-file">
-                                    📂 Click to select image
-                                </div>
-                                <div id="imageUrlArea" style="display:none">
-                                    <input type="url" id="imageUrlInput" placeholder="https://example.com/photo.jpg" class="form-input">
-                                </div>
-                                <div id="imagePreviewWrap" style="display:none">
-                                    <img id="imagePreview" class="image-preview-thumb" alt="Preview">
-                                    <button type="button" class="btn-remove-image" data-action="remove-image-attach">×</button>
-                                </div>
-                            </div>
-                            <input type="hidden" id="pendingImageId">
                         </details>
                         
                         <button type="submit" class="btn btn-primary btn-add-food">+ Add Food</button>
@@ -228,6 +201,37 @@
                     <div id="foodLog" class="food-log">
                         <p class="empty-message">No food logged yet today. Start by adding your first meal!</p>
                     </div>
+
+                    <!-- Meal photo panel (opened from meal group headers) -->
+                    <div id="imageAttachPanel" class="image-attach-panel meal-photo-panel" style="display:none">
+                        <div class="meal-photo-panel-header">
+                            <span id="imageAttachLabel" class="meal-photo-context"></span>
+                            <button type="button" class="btn-close" data-action="remove-image-attach">×</button>
+                        </div>
+                        <div class="image-tab-row">
+                            <label class="image-tab-label">
+                                <input type="radio" name="imageSource" value="file" checked> Upload file
+                            </label>
+                            <label class="image-tab-label">
+                                <input type="radio" name="imageSource" value="url"> Image URL
+                            </label>
+                        </div>
+                        <input type="file" id="imageFileInput" accept="image/*" style="display:none">
+                        <div id="imageFileArea" class="image-drop-area" data-action="open-image-file">
+                            📂 Click to select image
+                        </div>
+                        <div id="imageUrlArea" style="display:none">
+                            <input type="url" id="imageUrlInput" placeholder="https://example.com/photo.jpg" class="form-input">
+                        </div>
+                        <div id="imagePreviewWrap" style="display:none">
+                            <img id="imagePreview" class="image-preview-thumb" alt="Preview">
+                            <div class="meal-photo-actions">
+                                <button type="button" class="btn-remove-image" data-action="remove-image-attach">✕ Remove</button>
+                                <button type="button" class="btn btn-primary btn-sm" data-action="attach-meal-photo">✓ Attach Photo</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="pendingImageId">
                 </div>
 
                 <!-- Calorie Tracking Chart -->

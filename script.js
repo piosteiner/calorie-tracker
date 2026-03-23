@@ -1085,7 +1085,26 @@ class CalorieTracker {
 
                 case 'remove-image-attach':
                     e.preventDefault();
+                    this._mealPhotoTargetId = null;
                     this._clearPendingImage();
+                    break;
+
+                case 'open-meal-photo': {
+                    e.preventDefault();
+                    const btn = target;
+                    this._mealPhotoTargetId = Number(btn.dataset.targetId);
+                    const mealCat = btn.dataset.mealCat || '';
+                    const label = document.getElementById('imageAttachLabel');
+                    if (label) label.textContent = `📷 Adding photo — ${mealCat.charAt(0).toUpperCase() + mealCat.slice(1)}`;
+                    this._clearPendingImage(false);
+                    this.toggleImageAttachPanel(true);
+                    document.getElementById('imageAttachPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    break;
+                }
+
+                case 'attach-meal-photo':
+                    e.preventDefault();
+                    this.attachMealPhoto();
                     break;
 
                 // ── Image attachment (edit modal) ──────────────────────────
@@ -2096,15 +2115,6 @@ class CalorieTracker {
                 // Reload data from server to get the accurate state (including rewards)
                 await this.loadTodaysData();
 
-                // If a pending image was selected, upload & attach it now
-                const pendingImageId = document.getElementById('pendingImageId')?.value;
-                if (!pendingImageId && this._pendingImageFile) {
-                    await this.uploadAndAttachImage(logResponse.logId, this._pendingImageFile, 'file');
-                } else if (!pendingImageId && this._pendingImageUrl) {
-                    await this.uploadAndAttachImage(logResponse.logId, this._pendingImageUrl, 'url');
-                }
-                this._clearPendingImage();
-                
                 logger.info('✅ Food log reloaded from backend after adding');
                 logger.info('=== FOOD LOGGING COMPLETED ===');
                 
@@ -2162,7 +2172,6 @@ class CalorieTracker {
                 form.reset();
                 document.getElementById('quantity').value = 100;
                 this.initializeFoodForm();
-                this._clearPendingImage();
 
             } catch (error) {
                 // Error notification is handled by apiCall
@@ -2722,10 +2731,12 @@ class CalorieTracker {
             if (!groups[cat]) return;
             const items = groups[cat];
             const groupTotal = items.reduce((s, f) => s + parseFloat(f.calories), 0);
+            const targetId = items[0].id;
             html += `<div class="meal-group">
                 <div class="meal-group-header">
                     <span class="meal-group-label">${MEAL_LABELS[cat]}</span>
                     <span class="meal-group-total">${Math.round(groupTotal)} kcal</span>
+                    <button class="btn-meal-photo" data-action="open-meal-photo" data-meal-cat="${cat}" data-target-id="${targetId}" title="Add photo to ${MEAL_LABELS[cat]}">📷</button>
                 </div>`;
             items.forEach(food => {
                 const escapedName = this.escapeHtml(this.capitalizeFirst(food.name));
@@ -8423,6 +8434,18 @@ class CalorieTracker {
             const panel = document.getElementById('imageAttachPanel');
             if (panel) panel.style.display = 'none';
         }
+    }
+
+    async attachMealPhoto() {
+        if (!this._mealPhotoTargetId) return;
+        const targetId = this._mealPhotoTargetId;
+        if (this._pendingImageFile) {
+            await this.uploadAndAttachImage(targetId, this._pendingImageFile, 'file');
+        } else if (this._pendingImageUrl) {
+            await this.uploadAndAttachImage(targetId, this._pendingImageUrl, 'url');
+        }
+        this._mealPhotoTargetId = null;
+        this._clearPendingImage();
     }
 
     // Upload image (file or URL) then attach to a log entry
