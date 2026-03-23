@@ -99,6 +99,20 @@
                     <div class="progress-bar">
                         <div class="progress-fill" id="calorieProgress"></div>
                     </div>
+                    <div class="macro-stats" id="macroStats" style="display:none">
+                        <div class="macro-stat">
+                            <span class="macro-value" id="totalProtein">0</span><span class="macro-unit">g</span>
+                            <span class="macro-label">Protein</span>
+                        </div>
+                        <div class="macro-stat">
+                            <span class="macro-value" id="totalCarbs">0</span><span class="macro-unit">g</span>
+                            <span class="macro-label">Carbs</span>
+                        </div>
+                        <div class="macro-stat">
+                            <span class="macro-value" id="totalFat">0</span><span class="macro-unit">g</span>
+                            <span class="macro-label">Fat</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Add Food Section -->
@@ -880,6 +894,9 @@
                                             <option value="Volg">Volg</option>
                                             <option value="Other">Other</option>
                                         </select>
+                                        <input type="number" id="piosFoodDBProtein" placeholder="Protein g/100g" min="0" max="100" step="0.1">
+                                        <input type="number" id="piosFoodDBCarbs" placeholder="Carbs g/100g" min="0" max="100" step="0.1">
+                                        <input type="number" id="piosFoodDBFat" placeholder="Fat g/100g" min="0" max="100" step="0.1">
                                         <button type="submit" class="btn btn-primary">Add Food</button>
                                     </div>
                                     <small style="color: var(--text-secondary); margin-top: 5px; display: block;">
@@ -924,6 +941,7 @@
                                             <th class="sortable" data-action="sort-foods-table" data-column="calories">
                                                 kcal/100g <span class="sort-indicator" id="sort-calories"></span>
                                             </th>
+                                            <th>P/C/F (g)</th>
                                             <th class="sortable" data-action="sort-foods-table" data-column="usage">
                                                 Usage Count <span class="sort-indicator" id="sort-usage"></span>
                                             </th>

@@ -2373,6 +2373,9 @@ class CalorieTracker {
                         image_id: log.image_id || null,
                         image_url: log.image_url || null,
                         share_token: log.share_token || null,
+                        protein: log.protein_per_100g != null ? parseFloat(log.protein_per_100g) : null,
+                        carbs:   log.carbs_per_100g   != null ? parseFloat(log.carbs_per_100g)   : null,
+                        fat:     log.fat_per_100g     != null ? parseFloat(log.fat_per_100g)     : null,
                         timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
                     };
                     logger.info('Mapped log entry:', mapped);
@@ -2382,6 +2385,16 @@ class CalorieTracker {
                 logger.info('🍽️ Mapped food log (length:', this.foodLog.length, '):', this.foodLog);
                 
                 this.dailyCalories = this.foodLog.reduce((sum, food) => sum + parseFloat(food.calories), 0);
+
+                // Compute daily macro totals (only from items that have macro data)
+                let macroProtein = 0, macroCarbs = 0, macroFat = 0, hasMacros = false;
+                this.foodLog.forEach(food => {
+                    const qty = parseFloat(food.quantity) || 0;
+                    if (food.protein != null) { macroProtein += (food.protein / 100) * qty; hasMacros = true; }
+                    if (food.carbs   != null) { macroCarbs   += (food.carbs   / 100) * qty; }
+                    if (food.fat     != null) { macroFat     += (food.fat     / 100) * qty; }
+                });
+                this.dailyMacros = hasMacros ? { protein: macroProtein, carbs: macroCarbs, fat: macroFat } : null;
                 
                 logger.info('🔢 Total daily calories calculated:', this.dailyCalories);
                 
@@ -2698,6 +2711,19 @@ class CalorieTracker {
         
         const progressPercent = Math.min((this.dailyCalories / this.calorieGoal) * 100, 100);
         document.getElementById('calorieProgress').style.width = progressPercent + '%';
+
+        // Macro totals
+        const macroStats = document.getElementById('macroStats');
+        if (macroStats) {
+            if (this.dailyMacros) {
+                document.getElementById('totalProtein').textContent = Math.round(this.dailyMacros.protein);
+                document.getElementById('totalCarbs').textContent   = Math.round(this.dailyMacros.carbs);
+                document.getElementById('totalFat').textContent     = Math.round(this.dailyMacros.fat);
+                macroStats.style.display = '';
+            } else {
+                macroStats.style.display = 'none';
+            }
+        }
     }
 
     updateFoodLog() {
@@ -2746,12 +2772,22 @@ class CalorieTracker {
                 const imgHtml   = food.image_url
                     ? `<img src="${this.escapeHtml(food.image_url)}?token=${this.getAuthToken()}" class="food-log-thumb" alt="Meal photo" loading="lazy">`
                     : '';
+                const macroHtml = (food.protein != null || food.carbs != null || food.fat != null)
+                    ? (() => {
+                        const qty = parseFloat(food.quantity) || 0;
+                        const p = food.protein != null ? Math.round((food.protein / 100) * qty) + 'g P' : null;
+                        const c = food.carbs   != null ? Math.round((food.carbs   / 100) * qty) + 'g C' : null;
+                        const f = food.fat     != null ? Math.round((food.fat     / 100) * qty) + 'g F' : null;
+                        return `<div class="food-macros">${[p,c,f].filter(Boolean).join(' · ')}</div>`;
+                    })()
+                    : '';
                 html += `
                 <div class="food-item">
                     ${imgHtml}
                     <div class="food-info">
                         <div class="food-name">${escapedName}${brandText}${distText}${food.offline ? ' <span class="badge-offline">(Offline)</span>' : ''}</div>
                         <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit}${timeText}</div>
+                        ${macroHtml}
                     </div>
                     <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
                     <div class="food-item-actions">
@@ -3175,6 +3211,13 @@ class CalorieTracker {
                                 <span class="food-item-name">${this.escapeHtml(log.food_name)}${brandText}${distributorText}</span>
                                 <span class="food-item-details">${Math.round(parseFloat(log.quantity))} ${log.unit}</span>
                                 <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} kcal</span>
+                                ${(log.protein_per_100g != null || log.carbs_per_100g != null || log.fat_per_100g != null) ? (() => {
+                                    const qty = parseFloat(log.quantity) || 0;
+                                    const p = log.protein_per_100g != null ? Math.round((parseFloat(log.protein_per_100g) / 100) * qty) + 'g P' : null;
+                                    const c = log.carbs_per_100g   != null ? Math.round((parseFloat(log.carbs_per_100g)   / 100) * qty) + 'g C' : null;
+                                    const f = log.fat_per_100g     != null ? Math.round((parseFloat(log.fat_per_100g)     / 100) * qty) + 'g F' : null;
+                                    return `<span class="food-macros">${[p,c,f].filter(Boolean).join(' · ')}</span>`;
+                                })() : ''}
                             </div>
                             <div class="food-item-actions">
                                 <button class="btn-icon btn-edit" data-action="edit-food-log" data-log-id="${log.id}" data-date="${date}" title="Edit">
@@ -4960,7 +5003,7 @@ class CalorieTracker {
             const message = this.adminData.filteredFoods !== null && this.adminData.filteredFoods !== undefined
                 ? 'No foods match your search'
                 : 'No foods in database yet';
-            foodsList.innerHTML = `<tr><td colspan="7" class="empty">${message}</td></tr>`;
+            foodsList.innerHTML = `<tr><td colspan="8" class="empty">${message}</td></tr>`;
             this.updateSortIndicators();
             return;
         }
@@ -4992,6 +5035,13 @@ class CalorieTracker {
                     data-field="calories" 
                     data-food-id="${food.id}"
                     data-original-value="${Math.round(food.calories)}">${Math.round(food.calories)}</td>
+                <td class="food-macro-cell">${
+                    (food.protein_per_100g != null || food.carbs_per_100g != null || food.fat_per_100g != null)
+                        ? [food.protein_per_100g != null ? Math.round(food.protein_per_100g)+'P' : '—',
+                           food.carbs_per_100g   != null ? Math.round(food.carbs_per_100g)+'C'   : '—',
+                           food.fat_per_100g     != null ? Math.round(food.fat_per_100g)+'F'     : '—'].join(' / ')
+                        : '—'
+                }</td>
                 <td>${food.usage_count || 0}</td>
                 <td class="action-buttons">
                     <button class="btn btn-small btn-edit" data-action="toggle-edit-mode" data-food-id="${food.id}">Edit</button>
@@ -5062,6 +5112,9 @@ class CalorieTracker {
             const calories = parseFloat(caloriesInput.value);
             const brand = document.getElementById('piosFoodDBBrand')?.value?.trim() || null;
             const distributor = document.getElementById('piosFoodDBDistributor')?.value || null;
+            const proteinVal = document.getElementById('piosFoodDBProtein')?.value;
+            const carbsVal   = document.getElementById('piosFoodDBCarbs')?.value;
+            const fatVal     = document.getElementById('piosFoodDBFat')?.value;
 
             // Try to save to backend first, fall back to local demo data if needed
             try {
@@ -5070,7 +5123,10 @@ class CalorieTracker {
                     name,
                     calories_per_100g: calories,
                     brand,
-                    distributor
+                    distributor,
+                    ...(proteinVal !== '' && proteinVal != null ? { protein_per_100g: parseFloat(proteinVal) } : {}),
+                    ...(carbsVal   !== '' && carbsVal   != null ? { carbs_per_100g:   parseFloat(carbsVal)   } : {}),
+                    ...(fatVal     !== '' && fatVal     != null ? { fat_per_100g:     parseFloat(fatVal)     } : {})
                 }, {
                     showLoading: true,
                     showSuccess: true,

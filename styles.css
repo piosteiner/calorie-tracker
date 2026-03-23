@@ -6297,6 +6297,72 @@ body.dark-mode .legend-missed::before { background: #3a2f00; }
     background: var(--bg-secondary);
 }
 
+/* =============================================================
+   MACRO STATS
+   ============================================================= */
+
+/* Daily macro totals bar (below progress bar) */
+.macro-stats {
+    display: flex;
+    gap: 0;
+    margin-top: 12px;
+    border-top: 1px solid var(--border-primary);
+    padding-top: 10px;
+}
+.macro-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 4px 0;
+    border-right: 1px solid var(--border-primary);
+}
+.macro-stat:last-child {
+    border-right: none;
+}
+.macro-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+.macro-unit {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.macro-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-top: 2px;
+}
+/* Color-code the three macros */
+.macro-stat:nth-child(1) .macro-value { color: #3b82f6; } /* protein — blue */
+.macro-stat:nth-child(2) .macro-value { color: #f59e0b; } /* carbs — amber */
+.macro-stat:nth-child(3) .macro-value { color: #ef4444; } /* fat — red */
+
+/* Per-item macro line in food log & history */
+.food-macros {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    letter-spacing: .02em;
+}
+.food-item-content .food-macros {
+    display: inline;
+    margin-left: 8px;
+}
+
+/* Admin table macro cell */
+.food-macro-cell {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 /* --- Meal photo panel (inside food-log-card) --- */
 .meal-photo-panel {
     margin-top: 12px;

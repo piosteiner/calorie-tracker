@@ -42,7 +42,12 @@ router.get('/', [
                 fl.share_token,
                 img.filename   AS image_filename,
                 img.type       AS image_type,
-                img.url        AS image_ext_url
+                img.url        AS image_ext_url,
+                COALESCE(fl.brand, f.brand)               AS brand,
+                COALESCE(fl.distributor, f.distributor)   AS distributor,
+                f.protein_per_100g,
+                f.carbs_per_100g,
+                f.fat_per_100g
             FROM food_logs fl
             LEFT JOIN foods  f   ON fl.food_id  = f.id
             LEFT JOIN images img ON fl.image_id = img.id
