@@ -8602,7 +8602,7 @@ class CalorieTracker {
             if (type === 'file') {
                 const formData = new FormData();
                 formData.append('image', source);
-                const resp = await fetch(`${CONFIG.API_BASE_URL}/api/images/upload`, {
+                const resp = await fetch(`${CONFIG.API_BASE_URL}/images/upload`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
                     body: formData
