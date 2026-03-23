@@ -190,8 +190,16 @@ async function main() {
     const results = await Promise.allSettled(
         tokens.map(token =>
             fetch(`${API}/share/log/${encodeURIComponent(token)}`)
-                .then(r => r.json())
-                .then(d => d.success ? { ...d.log, token } : null)
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
+                .then(d => {
+                    if (d.success && d.log) return { ...d.log, token };
+                    // some backends wrap in data
+                    if (d.data) return { ...d.data, token };
+                    return null;
+                })
                 .catch(() => null)
         )
     );
@@ -201,16 +209,16 @@ async function main() {
         .filter(Boolean);
 
     if (logs.length === 0) {
-        showError('No meals could be loaded — the link may have expired or been revoked.');
+        showError('No meals could be loaded — the link may have expired or been revoked. Make sure the backend migration (add_images_and_sharing.sql) has been run on the production database.');
         return;
     }
 
     // Group by date, then by meal category
     const byDate = {};
     logs.forEach(log => {
-        const date = log.log_date ? log.log_date.split('T')[0] : '?';
+        const date = log.log_date ? String(log.log_date).split('T')[0].split(' ')[0] : '?';
         if (!byDate[date]) byDate[date] = {};
-        const cat = log.meal_category || 'other';
+        const cat = (log.meal_category || 'other').toLowerCase();
         if (!byDate[date][cat]) byDate[date][cat] = [];
         byDate[date][cat].push(log);
     });

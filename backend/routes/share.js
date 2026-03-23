@@ -23,14 +23,10 @@ router.get('/log/:token', async (req, res) => {
                 fl.meal_category,
                 fl.meal_time,
                 fl.image_id,
-                img.filename   AS image_filename,
-                img.type       AS image_type,
-                img.url        AS image_url,
                 u.username
              FROM food_logs fl
-             LEFT JOIN foods    f   ON fl.food_id  = f.id
-             LEFT JOIN images  img  ON fl.image_id = img.id
-             LEFT JOIN users    u   ON fl.user_id  = u.id
+             LEFT JOIN foods f ON fl.food_id = f.id
+             LEFT JOIN users u ON fl.user_id = u.id
              WHERE fl.share_token = ?`,
             [req.params.token]
         );
