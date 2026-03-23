@@ -682,15 +682,59 @@ body {
     font-size: 1.05rem;
 }
 
+/* Meal groups in food log */
+.meal-group {
+    margin-bottom: 12px;
+}
+
+.meal-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 10px;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    border-left: 3px solid var(--accent-primary);
+}
+
+.meal-group-total {
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.food-item-actions {
+    display: flex;
+    gap: 5px;
+    margin-left: 10px;
+    flex-shrink: 0;
+}
+
+.edit-btn {
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.edit-btn:hover {
+    opacity: 0.85;
+}
+
 .delete-btn {
     background: var(--accent-danger);
     color: white;
     border: none;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.8rem;
-    margin-left: 10px;
 }
 
 .delete-btn:hover {

@@ -2271,6 +2271,8 @@ class CalorieTracker {
                         calories: parseFloat(log.calories),
                         brand: log.brand || null,
                         distributor: log.distributor || null,
+                        meal_category: log.meal_category || 'other',
+                        meal_time: log.meal_time ? log.meal_time.slice(0, 5) : null, // HH:MM
                         timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
                     };
                     logger.info('Mapped log entry:', mapped);
@@ -2600,26 +2602,62 @@ class CalorieTracker {
 
     updateFoodLog() {
         const foodLogDiv = document.getElementById('foodLog');
+        const today = new Date().toISOString().split('T')[0];
         
         if (this.foodLog.length === 0) {
             foodLogDiv.innerHTML = '<p class="empty-message">No food logged yet today. Start by adding your first meal!</p>';
             return;
         }
 
-        foodLogDiv.innerHTML = this.foodLog.map(food => {
-            const escapedName = this.escapeHtml(this.capitalizeFirst(food.name));
-            const brandText = food.brand ? ` by ${this.escapeHtml(food.brand)}` : '';
-            const distributorText = food.distributor ? ` @ ${this.escapeHtml(food.distributor)}` : '';
-            return `
-            <div class="food-item">
-                <div class="food-info">
-                    <div class="food-name">${escapedName}${brandText}${distributorText} ${food.offline ? '(Offline)' : ''}</div>
-                    <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit} • ${food.timestamp}</div>
-                </div>
-                <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
-                <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${this.escapeHtml(food.name)}" data-date="${new Date().toISOString().split('T')[0]}">×</button>
-            </div>
-        `;}).reverse().join('');
+        const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
+        const MEAL_LABELS = {
+            breakfast: '🌅 Breakfast',
+            lunch:     '☀️ Lunch',
+            dinner:    '🌙 Dinner',
+            snack:     '🍿 Snack',
+            other:     '📝 Other'
+        };
+
+        // Group by meal_category
+        const groups = {};
+        [...this.foodLog].reverse().forEach(food => {
+            const cat = food.meal_category || 'other';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(food);
+        });
+
+        let html = '';
+        MEAL_ORDER.forEach(cat => {
+            if (!groups[cat]) return;
+            const items = groups[cat];
+            const groupTotal = items.reduce((s, f) => s + parseFloat(f.calories), 0);
+            html += `<div class="meal-group">
+                <div class="meal-group-header">
+                    <span class="meal-group-label">${MEAL_LABELS[cat]}</span>
+                    <span class="meal-group-total">${Math.round(groupTotal)} kcal</span>
+                </div>`;
+            items.forEach(food => {
+                const escapedName = this.escapeHtml(this.capitalizeFirst(food.name));
+                const brandText = food.brand ? ` <span class="food-brand">by ${this.escapeHtml(food.brand)}</span>` : '';
+                const distText  = food.distributor ? ` <span class="food-dist">@ ${this.escapeHtml(food.distributor)}</span>` : '';
+                const timeText  = food.meal_time ? ` • ${food.meal_time}` : '';
+                html += `
+                <div class="food-item">
+                    <div class="food-info">
+                        <div class="food-name">${escapedName}${brandText}${distText}${food.offline ? ' <span class="badge-offline">(Offline)</span>' : ''}</div>
+                        <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit}${timeText}</div>
+                    </div>
+                    <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
+                    <div class="food-item-actions">
+                        <button class="edit-btn" data-action="edit-food-log" data-log-id="${food.id}" data-date="${today}" title="Edit">✏️</button>
+                        <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${this.escapeHtml(food.name)}" data-date="${today}">×</button>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+        });
+
+        foodLogDiv.innerHTML = html;
     }
 
     async deleteFood(foodId) {
@@ -3699,9 +3737,10 @@ class CalorieTracker {
             document.getElementById('editFoodLogId').value = log.id;
             document.getElementById('editFoodName').value = log.food_name;
             document.getElementById('editFoodQuantity').value = parseFloat(log.quantity);
-            // Unit is always 'g' now, so no need to populate unit field
             document.getElementById('editFoodCalories').value = parseFloat(log.calories);
             document.getElementById('editFoodDate').value = log.log_date.split('T')[0];
+            document.getElementById('editMealCategory').value = log.meal_category || 'other';
+            document.getElementById('editMealTime').value = log.meal_time ? log.meal_time.slice(0, 5) : '';
             
             // Update modal title
             document.getElementById('editModalTitle').textContent = 'Edit Food Log Entry';
@@ -3737,12 +3776,15 @@ class CalorieTracker {
         const { date, logId, isNew } = this.currentEditContext;
         
         // Get form data
+        const rawTime = document.getElementById('editMealTime').value; // HH:MM
         const foodData = {
             name: document.getElementById('editFoodName').value.trim(),
             quantity: parseFloat(document.getElementById('editFoodQuantity').value),
-            unit: 'g', // Always use grams since unit selector removed
+            unit: 'g',
             calories: parseFloat(document.getElementById('editFoodCalories').value),
-            logDate: document.getElementById('editFoodDate').value
+            logDate: document.getElementById('editFoodDate').value,
+            meal_category: document.getElementById('editMealCategory').value,
+            meal_time: rawTime ? `${rawTime}:00` : null
         };
         
         // Validate data
@@ -4005,7 +4047,9 @@ class CalorieTracker {
             quantity: foodData.quantity,
             unit: foodData.unit,
             calories: foodData.calories,
-            logDate: foodData.logDate
+            logDate: foodData.logDate,
+            meal_category: foodData.meal_category,
+            meal_time: foodData.meal_time
         });
         
         if (!response.success) {
