@@ -49,6 +49,9 @@
         }
 
         .meal-group { margin-bottom: 18px; }
+        .share-meal-photos { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0 4px; }
+        .share-meal-thumb { width: 160px; height: 160px; object-fit: cover; border-radius: 10px; cursor: pointer; border: 1px solid #ddd; transition: transform 0.15s; }
+        .share-meal-thumb:hover { transform: scale(1.03); }
         .meal-label {
             font-size: 0.8rem;
             font-weight: 600;
@@ -235,13 +238,9 @@ async function main() {
             const items = cats[cat];
             let itemsHtml = '';
             items.forEach(log => {
-                const imgHtml = log.image_url
-                    ? `<img data-auth-src="${esc(log.image_url)}" alt="Meal photo" class="share-meal-thumb">`
-                    : '';
                 const time = log.meal_time ? ` · ${log.meal_time.slice(0,5)}` : '';
                 itemsHtml += `
                     <div class="log-card">
-                        ${imgHtml}
                         <div class="log-info">
                             <div class="log-name">${esc(log.food_name)}</div>
                             <div class="log-details">${Math.round(log.quantity)} ${esc(log.unit || 'g')}${time}</div>
@@ -249,9 +248,16 @@ async function main() {
                         <div class="log-kcal">${Math.round(log.calories)} kcal</div>
                     </div>`;
             });
+            const groupPhotos = items
+                .filter(l => l.image_url)
+                .map(l => l.image_url);
+            const photosHtml = groupPhotos.length
+                ? `<div class="share-meal-photos">${groupPhotos.map(u => `<img data-auth-src="${esc(u)}" alt="Meal photo" class="share-meal-thumb">`).join('')}</div>`
+                : '';
             mealsHtml += `<div class="meal-group">
                 <div class="meal-label">${MEAL_LABELS[cat]}</div>
                 ${itemsHtml}
+                ${photosHtml}
             </div>`;
         });
 
