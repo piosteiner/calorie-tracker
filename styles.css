@@ -1112,6 +1112,11 @@ body {
 
 .modal-content-confirm {
     max-width: 400px;
+    background: #fff5f5;
+}
+
+[data-theme="dark"] .modal-content-confirm {
+    background: #2a1a1a;
 }
 
 @keyframes modalSlideIn {
