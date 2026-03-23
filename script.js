@@ -4439,6 +4439,18 @@ class CalorieTracker {
                     aVal = a.calories || 0;
                     bVal = b.calories || 0;
                     break;
+                case 'protein':
+                    aVal = a.protein_per_100g != null ? a.protein_per_100g : -1;
+                    bVal = b.protein_per_100g != null ? b.protein_per_100g : -1;
+                    break;
+                case 'carbs':
+                    aVal = a.carbs_per_100g != null ? a.carbs_per_100g : -1;
+                    bVal = b.carbs_per_100g != null ? b.carbs_per_100g : -1;
+                    break;
+                case 'fat':
+                    aVal = a.fat_per_100g != null ? a.fat_per_100g : -1;
+                    bVal = b.fat_per_100g != null ? b.fat_per_100g : -1;
+                    break;
                 case 'usage':
                     aVal = a.usage_count || 0;
                     bVal = b.usage_count || 0;

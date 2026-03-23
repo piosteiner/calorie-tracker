@@ -3600,6 +3600,7 @@ body {
     user-select: none;
     position: relative;
     transition: background 0.2s ease;
+    white-space: nowrap;
 }
 
 .admin-table th.sortable:hover {
