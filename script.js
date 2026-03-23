@@ -1092,9 +1092,21 @@ class CalorieTracker {
                 case 'delete-meal-photo': {
                     e.preventDefault();
                     const logId = Number(target.dataset.logId);
-                    if (logId) this.detachMealPhoto(logId);
+                    if (logId) this.openDeletePhotoModal(logId);
                     break;
                 }
+
+                case 'close-delete-photo-modal':
+                    e.preventDefault();
+                    this.closeDeletePhotoModal();
+                    break;
+
+                case 'confirm-delete-photo':
+                    e.preventDefault();
+                    this.closeDeletePhotoModal();
+                    if (this._pendingDeletePhotoLogId) this.detachMealPhoto(this._pendingDeletePhotoLogId);
+                    this._pendingDeletePhotoLogId = null;
+                    break;
 
                 case 'open-meal-photo': {
                     e.preventDefault();
@@ -2833,6 +2845,16 @@ class CalorieTracker {
 
         foodLogDiv.innerHTML = html;
         this._loadAuthImages(foodLogDiv);
+    }
+
+    openDeletePhotoModal(logId) {
+        this._pendingDeletePhotoLogId = logId;
+        document.getElementById('deletePhotoModal').style.display = 'flex';
+    }
+
+    closeDeletePhotoModal() {
+        document.getElementById('deletePhotoModal').style.display = 'none';
+        this._pendingDeletePhotoLogId = null;
     }
 
     async detachMealPhoto(logId) {
