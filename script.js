@@ -5738,6 +5738,12 @@ class CalorieTracker {
                 updateData.name = newValue;
             } else if (field === 'calories') {
                 updateData.calories_per_100g = parseFloat(newValue);
+            } else if (field === 'protein') {
+                updateData.protein_per_100g = newValue === '' ? null : parseFloat(newValue);
+            } else if (field === 'carbs') {
+                updateData.carbs_per_100g = newValue === '' ? null : parseFloat(newValue);
+            } else if (field === 'fat') {
+                updateData.fat_per_100g = newValue === '' ? null : parseFloat(newValue);
             }
             
             // Call API
@@ -5757,6 +5763,9 @@ class CalorieTracker {
                         food.calories = parseFloat(newValue);
                         food.calories_per_100g = parseFloat(newValue);
                     }
+                    if (field === 'protein') food.protein_per_100g = newValue === '' ? null : parseFloat(newValue);
+                    if (field === 'carbs')   food.carbs_per_100g   = newValue === '' ? null : parseFloat(newValue);
+                    if (field === 'fat')     food.fat_per_100g     = newValue === '' ? null : parseFloat(newValue);
                 }
                 
                 // Remove saved indicator after animation
