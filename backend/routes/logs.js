@@ -578,12 +578,6 @@ router.get('/range', [
             });
         }
 
-        if (daysDiff > 90) {
-            return res.status(400).json({
-                error: 'Date range cannot exceed 90 days'
-            });
-        }
-
         // Get all logs for the date range
         const logs = await db.query(`
             SELECT 

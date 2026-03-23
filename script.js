@@ -8721,7 +8721,13 @@ class CalorieTracker {
         try {
             // Fetch all logs in range
             const resp = await this.apiCall(`/logs/range?start_date=${startDate}&end_date=${endDate}`);
-            const logs  = resp.logs || resp.data?.logs || [];
+            // resp.data is { "YYYY-MM-DD": { logs: [...], ... }, ... }
+            const logs = [];
+            if (resp.data && typeof resp.data === 'object') {
+                for (const dayData of Object.values(resp.data)) {
+                    if (Array.isArray(dayData.logs)) logs.push(...dayData.logs);
+                }
+            }
 
             if (logs.length === 0) {
                 this.showMessage('No meals found in the selected date range', 'warning');
