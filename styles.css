@@ -3604,7 +3604,8 @@ body {
 }
 
 .admin-table th.sortable:hover {
-    background: var(--bg-hover);
+    background: color-mix(in srgb, var(--accent-danger) 80%, black 20%);
+    color: white;
 }
 
 .admin-table th.sortable:active {
