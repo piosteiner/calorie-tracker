@@ -8720,7 +8720,7 @@ class CalorieTracker {
 
         try {
             // Fetch all logs in range
-            const resp = await this.apiCall(`/logs/range?startDate=${startDate}&endDate=${endDate}`);
+            const resp = await this.apiCall(`/logs/range?start_date=${startDate}&end_date=${endDate}`);
             const logs  = resp.logs || resp.data?.logs || [];
 
             if (logs.length === 0) {
