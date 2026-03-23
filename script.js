@@ -5003,7 +5003,7 @@ class CalorieTracker {
             const message = this.adminData.filteredFoods !== null && this.adminData.filteredFoods !== undefined
                 ? 'No foods match your search'
                 : 'No foods in database yet';
-            foodsList.innerHTML = `<tr><td colspan="8" class="empty">${message}</td></tr>`;
+            foodsList.innerHTML = `<tr><td colspan="10" class="empty">${message}</td></tr>`;
             this.updateSortIndicators();
             return;
         }
@@ -5035,13 +5035,18 @@ class CalorieTracker {
                     data-field="calories" 
                     data-food-id="${food.id}"
                     data-original-value="${Math.round(food.calories)}">${Math.round(food.calories)}</td>
-                <td class="food-macro-cell">${
-                    (food.protein_per_100g != null || food.carbs_per_100g != null || food.fat_per_100g != null)
-                        ? [food.protein_per_100g != null ? Math.round(food.protein_per_100g)+'P' : '—',
-                           food.carbs_per_100g   != null ? Math.round(food.carbs_per_100g)+'C'   : '—',
-                           food.fat_per_100g     != null ? Math.round(food.fat_per_100g)+'F'     : '—'].join(' / ')
-                        : '—'
-                }</td>
+                <td class="editable-cell" 
+                    data-field="protein" 
+                    data-food-id="${food.id}"
+                    data-original-value="${food.protein_per_100g != null ? food.protein_per_100g : ''}">${food.protein_per_100g != null ? food.protein_per_100g : '—'}</td>
+                <td class="editable-cell" 
+                    data-field="carbs" 
+                    data-food-id="${food.id}"
+                    data-original-value="${food.carbs_per_100g != null ? food.carbs_per_100g : ''}">${food.carbs_per_100g != null ? food.carbs_per_100g : '—'}</td>
+                <td class="editable-cell" 
+                    data-field="fat" 
+                    data-food-id="${food.id}"
+                    data-original-value="${food.fat_per_100g != null ? food.fat_per_100g : ''}">${food.fat_per_100g != null ? food.fat_per_100g : '—'}</td>
                 <td>${food.usage_count || 0}</td>
                 <td class="action-buttons">
                     <button class="btn btn-small btn-edit" data-action="toggle-edit-mode" data-food-id="${food.id}">Edit</button>
@@ -5206,10 +5211,15 @@ class CalorieTracker {
                     this.cancelRowEdit(foodId);
                 }
                 
-                // For calories field, only allow numbers
-                if (e.target.dataset.field === 'calories') {
-                    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape'];
-                    if (!allowedKeys.includes(e.key) && (e.key < '0' || e.key > '9')) {
+                // For calories/macro fields, only allow numbers and decimal point
+                const numericFields = ['calories', 'protein', 'carbs', 'fat'];
+                if (numericFields.includes(e.target.dataset.field)) {
+                    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Escape', '.'];
+                    if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
+                        e.preventDefault();
+                    }
+                    // Prevent second decimal point
+                    if (e.key === '.' && e.target.textContent.includes('.')) {
                         e.preventDefault();
                     }
                 }
@@ -5230,16 +5240,25 @@ class CalorieTracker {
         const caloriesCell = row.querySelector('[data-field="calories"]');
         const brandCell = row.querySelector('[data-field="brand"]');
         const distributorCell = row.querySelector('[data-field="distributor"]');
+        const proteinCell = row.querySelector('[data-field="protein"]');
+        const carbsCell = row.querySelector('[data-field="carbs"]');
+        const fatCell = row.querySelector('[data-field="fat"]');
         
         // Enable contenteditable
         nameCell.contentEditable = 'true';
         caloriesCell.contentEditable = 'true';
         brandCell.contentEditable = 'true';
         distributorCell.contentEditable = 'true';
+        proteinCell.contentEditable = 'true';
+        carbsCell.contentEditable = 'true';
+        fatCell.contentEditable = 'true';
         nameCell.classList.add('editing');
         caloriesCell.classList.add('editing');
         brandCell.classList.add('editing');
         distributorCell.classList.add('editing');
+        proteinCell.classList.add('editing');
+        carbsCell.classList.add('editing');
+        fatCell.classList.add('editing');
         
         // Toggle button visibility
         const editBtn = row.querySelector('[data-action="toggle-edit-mode"]');
@@ -5274,16 +5293,25 @@ class CalorieTracker {
         const caloriesCell = row.querySelector('[data-field="calories"]');
         const brandCell = row.querySelector('[data-field="brand"]');
         const distributorCell = row.querySelector('[data-field="distributor"]');
+        const proteinCell = row.querySelector('[data-field="protein"]');
+        const carbsCell = row.querySelector('[data-field="carbs"]');
+        const fatCell = row.querySelector('[data-field="fat"]');
         
         const newName = nameCell.textContent.trim();
         const newCalories = caloriesCell.textContent.trim();
         const newBrand = brandCell.textContent.trim();
         const newDistributor = distributorCell.textContent.trim();
+        const newProtein = proteinCell.textContent.trim().replace('—', '');
+        const newCarbs = carbsCell.textContent.trim().replace('—', '');
+        const newFat = fatCell.textContent.trim().replace('—', '');
         
         const originalName = nameCell.dataset.originalValue;
         const originalCalories = caloriesCell.dataset.originalValue;
         const originalBrand = brandCell.dataset.originalValue;
         const originalDistributor = distributorCell.dataset.originalValue;
+        const originalProtein = proteinCell.dataset.originalValue;
+        const originalCarbs = carbsCell.dataset.originalValue;
+        const originalFat = fatCell.dataset.originalValue;
         
         // Validate
         if (!newName) {
@@ -5299,13 +5327,25 @@ class CalorieTracker {
             return;
         }
         
+        // Validate macros (optional — blank means null)
+        for (const [label, val, cell] of [['Protein', newProtein, proteinCell], ['Carbs', newCarbs, carbsCell], ['Fat', newFat, fatCell]]) {
+            if (val !== '' && (isNaN(parseFloat(val)) || parseFloat(val) < 0 || parseFloat(val) > 100)) {
+                this.notifications.error(`${label} must be a number between 0 and 100`);
+                cell.focus();
+                return;
+            }
+        }
+
         // Check if anything changed
         const nameChanged = newName !== originalName;
         const caloriesChanged = newCalories !== originalCalories;
         const brandChanged = newBrand !== originalBrand;
         const distributorChanged = newDistributor !== originalDistributor;
+        const proteinChanged = newProtein !== originalProtein;
+        const carbsChanged = newCarbs !== originalCarbs;
+        const fatChanged = newFat !== originalFat;
         
-        if (!nameChanged && !caloriesChanged && !brandChanged && !distributorChanged) {
+        if (!nameChanged && !caloriesChanged && !brandChanged && !distributorChanged && !proteinChanged && !carbsChanged && !fatChanged) {
             logger.info('No changes detected, disabling edit mode');
             this.disableEditMode(foodId);
             return;
@@ -5316,6 +5356,9 @@ class CalorieTracker {
         caloriesCell.classList.add('saving');
         brandCell.classList.add('saving');
         distributorCell.classList.add('saving');
+        proteinCell.classList.add('saving');
+        carbsCell.classList.add('saving');
+        fatCell.classList.add('saving');
         
         try {
             // Prepare update data
@@ -5323,7 +5366,10 @@ class CalorieTracker {
                 name: newName,
                 calories_per_100g: parseFloat(newCalories),
                 brand: newBrand === '-' ? null : newBrand,
-                distributor: newDistributor === '-' ? null : newDistributor
+                distributor: newDistributor === '-' ? null : newDistributor,
+                protein_per_100g: newProtein !== '' ? parseFloat(newProtein) : null,
+                carbs_per_100g:   newCarbs   !== '' ? parseFloat(newCarbs)   : null,
+                fat_per_100g:     newFat     !== '' ? parseFloat(newFat)     : null
             };
             
             // Call API with enhanced notifications
@@ -5337,6 +5383,9 @@ class CalorieTracker {
             caloriesCell.dataset.originalValue = newCalories;
             brandCell.dataset.originalValue = newBrand;
             distributorCell.dataset.originalValue = newDistributor;
+            proteinCell.dataset.originalValue = newProtein;
+            carbsCell.dataset.originalValue = newCarbs;
+            fatCell.dataset.originalValue = newFat;
             
             // Update local cache
             const food = this.adminData.foods.find(f => f.id == foodId);
@@ -5346,6 +5395,9 @@ class CalorieTracker {
                 food.calories_per_100g = parseFloat(newCalories);
                 food.brand = newBrand === '-' ? null : newBrand;
                 food.distributor = newDistributor === '-' ? null : newDistributor;
+                food.protein_per_100g = newProtein !== '' ? parseFloat(newProtein) : null;
+                food.carbs_per_100g   = newCarbs   !== '' ? parseFloat(newCarbs)   : null;
+                food.fat_per_100g     = newFat     !== '' ? parseFloat(newFat)     : null;
             }
             
             // Show visual success feedback
@@ -5353,16 +5405,25 @@ class CalorieTracker {
             caloriesCell.classList.remove('saving');
             brandCell.classList.remove('saving');
             distributorCell.classList.remove('saving');
+            proteinCell.classList.remove('saving');
+            carbsCell.classList.remove('saving');
+            fatCell.classList.remove('saving');
             nameCell.classList.add('saved');
             caloriesCell.classList.add('saved');
             brandCell.classList.add('saved');
             distributorCell.classList.add('saved');
+            proteinCell.classList.add('saved');
+            carbsCell.classList.add('saved');
+            fatCell.classList.add('saved');
             
             setTimeout(() => {
                 nameCell.classList.remove('saved');
                 caloriesCell.classList.remove('saved');
                 brandCell.classList.remove('saved');
                 distributorCell.classList.remove('saved');
+                proteinCell.classList.remove('saved');
+                carbsCell.classList.remove('saved');
+                fatCell.classList.remove('saved');
             }, 1500);
             
             // Disable edit mode
@@ -5377,6 +5438,9 @@ class CalorieTracker {
             caloriesCell.classList.remove('saving');
             brandCell.classList.remove('saving');
             distributorCell.classList.remove('saving');
+            proteinCell.classList.remove('saving');
+            carbsCell.classList.remove('saving');
+            fatCell.classList.remove('saving');
         }
     }
 
@@ -5391,12 +5455,18 @@ class CalorieTracker {
         const caloriesCell = row.querySelector('[data-field="calories"]');
         const brandCell = row.querySelector('[data-field="brand"]');
         const distributorCell = row.querySelector('[data-field="distributor"]');
+        const proteinCell = row.querySelector('[data-field="protein"]');
+        const carbsCell = row.querySelector('[data-field="carbs"]');
+        const fatCell = row.querySelector('[data-field="fat"]');
         
         // Revert to original values
         nameCell.textContent = nameCell.dataset.originalValue;
         caloriesCell.textContent = caloriesCell.dataset.originalValue;
-        brandCell.textContent = brandCell.dataset.originalValue;
-        distributorCell.textContent = distributorCell.dataset.originalValue;
+        brandCell.textContent = brandCell.dataset.originalValue || '-';
+        distributorCell.textContent = distributorCell.dataset.originalValue || '-';
+        proteinCell.textContent = proteinCell.dataset.originalValue !== '' ? proteinCell.dataset.originalValue : '—';
+        carbsCell.textContent   = carbsCell.dataset.originalValue   !== '' ? carbsCell.dataset.originalValue   : '—';
+        fatCell.textContent     = fatCell.dataset.originalValue     !== '' ? fatCell.dataset.originalValue     : '—';
         
         // Disable edit mode
         this.disableEditMode(foodId);
@@ -5415,16 +5485,25 @@ class CalorieTracker {
         const caloriesCell = row.querySelector('[data-field="calories"]');
         const brandCell = row.querySelector('[data-field="brand"]');
         const distributorCell = row.querySelector('[data-field="distributor"]');
+        const proteinCell = row.querySelector('[data-field="protein"]');
+        const carbsCell = row.querySelector('[data-field="carbs"]');
+        const fatCell = row.querySelector('[data-field="fat"]');
         
         // Disable contenteditable
         nameCell.contentEditable = 'false';
         caloriesCell.contentEditable = 'false';
         brandCell.contentEditable = 'false';
         distributorCell.contentEditable = 'false';
+        proteinCell.contentEditable = 'false';
+        carbsCell.contentEditable = 'false';
+        fatCell.contentEditable = 'false';
         nameCell.classList.remove('editing');
         caloriesCell.classList.remove('editing');
         brandCell.classList.remove('editing');
         distributorCell.classList.remove('editing');
+        proteinCell.classList.remove('editing');
+        carbsCell.classList.remove('editing');
+        fatCell.classList.remove('editing');
         
         // Toggle button visibility
         const editBtn = row.querySelector('[data-action="toggle-edit-mode"]');
