@@ -1,5 +1,6 @@
 const express = require('express');
 const { body, query, param, validationResult } = require('express-validator');
+const crypto = require('crypto');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
 const PointsService = require('../services/pointsService');
@@ -36,12 +37,36 @@ router.get('/', [
                 fl.logged_at as updated_at,
                 fl.log_date,
                 fl.meal_category,
-                fl.meal_time
+                fl.meal_time,
+                fl.image_id,
+                fl.share_token,
+                img.filename   AS image_filename,
+                img.type       AS image_type,
+                img.url        AS image_ext_url
             FROM food_logs fl
-            LEFT JOIN foods f ON fl.food_id = f.id
+            LEFT JOIN foods  f   ON fl.food_id  = f.id
+            LEFT JOIN images img ON fl.image_id = img.id
             WHERE fl.user_id = ? AND fl.log_date = ?
             ORDER BY fl.meal_time ASC, fl.logged_at DESC
         `, [req.user.id, date]);
+
+        // Attach public-accessible image URL to each log
+        const CONFIG_API = process.env.API_BASE_URL || '';
+        logs.forEach(log => {
+            if (log.image_id) {
+                if (log.image_type === 'url') {
+                    log.image_url = log.image_ext_url;
+                } else {
+                    // Private: served via /api/images/file/:filename (JWT required)
+                    log.image_url = `${CONFIG_API}/api/images/file/${log.image_filename}`;
+                }
+            } else {
+                log.image_url = null;
+            }
+            delete log.image_filename;
+            delete log.image_type;
+            delete log.image_ext_url;
+        });
 
         // Group logs by meal category
         const grouped = {
@@ -91,7 +116,8 @@ router.post('/', [
     body('calories').isInt({ min: 0 }).withMessage('Calories must be a positive whole number (kcal)'),
     body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format'),
     body('meal_category').optional().isIn(['breakfast', 'lunch', 'dinner', 'snack', 'other']).withMessage('Invalid meal category'),
-    body('meal_time').optional().matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/).withMessage('Meal time must be in HH:MM:SS format')
+    body('meal_time').optional().matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/).withMessage('Meal time must be in HH:MM:SS format'),
+    body('image_id').optional({ nullable: true }).isInt({ min: 1 }).withMessage('image_id must be a positive integer')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -102,7 +128,7 @@ router.post('/', [
             });
         }
 
-        const { foodId, name, quantity, unit, calories, meal_category, meal_time } = req.body;
+        const { foodId, name, quantity, unit, calories, meal_category, meal_time, image_id } = req.body;
         const logDate = req.body.logDate || new Date().toISOString().split('T')[0];
         
         // Validate log_date is not in the future
@@ -165,9 +191,9 @@ router.post('/', [
 
         // Create the food log entry with enhanced data
         const result = await db.query(`
-            INSERT INTO food_logs (user_id, food_id, name, quantity, unit, calories, log_date, meal_category, meal_time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate, mealCategory, mealTime]);
+            INSERT INTO food_logs (user_id, food_id, name, quantity, unit, calories, log_date, meal_category, meal_time, image_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate, mealCategory, mealTime, image_id || null]);
         
         // Award points for logging food (only for same-day logs)
         let pointsAwarded = 0;
@@ -327,7 +353,8 @@ router.put('/:id', [
     body('calories').optional().isInt({ min: 0 }).withMessage('Calories must be a positive whole number (kcal)'),
     body('logDate').optional().isISO8601().withMessage('Log date must be in YYYY-MM-DD format'),
     body('meal_category').optional().isIn(['breakfast', 'lunch', 'dinner', 'snack', 'other']).withMessage('Invalid meal category'),
-    body('meal_time').optional().matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/).withMessage('Meal time must be in HH:MM:SS format')
+    body('meal_time').optional().matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/).withMessage('Meal time must be in HH:MM:SS format'),
+    body('image_id').optional({ nullable: true }).custom(v => v === null || Number.isInteger(Number(v))).withMessage('image_id must be null or a positive integer')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -339,7 +366,7 @@ router.put('/:id', [
         }
 
         const { id } = req.params;
-        const { foodId, name, quantity, unit, calories, logDate, meal_category, meal_time } = req.body;
+        const { foodId, name, quantity, unit, calories, logDate, meal_category, meal_time, image_id } = req.body;
 
         // First, verify the log exists and belongs to the user
         const existingLog = await db.query(
@@ -415,6 +442,12 @@ router.put('/:id', [
         if (meal_time !== undefined) {
             updates.push('meal_time = ?');
             values.push(meal_time);
+        }
+
+        if (image_id !== undefined) {
+            // null means detach; a number means attach
+            updates.push('image_id = ?');
+            values.push(image_id === null ? null : Number(image_id));
         }
 
         // If no fields to update
@@ -820,6 +853,57 @@ router.get('/dates', [
         res.status(500).json({
             error: 'Failed to retrieve food log dates'
         });
+    }
+});
+
+// Generate a share token for a food log entry
+router.post('/:id/share', [
+    param('id').isInt({ min: 1 }).withMessage('Valid log ID is required')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'Invalid log ID' });
+
+    try {
+        const rows = await db.query(
+            'SELECT id, share_token FROM food_logs WHERE id = ? AND user_id = ?',
+            [req.params.id, req.user.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Food log entry not found' });
+
+        // Reuse existing token or generate a new one
+        let token = rows[0].share_token;
+        if (!token) {
+            token = crypto.randomBytes(32).toString('hex'); // 256 bits
+            await db.query(
+                'UPDATE food_logs SET share_token = ? WHERE id = ? AND user_id = ?',
+                [token, req.params.id, req.user.id]
+            );
+        }
+
+        res.json({ success: true, token });
+    } catch (err) {
+        console.error('Generate share token error:', err);
+        res.status(500).json({ error: 'Failed to generate share token' });
+    }
+});
+
+// Revoke the share token for a food log entry
+router.delete('/:id/share', [
+    param('id').isInt({ min: 1 }).withMessage('Valid log ID is required')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'Invalid log ID' });
+
+    try {
+        const result = await db.query(
+            'UPDATE food_logs SET share_token = NULL WHERE id = ? AND user_id = ?',
+            [req.params.id, req.user.id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Food log entry not found' });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Revoke share token error:', err);
+        res.status(500).json({ error: 'Failed to revoke share token' });
     }
 });
 

@@ -19,6 +19,9 @@ const adminDatabaseRoutes = require('./routes/adminDatabase');
 const userFoodsRoutes = require('./routes/userFoods');
 const weightRoutes = require('./routes/weight');
 const rewardsRoutes = require('./routes/rewards');
+const imageRoutes = require('./routes/images');
+const shareRoutes  = require('./routes/share');
+const imageCleanup = require('./jobs/imageCleanup');
 const db = require('./database');
 
 const app = express();
@@ -88,6 +91,8 @@ app.use('/api/logs', logRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/weight', weightRoutes);
 app.use('/api/rewards', rewardsRoutes);
+app.use('/api/images', imageRoutes);
+app.use('/api/share', shareRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/foods', adminFoodsRoutes);
 app.use('/api/admin/database', adminDatabaseRoutes);
@@ -130,6 +135,9 @@ async function startServer() {
         // Test database connection before starting server
         await db.query('SELECT 1');
         console.log('✅ Database connection successful');
+        
+        // Start scheduled jobs
+        imageCleanup.start();
         
         const server = app.listen(PORT, () => {
             console.log(`🚀 Calorie Tracker API running on port ${PORT}`);

@@ -1071,6 +1071,64 @@ class CalorieTracker {
                     e.preventDefault();
                     this.handleUpdateEmail();
                     break;
+
+                // ── Image attachment (add form) ────────────────────────────
+                case 'toggle-image-attach':
+                    e.preventDefault();
+                    this.toggleImageAttachPanel();
+                    break;
+
+                case 'open-image-file':
+                    e.preventDefault();
+                    document.getElementById('imageFileInput')?.click();
+                    break;
+
+                case 'remove-image-attach':
+                    e.preventDefault();
+                    this._clearPendingImage();
+                    break;
+
+                // ── Image attachment (edit modal) ──────────────────────────
+                case 'toggle-edit-image-panel':
+                    e.preventDefault();
+                    this.toggleEditImagePanel();
+                    break;
+
+                case 'open-edit-image-file':
+                    e.preventDefault();
+                    document.getElementById('editImageFileInput')?.click();
+                    break;
+
+                case 'remove-edit-image':
+                    e.preventDefault();
+                    this._clearEditImage();
+                    break;
+
+                case 'remove-edit-image-preview':
+                    e.preventDefault();
+                    this._clearEditImagePreview();
+                    break;
+
+                // ── Share modal ────────────────────────────────────────────
+                case 'open-share-modal':
+                    e.preventDefault();
+                    this.openShareModal();
+                    break;
+
+                case 'close-share-modal':
+                    e.preventDefault();
+                    this.closeShareModal();
+                    break;
+
+                case 'generate-share-link':
+                    e.preventDefault();
+                    this.generateShareLink();
+                    break;
+
+                case 'copy-share-link':
+                    e.preventDefault();
+                    this.copyShareLink();
+                    break;
             }
         });
         
@@ -2037,6 +2095,15 @@ class CalorieTracker {
                 logger.info('🔄 Reloading today\'s data from backend...');
                 // Reload data from server to get the accurate state (including rewards)
                 await this.loadTodaysData();
+
+                // If a pending image was selected, upload & attach it now
+                const pendingImageId = document.getElementById('pendingImageId')?.value;
+                if (!pendingImageId && this._pendingImageFile) {
+                    await this.uploadAndAttachImage(logResponse.logId, this._pendingImageFile, 'file');
+                } else if (!pendingImageId && this._pendingImageUrl) {
+                    await this.uploadAndAttachImage(logResponse.logId, this._pendingImageUrl, 'url');
+                }
+                this._clearPendingImage();
                 
                 logger.info('✅ Food log reloaded from backend after adding');
                 logger.info('=== FOOD LOGGING COMPLETED ===');
@@ -2095,6 +2162,7 @@ class CalorieTracker {
                 form.reset();
                 document.getElementById('quantity').value = 100;
                 this.initializeFoodForm();
+                this._clearPendingImage();
 
             } catch (error) {
                 // Error notification is handled by apiCall
@@ -2293,6 +2361,9 @@ class CalorieTracker {
                         distributor: log.distributor || null,
                         meal_category: log.meal_category || 'other',
                         meal_time: log.meal_time ? log.meal_time.slice(0, 5) : null, // HH:MM
+                        image_id: log.image_id || null,
+                        image_url: log.image_url || null,
+                        share_token: log.share_token || null,
                         timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
                     };
                     logger.info('Mapped log entry:', mapped);
@@ -2661,8 +2732,12 @@ class CalorieTracker {
                 const brandText = food.brand ? ` <span class="food-brand">by ${this.escapeHtml(food.brand)}</span>` : '';
                 const distText  = food.distributor ? ` <span class="food-dist">@ ${this.escapeHtml(food.distributor)}</span>` : '';
                 const timeText  = food.meal_time ? ` • ${food.meal_time}` : '';
+                const imgHtml   = food.image_url
+                    ? `<img src="${this.escapeHtml(food.image_url)}?token=${this.getAuthToken()}" class="food-log-thumb" alt="Meal photo" loading="lazy">`
+                    : '';
                 html += `
                 <div class="food-item">
+                    ${imgHtml}
                     <div class="food-info">
                         <div class="food-name">${escapedName}${brandText}${distText}${food.offline ? ' <span class="badge-offline">(Offline)</span>' : ''}</div>
                         <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit}${timeText}</div>
@@ -3761,9 +3836,26 @@ class CalorieTracker {
             document.getElementById('editFoodDate').value = log.log_date.split('T')[0];
             document.getElementById('editMealCategory').value = log.meal_category || 'other';
             document.getElementById('editMealTime').value = log.meal_time ? log.meal_time.slice(0, 5) : '';
-            
-            // Update modal title
-            document.getElementById('editModalTitle').textContent = 'Edit Food Log Entry';
+
+            // Reset image state
+            this._editPendingFile = null;
+            this._editPendingUrl  = null;
+            this._editRemoveImage = false;
+            this._editCurrentImageId = log.image_id || null;
+            const editCurrentImageEl = document.getElementById('editCurrentImage');
+            const editThumb = document.getElementById('editImageThumb');
+            const editBtnLabel = document.getElementById('editImageBtnLabel');
+            const editPanel = document.getElementById('editImagePanel');
+            if (editPanel) { editPanel.style.display = 'none'; editPanel._bound = false; }
+            this._clearEditImagePreview();
+            if (log.image_url && editCurrentImageEl && editThumb) {
+                editThumb.src = `${log.image_url}?token=${this.getAuthToken()}`;
+                editCurrentImageEl.style.display = '';
+                if (editBtnLabel) editBtnLabel.textContent = 'Change Photo';
+            } else {
+                if (editCurrentImageEl) editCurrentImageEl.style.display = 'none';
+                if (editBtnLabel) editBtnLabel.textContent = 'Add Photo';
+            }
             
             // Show modal
             const modal = document.getElementById('editFoodLogModal');
@@ -3785,6 +3877,11 @@ class CalorieTracker {
         const modal = document.getElementById('editFoodLogModal');
         modal.style.display = 'none';
         this.currentEditContext = null;
+        // Reset image edit state
+        this._editPendingFile = null;
+        this._editPendingUrl  = null;
+        this._editRemoveImage = false;
+        this._editCurrentImageId = null;
     }
 
     /**
@@ -3815,14 +3912,23 @@ class CalorieTracker {
         }
         
         try {
+            let savedLogId = logId;
             if (isNew) {
-                // Create new entry
-                await this.createFoodLogEntry(foodData);
+                const newEntry = await this.createFoodLogEntry(foodData);
+                savedLogId = newEntry?.logId || newEntry?.id || logId;
                 this.showMessage('Food log entry added successfully', 'success');
             } else {
-                // Update existing entry
                 await this.updateFoodLogEntry(logId, foodData);
                 this.showMessage('Food log entry updated successfully', 'success');
+            }
+
+            // Handle image changes
+            if (this._editRemoveImage) {
+                await this.apiCall(`/logs/${savedLogId}`, 'PUT', { image_id: null });
+            } else if (this._editPendingFile) {
+                await this.uploadAndAttachImage(savedLogId, this._editPendingFile, 'file');
+            } else if (this._editPendingUrl) {
+                await this.uploadAndAttachImage(savedLogId, this._editPendingUrl, 'url');
             }
             
             // Close modal
@@ -8236,6 +8342,258 @@ class CalorieTracker {
         }
 
         grid.innerHTML = `<div class="cal-grid-inner">${headers}${blanks}${dayCells.join('')}</div>`;
+    }
+
+    // ── Auth token helper ───────────────────────────────────────────────────
+    getAuthToken() {
+        return localStorage.getItem('authToken') || '';
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // IMAGE ATTACHMENT (Add-food form)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    toggleImageAttachPanel() {
+        const panel = document.getElementById('imageAttachPanel');
+        if (!panel) return;
+        const open = panel.style.display === 'none' || !panel.style.display;
+        panel.style.display = open ? 'block' : 'none';
+
+        // Wire up events the first time the panel is opened
+        if (open && !panel._bound) {
+            panel._bound = true;
+            const fileInput = document.getElementById('imageFileInput');
+            const fileArea  = document.getElementById('imageFileArea');
+            const urlInput  = document.getElementById('imageUrlInput');
+
+            // Radio switch
+            panel.querySelectorAll('input[name="imageSource"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const isFile = radio.value === 'file';
+                    document.getElementById('imageFileArea').style.display  = isFile ? '' : 'none';
+                    document.getElementById('imageUrlArea').style.display   = isFile ? 'none' : '';
+                    this._clearPendingImage(false);
+                });
+            });
+
+            // File selected
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files[0];
+                if (!file) return;
+                this._pendingImageFile = file;
+                this._pendingImageUrl  = null;
+                const url = URL.createObjectURL(file);
+                this._showImagePreview('imagePreview', 'imagePreviewWrap', url);
+                document.getElementById('imageAttachLabel').textContent = file.name;
+            });
+
+            // URL input
+            urlInput.addEventListener('blur', () => {
+                const val = urlInput.value.trim();
+                if (val) {
+                    this._pendingImageUrl  = val;
+                    this._pendingImageFile = null;
+                    this._showImagePreview('imagePreview', 'imagePreviewWrap', val);
+                    document.getElementById('imageAttachLabel').textContent = 'URL';
+                }
+            });
+        }
+    }
+
+    _showImagePreview(imgId, wrapId, src) {
+        const wrap = document.getElementById(wrapId);
+        const img  = document.getElementById(imgId);
+        if (!wrap || !img) return;
+        img.src = src;
+        wrap.style.display = '';
+    }
+
+    _clearPendingImage(closePanel = true) {
+        this._pendingImageFile = null;
+        this._pendingImageUrl  = null;
+        const fileInput = document.getElementById('imageFileInput');
+        if (fileInput) fileInput.value = '';
+        const urlInput = document.getElementById('imageUrlInput');
+        if (urlInput) urlInput.value = '';
+        const wrap = document.getElementById('imagePreviewWrap');
+        if (wrap) wrap.style.display = 'none';
+        const label = document.getElementById('imageAttachLabel');
+        if (label) label.textContent = '';
+        if (closePanel) {
+            const panel = document.getElementById('imageAttachPanel');
+            if (panel) panel.style.display = 'none';
+        }
+    }
+
+    // Upload image (file or URL) then attach to a log entry
+    async uploadAndAttachImage(logId, source, type) {
+        try {
+            let imageId;
+            if (type === 'file') {
+                const formData = new FormData();
+                formData.append('image', source);
+                const resp = await fetch(`${CONFIG.API_BASE_URL}/api/images/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+                    body: formData
+                });
+                const data = await resp.json();
+                if (!data.success) throw new Error(data.error || 'Image upload failed');
+                imageId = data.image.id;
+            } else {
+                const data = await this.apiCall('/images/url', 'POST', { url: source });
+                if (!data.success) throw new Error(data.error || 'Image URL save failed');
+                imageId = data.image.id;
+            }
+            // Attach to log
+            await this.apiCall(`/logs/${logId}`, 'PUT', { image_id: imageId });
+            await this.loadTodaysData();
+        } catch (err) {
+            console.error('Image attach error:', err);
+            this.showMessage('Photo could not be attached: ' + err.message, 'warning');
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // IMAGE ATTACHMENT (Edit modal)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    toggleEditImagePanel() {
+        const panel = document.getElementById('editImagePanel');
+        if (!panel) return;
+        const open = panel.style.display === 'none' || !panel.style.display;
+        panel.style.display = open ? 'block' : 'none';
+
+        if (open && !panel._bound) {
+            panel._bound = true;
+            const fileInput = document.getElementById('editImageFileInput');
+
+            panel.querySelectorAll('input[name="editImageSource"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const isFile = radio.value === 'file';
+                    document.getElementById('editImageFileArea').style.display = isFile ? '' : 'none';
+                    document.getElementById('editImageUrlArea').style.display  = isFile ? 'none' : '';
+                    this._clearEditImagePreview();
+                });
+            });
+
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files[0];
+                if (!file) return;
+                this._editPendingFile = file;
+                this._editPendingUrl  = null;
+                this._showImagePreview('editImagePreview', 'editImagePreviewWrap', URL.createObjectURL(file));
+            });
+
+            const urlInput = document.getElementById('editImageUrlInput');
+            urlInput.addEventListener('blur', () => {
+                const val = urlInput.value.trim();
+                if (val) {
+                    this._editPendingUrl  = val;
+                    this._editPendingFile = null;
+                    this._showImagePreview('editImagePreview', 'editImagePreviewWrap', val);
+                }
+            });
+        }
+    }
+
+    _clearEditImage() {
+        // Mark image for removal on save
+        this._editRemoveImage = true;
+        this._editPendingFile = null;
+        this._editPendingUrl  = null;
+        document.getElementById('editCurrentImage').style.display = 'none';
+        document.getElementById('editImageBtnLabel').textContent = 'Add Photo';
+    }
+
+    _clearEditImagePreview() {
+        this._editPendingFile = null;
+        this._editPendingUrl  = null;
+        const fileInput = document.getElementById('editImageFileInput');
+        if (fileInput) fileInput.value = '';
+        const urlInput = document.getElementById('editImageUrlInput');
+        if (urlInput) urlInput.value = '';
+        const wrap = document.getElementById('editImagePreviewWrap');
+        if (wrap) wrap.style.display = 'none';
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SHARE MODAL
+    // ══════════════════════════════════════════════════════════════════════════
+
+    openShareModal() {
+        const today = new Date().toISOString().split('T')[0];
+        const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0];
+        const start = document.getElementById('shareStartDate');
+        const end   = document.getElementById('shareEndDate');
+        if (start && !start.value) start.value = weekAgo;
+        if (end   && !end.value)   end.value   = today;
+        document.getElementById('shareLinkResult').style.display = 'none';
+        document.getElementById('shareModal').style.display = 'flex';
+    }
+
+    closeShareModal() {
+        document.getElementById('shareModal').style.display = 'none';
+    }
+
+    async generateShareLink() {
+        const startDate = document.getElementById('shareStartDate')?.value;
+        const endDate   = document.getElementById('shareEndDate')?.value;
+        if (!startDate || !endDate) {
+            this.showMessage('Please select both a start and end date', 'error');
+            return;
+        }
+        if (startDate > endDate) {
+            this.showMessage('Start date must be before end date', 'error');
+            return;
+        }
+
+        try {
+            // Fetch all logs in range
+            const resp = await this.apiCall(`/logs/range?startDate=${startDate}&endDate=${endDate}`);
+            const logs  = resp.logs || resp.data?.logs || [];
+
+            if (logs.length === 0) {
+                this.showMessage('No meals found in the selected date range', 'warning');
+                return;
+            }
+
+            // Generate a share token for each log entry
+            const tokens = [];
+            for (const log of logs) {
+                const tokenResp = await this.apiCall(`/logs/${log.id}/share`, 'POST');
+                if (tokenResp.success && tokenResp.token) {
+                    tokens.push(tokenResp.token);
+                }
+            }
+
+            if (tokens.length === 0) {
+                this.showMessage('Failed to generate share tokens', 'error');
+                return;
+            }
+
+            const base = window.location.origin;
+            const url  = `${base}/share.html?t=${tokens.join(',')}&from=${startDate}&to=${endDate}`;
+
+            document.getElementById('shareLinkInput').value = url;
+            document.getElementById('shareLinkResult').style.display = '';
+        } catch (err) {
+            console.error('Generate share link error:', err);
+            this.showMessage('Failed to generate share link: ' + err.message, 'error');
+        }
+    }
+
+    async copyShareLink() {
+        const input = document.getElementById('shareLinkInput');
+        if (!input?.value) return;
+        try {
+            await navigator.clipboard.writeText(input.value);
+            this.showMessage('Link copied to clipboard!', 'success');
+        } catch {
+            input.select();
+            document.execCommand('copy');
+            this.showMessage('Link copied!', 'success');
+        }
     }
 }
 
