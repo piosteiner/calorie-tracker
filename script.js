@@ -1089,6 +1089,13 @@ class CalorieTracker {
                     this._clearPendingImage();
                     break;
 
+                case 'delete-meal-photo': {
+                    e.preventDefault();
+                    const logId = Number(target.dataset.logId);
+                    if (logId) await this.detachMealPhoto(logId);
+                    break;
+                }
+
                 case 'open-meal-photo': {
                     e.preventDefault();
                     const btn = target;
@@ -2804,10 +2811,17 @@ class CalorieTracker {
             // Render group photos below all items
             const groupPhotos = items
                 .filter(f => f.image_url)
-                .map(f => f.image_url.startsWith('http') ? f.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + f.image_url);
+                .map(f => ({
+                    logId: f.id,
+                    src: f.image_url.startsWith('http') ? f.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + f.image_url
+                }));
             if (groupPhotos.length) {
                 html += `<div class="meal-group-photos">${
-                    groupPhotos.map(src => `<img data-auth-src="${this.escapeHtml(src)}" class="food-log-thumb" alt="Meal photo" loading="lazy">`).join('')
+                    groupPhotos.map(({ logId, src }) => `
+                        <div class="meal-photo-wrap">
+                            <img data-auth-src="${this.escapeHtml(src)}" class="food-log-thumb" alt="Meal photo" loading="lazy">
+                            <button class="meal-photo-delete" data-action="delete-meal-photo" data-log-id="${logId}" title="Remove photo">×</button>
+                        </div>`).join('')
                 }</div>`;
             }
             html += '</div>';
@@ -2819,6 +2833,16 @@ class CalorieTracker {
 
         foodLogDiv.innerHTML = html;
         this._loadAuthImages(foodLogDiv);
+    }
+
+    async detachMealPhoto(logId) {
+        try {
+            await this.apiCall(`/logs/${logId}`, 'PUT', { image_id: null });
+            await this.loadTodaysData();
+        } catch (err) {
+            console.error('Failed to remove photo:', err);
+            this.showMessage('Could not remove photo: ' + err.message, 'warning');
+        }
     }
 
     _loadAuthImages(container) {
