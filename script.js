@@ -8738,8 +8738,9 @@ class CalorieTracker {
             const tokens = [];
             for (const log of logs) {
                 const tokenResp = await this.apiCall(`/logs/${log.id}/share`, 'POST');
-                if (tokenResp.success && tokenResp.token) {
-                    tokens.push(tokenResp.token);
+                const token = tokenResp.share_token || tokenResp.token;
+                if (token) {
+                    tokens.push(token);
                 }
             }
 
