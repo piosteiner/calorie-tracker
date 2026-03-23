@@ -2778,8 +2778,11 @@ class CalorieTracker {
                 const brandText = food.brand ? ` <span class="food-brand">by ${this.escapeHtml(food.brand)}</span>` : '';
                 const distText  = food.distributor ? ` <span class="food-dist">@ ${this.escapeHtml(food.distributor)}</span>` : '';
                 const timeText  = food.meal_time ? ` • ${food.meal_time}` : '';
-                const imgHtml   = food.image_url
-                    ? `<img src="${this.escapeHtml(food.image_url)}?token=${this.authToken}" class="food-log-thumb" alt="Meal photo" loading="lazy">`
+                const imgSrc    = food.image_url
+                    ? (food.image_url.startsWith('http') ? food.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + food.image_url)
+                    : null;
+                const imgHtml   = imgSrc
+                    ? `<img src="${this.escapeHtml(imgSrc)}?token=${this.authToken}" class="food-log-thumb" alt="Meal photo" loading="lazy">`
                     : '';
                 const macroHtml = (food.protein != null || food.carbs != null || food.fat != null)
                     ? (() => {
@@ -3912,7 +3915,8 @@ class CalorieTracker {
             if (editPanel) { editPanel.style.display = 'none'; editPanel._bound = false; }
             this._clearEditImagePreview();
             if (log.image_url && editCurrentImageEl && editThumb) {
-                editThumb.src = `${log.image_url}?token=${this.getAuthToken()}`;
+                const _imgSrc = log.image_url.startsWith('http') ? log.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + log.image_url;
+                editThumb.src = `${_imgSrc}?token=${this.authToken}`;
                 editCurrentImageEl.style.display = '';
                 if (editBtnLabel) editBtnLabel.textContent = 'Change Photo';
             } else {
