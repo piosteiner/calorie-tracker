@@ -2807,13 +2807,34 @@ class CalorieTracker {
                 .map(f => f.image_url.startsWith('http') ? f.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + f.image_url);
             if (groupPhotos.length) {
                 html += `<div class="meal-group-photos">${
-                    groupPhotos.map(src => `<img src="${this.escapeHtml(src)}?token=${this.authToken}" class="food-log-thumb" alt="Meal photo" loading="lazy">`).join('')
+                    groupPhotos.map(src => `<img data-auth-src="${this.escapeHtml(src)}" class="food-log-thumb" alt="Meal photo" loading="lazy">`).join('')
                 }</div>`;
             }
             html += '</div>';
         });
 
+        // Revoke previous blob URLs to prevent memory leaks
+        (this._foodImageBlobUrls || []).forEach(u => URL.revokeObjectURL(u));
+        this._foodImageBlobUrls = [];
+
         foodLogDiv.innerHTML = html;
+        this._loadAuthImages(foodLogDiv);
+    }
+
+    _loadAuthImages(container) {
+        container.querySelectorAll('img[data-auth-src]').forEach(async img => {
+            const src = img.dataset.authSrc;
+            try {
+                const resp = await fetch(src, { headers: { Authorization: `Bearer ${this.authToken}` } });
+                if (!resp.ok) return;
+                const blob = await resp.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                (this._foodImageBlobUrls = this._foodImageBlobUrls || []).push(blobUrl);
+                img.src = blobUrl;
+            } catch (e) {
+                console.warn('Failed to load meal image:', src, e);
+            }
+        });
     }
 
     async deleteFood(foodId) {
@@ -3918,7 +3939,10 @@ class CalorieTracker {
             this._clearEditImagePreview();
             if (log.image_url && editCurrentImageEl && editThumb) {
                 const _imgSrc = log.image_url.startsWith('http') ? log.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + log.image_url;
-                editThumb.src = `${_imgSrc}?token=${this.authToken}`;
+                editThumb.src = '';
+                fetch(_imgSrc, { headers: { Authorization: `Bearer ${this.authToken}` } })
+                    .then(r => r.ok ? r.blob() : null)
+                    .then(blob => { if (blob) editThumb.src = URL.createObjectURL(blob); });
                 editCurrentImageEl.style.display = '';
                 if (editBtnLabel) editBtnLabel.textContent = 'Change Photo';
             } else {
