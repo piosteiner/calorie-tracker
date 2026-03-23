@@ -3618,6 +3618,8 @@ body {
     font-weight: bold;
     color: var(--accent-primary);
     min-width: 12px;
+    font-size: 16px;
+    text-shadow: 0 0 4px currentColor;
 }
 
 /* =============================================================================
