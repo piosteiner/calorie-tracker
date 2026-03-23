@@ -236,7 +236,7 @@ async function main() {
             let itemsHtml = '';
             items.forEach(log => {
                 const imgHtml = log.image_url
-                    ? `<img src="${esc(log.image_url)}" alt="Meal photo" onclick="openLightbox(this.src)">`
+                    ? `<img data-auth-src="${esc(log.image_url)}" alt="Meal photo" class="share-meal-thumb">`
                     : '';
                 const time = log.meal_time ? ` · ${log.meal_time.slice(0,5)}` : '';
                 itemsHtml += `
@@ -267,6 +267,22 @@ async function main() {
         ? `<p class="meta">Shared by <strong>${esc(sharedBy)}</strong> · ${logs.length} meal${logs.length !== 1 ? 's' : ''}</p>`
         : '';
     content.innerHTML = metaHtml + html;
+
+    // Load images via CORS fetch to bypass CORP restriction
+    content.querySelectorAll('img[data-auth-src]').forEach(async img => {
+        const rawSrc = img.dataset.authSrc;
+        const src = rawSrc.startsWith('http') ? rawSrc : new URL(rawSrc, API).href;
+        try {
+            const resp = await fetch(src);
+            if (!resp.ok) return;
+            const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            img.src = blobUrl;
+            img.onclick = () => openLightbox(blobUrl);
+        } catch (e) {
+            console.warn('Failed to load meal image:', src, e);
+        }
+    });
 }
 
 function showError(msg) {
