@@ -4571,16 +4571,16 @@ class CalorieTracker {
                     bVal = b.calories || 0;
                     break;
                 case 'protein':
-                    aVal = a.protein_per_100g != null ? a.protein_per_100g : -1;
-                    bVal = b.protein_per_100g != null ? b.protein_per_100g : -1;
+                    aVal = a.protein_per_100g != null ? parseFloat(a.protein_per_100g) : -1;
+                    bVal = b.protein_per_100g != null ? parseFloat(b.protein_per_100g) : -1;
                     break;
                 case 'carbs':
-                    aVal = a.carbs_per_100g != null ? a.carbs_per_100g : -1;
-                    bVal = b.carbs_per_100g != null ? b.carbs_per_100g : -1;
+                    aVal = a.carbs_per_100g != null ? parseFloat(a.carbs_per_100g) : -1;
+                    bVal = b.carbs_per_100g != null ? parseFloat(b.carbs_per_100g) : -1;
                     break;
                 case 'fat':
-                    aVal = a.fat_per_100g != null ? a.fat_per_100g : -1;
-                    bVal = b.fat_per_100g != null ? b.fat_per_100g : -1;
+                    aVal = a.fat_per_100g != null ? parseFloat(a.fat_per_100g) : -1;
+                    bVal = b.fat_per_100g != null ? parseFloat(b.fat_per_100g) : -1;
                     break;
                 case 'usage':
                     aVal = a.usage_count || 0;
@@ -5181,15 +5181,15 @@ class CalorieTracker {
                 <td class="editable-cell" 
                     data-field="protein" 
                     data-food-id="${food.id}"
-                    data-original-value="${food.protein_per_100g != null ? food.protein_per_100g : ''}">${food.protein_per_100g != null ? food.protein_per_100g : '—'}</td>
+                    data-original-value="${food.protein_per_100g != null ? food.protein_per_100g : ''}">${food.protein_per_100g != null ? parseFloat(food.protein_per_100g).toFixed(1) : '—'}</td>
                 <td class="editable-cell" 
                     data-field="carbs" 
                     data-food-id="${food.id}"
-                    data-original-value="${food.carbs_per_100g != null ? food.carbs_per_100g : ''}">${food.carbs_per_100g != null ? food.carbs_per_100g : '—'}</td>
+                    data-original-value="${food.carbs_per_100g != null ? food.carbs_per_100g : ''}">${food.carbs_per_100g != null ? parseFloat(food.carbs_per_100g).toFixed(1) : '—'}</td>
                 <td class="editable-cell" 
                     data-field="fat" 
                     data-food-id="${food.id}"
-                    data-original-value="${food.fat_per_100g != null ? food.fat_per_100g : ''}">${food.fat_per_100g != null ? food.fat_per_100g : '—'}</td>
+                    data-original-value="${food.fat_per_100g != null ? food.fat_per_100g : ''}">${food.fat_per_100g != null ? parseFloat(food.fat_per_100g).toFixed(1) : '—'}</td>
                 <td>${food.usage_count || 0}</td>
                 <td class="action-buttons">
                     <button class="btn btn-small btn-edit" data-action="toggle-edit-mode" data-food-id="${food.id}">Edit</button>
