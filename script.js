@@ -3247,7 +3247,6 @@ class CalorieTracker {
             const dateObj = new Date(day.log_date);
             const displayDate = this.formatHistoryDate(dateObj);
             const calories = Math.round(parseFloat(day.total_calories || 0));
-            const mealsCount = parseInt(day.meals_count || 0);
             const dailyGoal = Math.round(parseFloat(day.daily_goal || 2000));
             const goalPercent = Math.round((calories / dailyGoal) * 100);
 
@@ -3260,8 +3259,6 @@ class CalorieTracker {
                                 <span class="calories">${calories.toLocaleString()} kcal</span>
                                 <span class="separator">•</span>
                                 <span class="goal">Goal: ${dailyGoal.toLocaleString()} kcal (${goalPercent}%)</span>
-                                <span class="separator">•</span>
-                                <span class="meals">${mealsCount} meal${mealsCount !== 1 ? 's' : ''}</span>
                             </p>
                         </div>
                         <button class="btn btn-view-details" data-action="view-day-details" data-date="${date}">
@@ -4257,9 +4254,8 @@ class CalorieTracker {
                 // Update meals count
                 const mealsSpan = dayCard.querySelector('.day-stats .meals');
                 if (mealsSpan) {
-                    const currentMeals = parseInt(mealsSpan.textContent.replace(/[^\d]/g, '')) || 0;
-                    const newMeals = Math.max(0, currentMeals - 1);
-                    mealsSpan.textContent = `${newMeals} meal${newMeals !== 1 ? 's' : ''}`;
+                    mealsSpan.closest('.separator')?.remove();
+                    mealsSpan.remove();
                 }
             }
         } catch (error) {
@@ -4281,13 +4277,8 @@ class CalorieTracker {
                     
                     // Update day summary
                     const calsStat = dayCard.querySelector('.day-stats .calories');
-                    const mealsStat = dayCard.querySelector('.day-stats .meals');
                     if (calsStat) {
                         calsStat.textContent = `${Math.round(response.totalCalories).toLocaleString()} kcal`;
-                    }
-                    if (mealsStat) {
-                        const count = response.logs.length;
-                        mealsStat.textContent = `${count} meal${count !== 1 ? 's' : ''}`;
                     }
                 }
             }

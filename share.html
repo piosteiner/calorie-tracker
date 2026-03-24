@@ -187,7 +187,7 @@ async function main() {
     // Set header period info
     const periodEl = document.getElementById('headerMeta');
     if (from && to) periodEl.textContent = `${formatDate(from)} — ${formatDate(to)}`;
-    else periodEl.textContent = `${tokens.length} meal${tokens.length !== 1 ? 's' : ''} shared`;
+    else periodEl.textContent = '';
 
     // Fetch all log entries in parallel
     const results = await Promise.allSettled(
