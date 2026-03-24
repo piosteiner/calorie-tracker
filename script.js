@@ -2787,10 +2787,26 @@ class CalorieTracker {
             const items = groups[cat];
             const groupTotal = items.reduce((s, f) => s + parseFloat(f.calories), 0);
             const targetId = items[0].id;
+
+            // Compute group macro totals
+            let gP = 0, gC = 0, gF = 0, gHasMacros = false;
+            items.forEach(f => {
+                const qty = parseFloat(f.quantity) || 0;
+                if (f.protein != null) { gP += (f.protein / 100) * qty; gHasMacros = true; }
+                if (f.carbs   != null) { gC += (f.carbs   / 100) * qty; }
+                if (f.fat     != null) { gF += (f.fat     / 100) * qty; }
+            });
+            const groupMacroHtml = gHasMacros
+                ? `<span class="meal-group-macros">${Math.round(gP)}g P &middot; ${Math.round(gC)}g C &middot; ${Math.round(gF)}g F</span>`
+                : '';
+
             html += `<div class="meal-group">
                 <div class="meal-group-header">
                     <span class="meal-group-label">${MEAL_LABELS[cat]}</span>
-                    <span class="meal-group-total">${Math.round(groupTotal)} kcal</span>
+                    <div class="meal-group-right">
+                        <span class="meal-group-total">${Math.round(groupTotal)} kcal</span>
+                        ${groupMacroHtml}
+                    </div>
                     <button class="btn-meal-photo" data-action="open-meal-photo" data-meal-cat="${cat}" data-target-id="${targetId}" title="Add photo to ${MEAL_LABELS[cat]}">📷</button>
                 </div>`;
             items.forEach(food => {
