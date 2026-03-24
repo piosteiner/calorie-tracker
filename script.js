@@ -4073,7 +4073,13 @@ class CalorieTracker {
             
             // Close modal
             this.closeEditFoodLogModal();
-            
+
+            // Refresh today's dashboard food log immediately
+            const today = new Date().toISOString().split('T')[0];
+            if (foodData.logDate === today || date === today) {
+                await this.loadTodaysData();
+            }
+
             // Refresh the day view if still expanded
             const originalDate = date;
             const newDate = foodData.logDate;
