@@ -270,7 +270,7 @@ async function main() {
     const content = document.getElementById('content');
     const sharedBy = logs[0]?.shared_by;
     const metaHtml = sharedBy
-        ? `<p class="meta">Shared by <strong>${esc(sharedBy)}</strong> · ${logs.length} meal${logs.length !== 1 ? 's' : ''}</p>`
+        ? `<p class="meta">Shared by <strong>${esc(sharedBy)}</strong></p>`
         : '';
     content.innerHTML = metaHtml + html;
 
