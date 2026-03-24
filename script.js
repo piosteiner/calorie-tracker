@@ -2545,8 +2545,8 @@ class CalorieTracker {
         // Create enhanced suggestions with comprehensive info
         const suggestions = matches.slice(0, CONFIG.MAX_SUGGESTIONS || 10).map(food => {
             const sourceIcon = this.getSourceIcon(food.source);
-            const brandText = food.brand ? ` by ${food.brand}` : '';
-            const distributorText = food.distributor ? ` @ ${food.distributor}` : '';
+            const brandText = food.brand ? ` by ${this.escapeHtml(food.brand)}` : '';
+            const distributorText = food.distributor ? ` @ ${this.escapeHtml(food.distributor)}` : '';
             const nutritionText = this.getNutritionText(food);
             const sourceText = this.getSourceText(food.source);
             
@@ -2664,8 +2664,8 @@ class CalorieTracker {
             this.hideFoodSuggestions();
         } catch (error) {
             logger.error('Error selecting enhanced food:', error);
-            // Fallback to simple selection
-            this.selectFood(foodName);
+            // Fallback: clear selection state so the user can retry
+            this.hideFoodSuggestions();
         }
     }
 
@@ -4199,6 +4199,12 @@ class CalorieTracker {
             // Close modal
             this.closeDeleteConfirmModal();
             
+            // Sync in-memory model if the deleted entry was today
+            const today = new Date().toISOString().split('T')[0];
+            if (date === today) {
+                await this.loadTodaysData();
+            }
+
             // Refresh the day view to ensure data consistency
             if (this.historyData.expandedDays.has(date)) {
                 await this.refreshDayDetails(date);
@@ -8868,14 +8874,20 @@ class CalorieTracker {
                 return;
             }
 
-            // Generate a share token for each log entry
-            const tokens = [];
-            for (const log of logs) {
-                const tokenResp = await this.apiCall(`/logs/${log.id}/share`, 'POST');
-                const token = tokenResp.share_token || tokenResp.token;
-                if (token) {
-                    tokens.push(token);
-                }
+            // Generate a share token for each log entry (parallel)
+            const btn = document.querySelector('[data-action="generate-share-link"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+            let tokens = [];
+            try {
+                const tokenResps = await Promise.all(
+                    logs.map(log => this.apiCall(`/logs/${log.id}/share`, 'POST').catch(() => null))
+                );
+                tokens = tokenResps
+                    .filter(Boolean)
+                    .map(r => r.share_token || r.token)
+                    .filter(Boolean);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Generate Link'; }
             }
 
             if (tokens.length === 0) {
@@ -8912,7 +8924,7 @@ class CalorieTracker {
 let app;
 
 logger.debug('🟣 Script loaded, document.readyState:', document.readyState);
-logger.debug('🔖 Script version: 2025-10-09-v2 (meal_time HH:MM:SS fix)');
+
 
 if (document.readyState === 'loading') {
     // DOM is still loading
@@ -8922,7 +8934,6 @@ if (document.readyState === 'loading') {
         logger.debug('🟣 CalorieTracker instance created');
         app.init(); // Call init() after DOM is ready
         logger.debug('🟣 CalorieTracker.init() called');
-        window.app = app;
     });
 } else {
     // DOM is already loaded
@@ -8931,5 +8942,4 @@ if (document.readyState === 'loading') {
     logger.debug('🟣 CalorieTracker instance created');
     app.init(); // Call init() after DOM is ready
     logger.debug('🟣 CalorieTracker.init() called');
-    window.app = app;
 }
