@@ -6356,6 +6356,7 @@ body.dark-mode .legend-missed::before { background: #3a2f00; }
     display: flex;
     gap: 8px;
     align-items: center;
+    justify-content: center;
 }
 .share-link-input {
     flex: 1;
