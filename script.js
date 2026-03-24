@@ -2928,7 +2928,8 @@ class CalorieTracker {
             const text = resp?.comment || null;
             this._commentCache[date] = text;
             return text;
-        } catch {
+        } catch (err) {
+            logger.warn(`fetchDayComment(${date}) failed:`, err.message);
             this._commentCache[date] = null;
             return null;
         }
