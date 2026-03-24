@@ -129,6 +129,34 @@
             padding: 20px;
         }
         footer a { color: #667eea; text-decoration: none; }
+
+        .view-controls {
+            background: white;
+            border-bottom: 1px solid #e0e4f0;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+        }
+        .view-controls label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.9rem;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
+        }
+        .view-controls input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        #content.hide-images .share-meal-photos { display: none; }
+        #content.hide-images .log-card img { display: none; }
+        #content.hide-text .log-card { display: none; }
     </style>
 </head>
 <body>
@@ -136,6 +164,11 @@
     <h1>🍽️ Shared Meals</h1>
     <p id="headerMeta">Loading…</p>
 </header>
+
+<div class="view-controls">
+    <label><input type="checkbox" id="toggleImages" checked> Show Images</label>
+    <label><input type="checkbox" id="toggleText" checked> Show Text</label>
+</div>
 
 <div class="container" id="content">
     <div class="loading" id="loading">Fetching shared meals…</div>
@@ -303,6 +336,13 @@ function openLightbox(src) {
 }
 document.getElementById('lightbox').addEventListener('click', () => {
     document.getElementById('lightbox').classList.remove('open');
+});
+
+document.getElementById('toggleImages').addEventListener('change', function () {
+    document.getElementById('content').classList.toggle('hide-images', !this.checked);
+});
+document.getElementById('toggleText').addEventListener('change', function () {
+    document.getElementById('content').classList.toggle('hide-text', !this.checked);
 });
 
 main().catch(err => showError('Unexpected error: ' + err.message));
