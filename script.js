@@ -5855,22 +5855,26 @@ class CalorieTracker {
             this.showMessage('Food deleted successfully from Pios Food DB', 'success');
             this.loadPiosFoodDB(); // Refresh the foods list from backend
         } catch (error) {
-            // Check if this is a backend error with detailed information
+            // Check if the backend rejected the deletion (food is in use)
+            const isInUse =
+                (error.data && error.data.details?.reason === 'FOOD_IN_USE') ||
+                (error.message && error.message.toLowerCase().includes('logged by users'));
+
+            if (isInUse) {
+                const usageCount = error.data?.details?.usageCount;
+                const detail = usageCount != null
+                    ? ` It has been logged ${usageCount} time${usageCount !== 1 ? 's' : ''} and cannot be removed.`
+                    : ' It has been logged by users and cannot be removed.';
+                this.showMessage(`Cannot delete "${foodName}".${detail}`, 'warning');
+                logger.warn(`Cannot delete food ${foodId}:`, error.data || error.message);
+                return;
+            }
+
+            // Surface any other backend validation error directly
             if (error.data && error.data.message) {
-                // Display the detailed error message from the backend
-                const message = error.data.message;
-                const usageCount = error.data.details?.usageCount;
-                
-                if (usageCount !== undefined) {
-                    // Show detailed error with usage count
-                    this.showMessage(message, 'error');
-                    logger.warn(`Cannot delete food ${foodId}: Used in ${usageCount} food log entries`);
-                } else {
-                    // Show the backend error message
-                    this.showMessage(message, 'error');
-                    logger.warn(`Cannot delete food ${foodId}:`, error.data);
-                }
-                return; // Don't try local fallback for backend validation errors
+                this.showMessage(error.data.message, 'error');
+                logger.warn(`Cannot delete food ${foodId}:`, error.data);
+                return;
             }
             
             logger.info('Backend delete failed, using local demo mode:', error.message);
