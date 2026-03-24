@@ -779,18 +779,29 @@ class CalorieTracker {
                     break;
 
                 case 'add-day-comment':
-                case 'edit-day-comment':
+                case 'edit-day-comment': {
                     e.preventDefault();
-                    this.swapCommentSection(target.dataset.date, this.renderDayCommentEditHtml(target.dataset.date));
+                    const editDate = target.dataset.date;
+                    // Ensure cache is populated before opening edit form
+                    await this.fetchDayComment(editDate);
+                    this.swapCommentSection(editDate, this.renderDayCommentEditHtml(editDate));
                     break;
+                }
 
                 case 'save-day-comment': {
                     e.preventDefault();
                     const saveDate = target.dataset.date;
                     const saveSection = document.querySelector(`.day-comment-section[data-date="${saveDate}"]`);
                     const saveText = saveSection?.querySelector('.comment-textarea')?.value || '';
-                    this.saveDayComment(saveDate, saveText);
-                    this.swapCommentSection(saveDate, this.renderDayCommentHtml(saveDate));
+                    // Disable buttons while saving
+                    saveSection?.querySelectorAll('button').forEach(b => b.disabled = true);
+                    try {
+                        await this.saveDayComment(saveDate, saveText);
+                        this.swapCommentSection(saveDate, this.renderDayCommentHtml(saveDate));
+                    } catch (err) {
+                        this.showMessage('Failed to save note: ' + err.message, 'error');
+                        saveSection?.querySelectorAll('button').forEach(b => b.disabled = false);
+                    }
                     break;
                 }
 
@@ -798,8 +809,12 @@ class CalorieTracker {
                     e.preventDefault();
                     const delDate = target.dataset.date;
                     if (confirm('Delete this note?')) {
-                        this.saveDayComment(delDate, '');
-                        this.swapCommentSection(delDate, this.renderDayCommentHtml(delDate));
+                        try {
+                            await this.saveDayComment(delDate, '');
+                            this.swapCommentSection(delDate, this.renderDayCommentHtml(delDate));
+                        } catch (err) {
+                            this.showMessage('Failed to delete note: ' + err.message, 'error');
+                        }
                     }
                     break;
                 }
@@ -2901,27 +2916,37 @@ class CalorieTracker {
     // DAY COMMENTS
     // =========================================================================
 
-    getDayComment(date) {
-        try { return (JSON.parse(localStorage.getItem('dayComments') || '{}'))[date] || ''; }
-        catch { return ''; }
-    }
+    // In-memory cache: { 'YYYY-MM-DD': 'comment text' | null }
+    // null  = loaded, no comment exists
+    // undefined = not yet loaded
+    _commentCache = {};
 
-    getAllDayComments() {
-        try { return JSON.parse(localStorage.getItem('dayComments') || '{}'); }
-        catch { return {}; }
-    }
-
-    saveDayComment(date, text) {
+    async fetchDayComment(date) {
+        if (this._commentCache[date] !== undefined) return this._commentCache[date];
         try {
-            const comments = JSON.parse(localStorage.getItem('dayComments') || '{}');
-            if (text.trim()) comments[date] = text.trim();
-            else delete comments[date];
-            localStorage.setItem('dayComments', JSON.stringify(comments));
-        } catch (e) { logger.warn('Failed to save day comment:', e); }
+            const resp = await this.apiCall(`/comments?date=${date}`);
+            const text = resp?.comment || null;
+            this._commentCache[date] = text;
+            return text;
+        } catch {
+            this._commentCache[date] = null;
+            return null;
+        }
+    }
+
+    async saveDayComment(date, text) {
+        const trimmed = text.trim();
+        if (!trimmed) {
+            await this.apiCall(`/comments?date=${date}`, 'DELETE');
+            this._commentCache[date] = null;
+        } else {
+            const resp = await this.apiCall('/comments', 'PUT', { date, comment: trimmed });
+            this._commentCache[date] = resp?.comment ?? trimmed;
+        }
     }
 
     renderDayCommentHtml(date) {
-        const comment = this.getDayComment(date);
+        const comment = this._commentCache[date] ?? null;
         if (!comment) {
             return `<div class="day-comment-section" data-date="${date}">
                 <button class="btn-add-comment" data-action="add-day-comment" data-date="${date}">+ Add note for this day</button>
@@ -2933,14 +2958,14 @@ class CalorieTracker {
                 <span class="comment-text">${this.escapeHtml(comment)}</span>
                 <div class="comment-btns">
                     <button class="btn-icon comment-edit-btn" data-action="edit-day-comment" data-date="${date}" title="Edit note">✏️</button>
-                    <button class="btn-icon comment-delete-btn" data-action="delete-day-comment" data-date="${date}" title="Delete note">×</button>
+                    <button class="btn-icon comment-delete-btn" data-action="delete-day-comment" data-date="${date}" title="Delete note">&times;</button>
                 </div>
             </div>
         </div>`;
     }
 
     renderDayCommentEditHtml(date) {
-        const comment = this.getDayComment(date);
+        const comment = this._commentCache[date] ?? '';
         return `<div class="day-comment-section editing" data-date="${date}">
             <div class="day-comment-edit">
                 <textarea class="comment-textarea" placeholder="Add a note for this day…" rows="2">${this.escapeHtml(comment)}</textarea>
@@ -2952,12 +2977,13 @@ class CalorieTracker {
         </div>`;
     }
 
-    updateTodayComment() {
+    async updateTodayComment() {
         const today = new Date().toISOString().split('T')[0];
         const container = document.getElementById('todayComment');
         if (!container) return;
         const existing = container.querySelector('.day-comment-section');
         if (existing?.classList.contains('editing')) return;
+        await this.fetchDayComment(today);
         container.innerHTML = this.renderDayCommentHtml(today);
     }
 
@@ -3383,7 +3409,7 @@ class CalorieTracker {
     /**
      * Render detailed food logs for a specific day
      */
-    renderDayDetails(dayCard, logs, totalCalories) {
+    async renderDayDetails(dayCard, logs, totalCalories) {
         const detailsDiv = dayCard.querySelector('.day-details');
         const expandIcon = dayCard.querySelector('.expand-icon');
         const expandText = dayCard.querySelector('.expand-text');
@@ -3431,11 +3457,16 @@ class CalorieTracker {
                         </div>
                     `;}).join('')}
                 </div>
-                ${this.renderDayCommentHtml(date)}
+                <div class="day-comment-section" data-date="${date}"><span class="comment-loading">…</span></div>
             </div>
         `;
         
         detailsDiv.style.display = 'block';
+
+        // Async: load comment from API then swap in the real widget
+        this.fetchDayComment(date).then(() => {
+            this.swapCommentSection(date, this.renderDayCommentHtml(date));
+        });
     }
 
     /**
@@ -9006,10 +9037,16 @@ class CalorieTracker {
             let url  = `${base}/share.html?t=${tokens.join(',')}&from=${startDate}&to=${endDate}`;
 
             // Attach day comments for the selected date range
-            const allComments = this.getAllDayComments();
+            const rangeDates = [];
+            for (let d = new Date(startDate + 'T12:00:00'); d <= new Date(endDate + 'T12:00:00'); d.setDate(d.getDate() + 1)) {
+                rangeDates.push(d.toISOString().split('T')[0]);
+            }
+            const commentEntries = await Promise.all(
+                rangeDates.map(async date => [date, await this.fetchDayComment(date)])
+            );
             const rangeComments = {};
-            Object.entries(allComments).forEach(([d, comment]) => {
-                if (d >= startDate && d <= endDate) rangeComments[d] = comment;
+            commentEntries.forEach(([date, comment]) => {
+                if (comment) rangeComments[date] = comment;
             });
             if (Object.keys(rangeComments).length > 0) {
                 url += '&c=' + encodeURIComponent(JSON.stringify(rangeComments));
