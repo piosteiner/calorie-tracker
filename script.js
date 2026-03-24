@@ -2387,10 +2387,6 @@ class CalorieTracker {
                 const logs = logsResponse.logs || logsResponse.data?.logs || logsResponse.data || [];
                 
                 logger.info('📋 Parsed logs array (length:', logs.length, '):', logs);
-                if (logs.length > 0) {
-                    console.log('[DEBUG] First log entry keys:', Object.keys(logs[0]));
-                    console.log('[DEBUG] First log entry:', logs[0]);
-                }
                 
                 this.foodLog = logs.map(log => {
                     const mapped = {
