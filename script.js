@@ -4251,7 +4251,7 @@ class CalorieTracker {
                     detailsTotal.textContent = `Total: ${newDetailTotal.toLocaleString()} kcal`;
                 }
                 
-                // Update meals count
+                // Update meals count (no longer displayed — removed)
                 const mealsSpan = dayCard.querySelector('.day-stats .meals');
                 if (mealsSpan) {
                     mealsSpan.closest('.separator')?.remove();
@@ -8477,8 +8477,6 @@ class CalorieTracker {
                     s.averageCaloriesPerDay.toLocaleString();
                 document.getElementById('statsGoalRate').textContent =
                     `${s.goalAchievementRate}%`;
-                document.getElementById('statsTotalMeals').textContent =
-                    s.totalMeals.toLocaleString();
                 document.getElementById('statsDaysLogged').textContent =
                     `${s.totalDays} / 30`;
             }
@@ -8622,7 +8620,7 @@ class CalorieTracker {
             if (isToday) cls += ' cal-today';
             if (info && info.total_calories > 0) {
                 cls += info.goal_met ? ' cal-goal-met' : ' cal-goal-missed';
-                tooltip = `${Math.round(info.total_calories)} kcal (${info.meals_count} meal${info.meals_count !== 1 ? 's' : ''})`;
+                tooltip = `${Math.round(info.total_calories)} kcal`;
             }
             dayCells.push(
                 `<div class="${cls}" title="${tooltip}">
