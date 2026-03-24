@@ -717,7 +717,7 @@ class CalorieTracker {
 
     // Initialize event delegation for all data-action elements
     initEventDelegation() {
-        document.addEventListener('click', (e) => {
+        document.addEventListener('click', async (e) => {
             const target = e.target.closest('[data-action]');
             if (!target) return;
             
