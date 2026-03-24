@@ -8874,17 +8874,74 @@ class CalorieTracker {
     }
 
     // Upload image (file or URL) then attach to a log entry
+    // Compress an image File/Blob to JPEG, scaled to at most MAX_DIM px on the longest side.
+    // Falls back to the original file if canvas is unavailable or compression fails.
+    compressImage(file) {
+        const MAX_DIM = 1920;
+        const QUALITY = 0.82;
+        return new Promise((resolve) => {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                let { width, height } = img;
+                if (width <= MAX_DIM && height <= MAX_DIM) {
+                    // No resize needed, but still re-encode to JPEG if it's not already
+                    if (file.type === 'image/jpeg') { resolve(file); return; }
+                }
+                if (width > MAX_DIM || height > MAX_DIM) {
+                    if (width >= height) { height = Math.round(height * MAX_DIM / width); width = MAX_DIM; }
+                    else { width = Math.round(width * MAX_DIM / height); height = MAX_DIM; }
+                }
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', QUALITY);
+                } catch {
+                    resolve(file);
+                }
+            };
+            img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+            img.src = url;
+        });
+    }
+
     async uploadAndAttachImage(logId, source, type) {
         try {
             let imageId;
             if (type === 'file') {
+                // Validate
+                if (!source || !source.type || !source.type.startsWith('image/')) {
+                    throw new Error('Please select a valid image file');
+                }
+                const MAX_BYTES = 30 * 1024 * 1024; // 30 MB hard limit before compression
+                if (source.size > MAX_BYTES) {
+                    throw new Error('Image is too large (max 30 MB)');
+                }
+
+                this.showMessage('Uploading photo…', 'info');
+
+                // Compress on the client before sending (handles large phone camera shots)
+                const compressed = await this.compressImage(source);
+
                 const formData = new FormData();
-                formData.append('image', source);
-                const resp = await fetch(`${CONFIG.API_BASE_URL}/images/upload`, {
-                    method: 'POST',
-                headers: { 'Authorization': `Bearer ${this.authToken}` },
-                    body: formData
-                });
+                formData.append('image', compressed, 'photo.jpg');
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 s timeout
+                let resp;
+                try {
+                    resp = await fetch(`${CONFIG.API_BASE_URL}/images/upload`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${this.authToken}` },
+                        body: formData,
+                        signal: controller.signal
+                    });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
                 const data = await resp.json();
                 if (!resp.ok) throw new Error(data.error || 'Image upload failed');
                 imageId = data.image?.id ?? data.id ?? data.data?.id;
