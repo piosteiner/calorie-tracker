@@ -8827,11 +8827,11 @@ class CalorieTracker {
 
     openShareModal() {
         const today = new Date().toISOString().split('T')[0];
-        const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0];
+        const thirtyDaysAgo = new Date(Date.now() - 29 * 86400000).toISOString().split('T')[0];
         const start = document.getElementById('shareStartDate');
         const end   = document.getElementById('shareEndDate');
-        if (start && !start.value) start.value = weekAgo;
-        if (end   && !end.value)   end.value   = today;
+        if (start) start.value = thirtyDaysAgo;
+        if (end)   end.value   = today;
         document.getElementById('shareLinkResult').style.display = 'none';
         document.getElementById('shareModal').style.display = 'flex';
     }
