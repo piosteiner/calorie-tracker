@@ -8929,22 +8929,36 @@ class CalorieTracker {
                 const formData = new FormData();
                 formData.append('image', compressed, 'photo.jpg');
 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 s timeout
-                let resp;
+                let uploadData;
                 try {
-                    resp = await fetch(`${CONFIG.API_BASE_URL}/images/upload`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${this.authToken}` },
-                        body: formData,
-                        signal: controller.signal
+                    // Primary path: multipart FormData upload
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 s timeout
+                    let resp;
+                    try {
+                        resp = await fetch(`${CONFIG.API_BASE_URL}/images/upload`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${this.authToken}` },
+                            body: formData,
+                            signal: controller.signal
+                        });
+                    } finally {
+                        clearTimeout(timeoutId);
+                    }
+                    uploadData = await resp.json();
+                    if (!resp.ok) throw new Error(uploadData.error || 'Image upload failed');
+                } catch (fetchErr) {
+                    // Fallback: base64 JSON upload — avoids multipart CORS edge-cases on some mobile browsers
+                    if (fetchErr.name === 'AbortError') throw new Error('Upload timed out — check your connection and try again');
+                    const dataUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(compressed);
                     });
-                } finally {
-                    clearTimeout(timeoutId);
+                    uploadData = await this.apiCall('/images/upload', 'POST', { image: dataUrl });
                 }
-                const data = await resp.json();
-                if (!resp.ok) throw new Error(data.error || 'Image upload failed');
-                imageId = data.image?.id ?? data.id ?? data.data?.id;
+                imageId = uploadData.image?.id ?? uploadData.id ?? uploadData.data?.id;
                 if (!imageId) throw new Error('Image upload failed: no image ID in response');
             } else {
                 const data = await this.apiCall('/images/url', 'POST', { url: source });
