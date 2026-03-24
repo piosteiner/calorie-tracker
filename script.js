@@ -4059,6 +4059,29 @@ class CalorieTracker {
                 this.showMessage('Food log entry added successfully', 'success');
             } else {
                 await this.updateFoodLogEntry(logId, foodData);
+
+                // Optimistically update local state so the dashboard refreshes immediately
+                const todayDate = new Date().toISOString().split('T')[0];
+                const localIdx = this.foodLog.findIndex(f => f.id == logId);
+                if (localIdx !== -1) {
+                    if (foodData.logDate !== todayDate) {
+                        // Entry moved to a different day — remove from today's log
+                        this.foodLog.splice(localIdx, 1);
+                    } else {
+                        // Update fields in place
+                        Object.assign(this.foodLog[localIdx], {
+                            name: foodData.name,
+                            quantity: foodData.quantity,
+                            calories: foodData.calories,
+                            meal_category: foodData.meal_category,
+                            meal_time: foodData.meal_time ? foodData.meal_time.slice(0, 5) : null,
+                        });
+                    }
+                    this.dailyCalories = this.foodLog.reduce((sum, f) => sum + parseFloat(f.calories), 0);
+                    this.updateDashboard();
+                    this.updateFoodLog();
+                }
+
                 this.showMessage('Food log entry updated successfully', 'success');
             }
 
