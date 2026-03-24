@@ -777,6 +777,37 @@ class CalorieTracker {
                     e.preventDefault();
                     this.openDeleteConfirmModal(target.dataset.logId, target.dataset.foodName, target.dataset.date);
                     break;
+
+                case 'add-day-comment':
+                case 'edit-day-comment':
+                    e.preventDefault();
+                    this.swapCommentSection(target.dataset.date, this.renderDayCommentEditHtml(target.dataset.date));
+                    break;
+
+                case 'save-day-comment': {
+                    e.preventDefault();
+                    const saveDate = target.dataset.date;
+                    const saveSection = document.querySelector(`.day-comment-section[data-date="${saveDate}"]`);
+                    const saveText = saveSection?.querySelector('.comment-textarea')?.value || '';
+                    this.saveDayComment(saveDate, saveText);
+                    this.swapCommentSection(saveDate, this.renderDayCommentHtml(saveDate));
+                    break;
+                }
+
+                case 'delete-day-comment': {
+                    e.preventDefault();
+                    const delDate = target.dataset.date;
+                    if (confirm('Delete this note?')) {
+                        this.saveDayComment(delDate, '');
+                        this.swapCommentSection(delDate, this.renderDayCommentHtml(delDate));
+                    }
+                    break;
+                }
+
+                case 'cancel-day-comment':
+                    e.preventDefault();
+                    this.swapCommentSection(target.dataset.date, this.renderDayCommentHtml(target.dataset.date));
+                    break;
                 
                 case 'edit-weight':
                     e.preventDefault();
@@ -2761,6 +2792,7 @@ class CalorieTracker {
         
         if (this.foodLog.length === 0) {
             foodLogDiv.innerHTML = '<p class="empty-message">No food logged yet today. Start by adding your first meal!</p>';
+            this.updateTodayComment();
             return;
         }
 
@@ -2862,6 +2894,80 @@ class CalorieTracker {
 
         foodLogDiv.innerHTML = html;
         this._loadAuthImages(foodLogDiv);
+        this.updateTodayComment();
+    }
+
+    // =========================================================================
+    // DAY COMMENTS
+    // =========================================================================
+
+    getDayComment(date) {
+        try { return (JSON.parse(localStorage.getItem('dayComments') || '{}'))[date] || ''; }
+        catch { return ''; }
+    }
+
+    getAllDayComments() {
+        try { return JSON.parse(localStorage.getItem('dayComments') || '{}'); }
+        catch { return {}; }
+    }
+
+    saveDayComment(date, text) {
+        try {
+            const comments = JSON.parse(localStorage.getItem('dayComments') || '{}');
+            if (text.trim()) comments[date] = text.trim();
+            else delete comments[date];
+            localStorage.setItem('dayComments', JSON.stringify(comments));
+        } catch (e) { logger.warn('Failed to save day comment:', e); }
+    }
+
+    renderDayCommentHtml(date) {
+        const comment = this.getDayComment(date);
+        if (!comment) {
+            return `<div class="day-comment-section" data-date="${date}">
+                <button class="btn-add-comment" data-action="add-day-comment" data-date="${date}">+ Add note for this day</button>
+            </div>`;
+        }
+        return `<div class="day-comment-section has-comment" data-date="${date}">
+            <div class="day-comment-view">
+                <span class="comment-icon">📝</span>
+                <span class="comment-text">${this.escapeHtml(comment)}</span>
+                <div class="comment-btns">
+                    <button class="btn-icon comment-edit-btn" data-action="edit-day-comment" data-date="${date}" title="Edit note">✏️</button>
+                    <button class="btn-icon comment-delete-btn" data-action="delete-day-comment" data-date="${date}" title="Delete note">×</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    renderDayCommentEditHtml(date) {
+        const comment = this.getDayComment(date);
+        return `<div class="day-comment-section editing" data-date="${date}">
+            <div class="day-comment-edit">
+                <textarea class="comment-textarea" placeholder="Add a note for this day…" rows="2">${this.escapeHtml(comment)}</textarea>
+                <div class="comment-edit-btns">
+                    <button class="btn btn-sm btn-primary" data-action="save-day-comment" data-date="${date}">Save</button>
+                    <button class="btn btn-sm btn-secondary" data-action="cancel-day-comment" data-date="${date}">Cancel</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    updateTodayComment() {
+        const today = new Date().toISOString().split('T')[0];
+        const container = document.getElementById('todayComment');
+        if (!container) return;
+        const existing = container.querySelector('.day-comment-section');
+        if (existing?.classList.contains('editing')) return;
+        container.innerHTML = this.renderDayCommentHtml(today);
+    }
+
+    swapCommentSection(date, newHtml) {
+        const section = document.querySelector(`.day-comment-section[data-date="${date}"]`);
+        if (!section) return;
+        section.insertAdjacentHTML('afterend', newHtml);
+        section.remove();
+        const textarea = document.querySelector(`.day-comment-section[data-date="${date}"] .comment-textarea`);
+        if (textarea) { textarea.focus(); textarea.setSelectionRange(textarea.value.length, textarea.value.length); }
     }
 
     openDeletePhotoModal(logId) {
@@ -3325,6 +3431,7 @@ class CalorieTracker {
                         </div>
                     `;}).join('')}
                 </div>
+                ${this.renderDayCommentHtml(date)}
             </div>
         `;
         
@@ -8896,7 +9003,21 @@ class CalorieTracker {
             }
 
             const base = window.location.origin;
-            const url  = `${base}/share.html?t=${tokens.join(',')}&from=${startDate}&to=${endDate}`;
+            let url  = `${base}/share.html?t=${tokens.join(',')}&from=${startDate}&to=${endDate}`;
+
+            // Attach day comments for the selected date range
+            const allComments = this.getAllDayComments();
+            const rangeComments = {};
+            let dc = new Date(startDate + 'T00:00:00');
+            const dcEnd = new Date(endDate + 'T00:00:00');
+            while (dc <= dcEnd) {
+                const ds = dc.toISOString().split('T')[0];
+                if (allComments[ds]) rangeComments[ds] = allComments[ds];
+                dc.setDate(dc.getDate() + 1);
+            }
+            if (Object.keys(rangeComments).length > 0) {
+                url += '&c=' + encodeURIComponent(JSON.stringify(rangeComments));
+            }
 
             document.getElementById('shareLinkInput').value = url;
             document.getElementById('shareLinkResult').style.display = '';

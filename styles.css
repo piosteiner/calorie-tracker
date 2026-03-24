@@ -6489,4 +6489,94 @@ body.dark-mode .legend-missed::before { background: #3a2f00; }
     background: var(--bg-hover);
 }
 
+/* ---- Day comment section ---- */
+#todayComment {
+    padding: 2px 0 6px;
+}
+.day-comment-section {
+    padding: 6px 12px 8px;
+}
+.btn-add-comment {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 1px dashed var(--border-primary);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+.btn-add-comment:hover {
+    border-color: var(--accent-primary, #667eea);
+    color: var(--accent-primary, #667eea);
+}
+.day-comment-view {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 8px 12px;
+    border-left: 3px solid var(--accent-primary, #667eea);
+}
+.comment-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.comment-text {
+    flex: 1;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.comment-btns {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-top: -2px;
+}
+.comment-edit-btn,
+.comment-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    opacity: 0.45;
+    transition: opacity 0.15s, color 0.15s;
+    line-height: 1;
+}
+.comment-edit-btn:hover  { opacity: 1; }
+.comment-delete-btn:hover { opacity: 1; color: var(--accent-danger, #e53e3e); }
+.day-comment-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.comment-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.88rem;
+    resize: vertical;
+    min-height: 58px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.comment-textarea:focus { border-color: var(--accent-primary, #667eea); }
+.comment-edit-btns {
+    display: flex;
+    gap: 8px;
+}
+
 

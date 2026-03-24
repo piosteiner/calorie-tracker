@@ -157,6 +157,18 @@
         #content.hide-images .share-meal-photos { display: none; }
         #content.hide-images .log-card img { display: none; }
         #content.hide-text .log-card { display: none; }
+
+        .shared-day-comment {
+            background: rgba(102, 126, 234, 0.08);
+            border-left: 3px solid #667eea;
+            border-radius: 4px 8px 8px 4px;
+            padding: 8px 14px;
+            margin-top: 10px;
+            font-size: 0.88rem;
+            color: #555;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
@@ -259,6 +271,14 @@ async function main() {
         byDate[date][cat].push(log);
     });
 
+    // Parse shared day comments
+    let sharedComments = {};
+    const cParam = params.get('c');
+    if (cParam) {
+        try { sharedComments = JSON.parse(decodeURIComponent(cParam)); }
+        catch (e) { console.warn('Could not parse day comments', e); }
+    }
+
     // Sort dates ascending
     const sortedDates = Object.keys(byDate).sort();
 
@@ -294,9 +314,13 @@ async function main() {
             </div>`;
         });
 
+        const commentHtml = sharedComments[date]
+            ? `<div class="shared-day-comment">📝 ${esc(sharedComments[date])}</div>`
+            : '';
         html += `<div class="day-group">
             <div class="day-header">${formatDate(date)}</div>
             ${mealsHtml}
+            ${commentHtml}
         </div>`;
     });
 
