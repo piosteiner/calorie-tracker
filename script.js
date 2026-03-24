@@ -9008,13 +9008,9 @@ class CalorieTracker {
             // Attach day comments for the selected date range
             const allComments = this.getAllDayComments();
             const rangeComments = {};
-            let dc = new Date(startDate + 'T00:00:00');
-            const dcEnd = new Date(endDate + 'T00:00:00');
-            while (dc <= dcEnd) {
-                const ds = dc.toISOString().split('T')[0];
-                if (allComments[ds]) rangeComments[ds] = allComments[ds];
-                dc.setDate(dc.getDate() + 1);
-            }
+            Object.entries(allComments).forEach(([d, comment]) => {
+                if (d >= startDate && d <= endDate) rangeComments[d] = comment;
+            });
             if (Object.keys(rangeComments).length > 0) {
                 url += '&c=' + encodeURIComponent(JSON.stringify(rangeComments));
             }

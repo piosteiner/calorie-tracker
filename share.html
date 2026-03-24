@@ -275,7 +275,7 @@ async function main() {
     let sharedComments = {};
     const cParam = params.get('c');
     if (cParam) {
-        try { sharedComments = JSON.parse(decodeURIComponent(cParam)); }
+        try { sharedComments = JSON.parse(cParam); }
         catch (e) { console.warn('Could not parse day comments', e); }
     }
 
