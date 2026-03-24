@@ -2387,6 +2387,10 @@ class CalorieTracker {
                 const logs = logsResponse.logs || logsResponse.data?.logs || logsResponse.data || [];
                 
                 logger.info('📋 Parsed logs array (length:', logs.length, '):', logs);
+                if (logs.length > 0) {
+                    console.log('[DEBUG] First log entry keys:', Object.keys(logs[0]));
+                    console.log('[DEBUG] First log entry:', logs[0]);
+                }
                 
                 this.foodLog = logs.map(log => {
                     const mapped = {
@@ -2402,9 +2406,9 @@ class CalorieTracker {
                         image_id: log.image_id || null,
                         image_url: log.image_url || null,
                         share_token: log.share_token || null,
-                        protein: log.protein_per_100g != null ? parseFloat(log.protein_per_100g) : null,
-                        carbs:   log.carbs_per_100g   != null ? parseFloat(log.carbs_per_100g)   : null,
-                        fat:     log.fat_per_100g     != null ? parseFloat(log.fat_per_100g)     : null,
+                        protein: log.protein_per_100g != null ? parseFloat(log.protein_per_100g) : (log.protein != null ? parseFloat(log.protein) : null),
+                        carbs:   log.carbs_per_100g   != null ? parseFloat(log.carbs_per_100g)   : (log.carbs   != null ? parseFloat(log.carbs)   : null),
+                        fat:     log.fat_per_100g     != null ? parseFloat(log.fat_per_100g)     : (log.fat     != null ? parseFloat(log.fat)     : null),
                         timestamp: log.logged_at ? new Date(log.logged_at).toLocaleTimeString() : new Date().toLocaleTimeString()
                     };
                     logger.info('Mapped log entry:', mapped);
