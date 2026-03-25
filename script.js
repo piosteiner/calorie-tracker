@@ -1162,16 +1162,24 @@ class CalorieTracker {
                     // Directly open file picker / camera — no panel
                     const mealFileInput = document.getElementById('imageFileInput');
                     if (!mealFileInput) break;
+                    // Remove any stale one-shot listener from a previously cancelled file picker
+                    if (this._mealPhotoFilePicker) {
+                        mealFileInput.removeEventListener('change', this._mealPhotoFilePicker);
+                        this._mealPhotoFilePicker = null;
+                    }
                     // One-shot handler: upload immediately on file selection
                     const onFilePicked = async () => {
                         mealFileInput.removeEventListener('change', onFilePicked);
+                        this._mealPhotoFilePicker = null;
                         const file = mealFileInput.files[0];
                         if (!file || !this._mealPhotoTargetId) return;
                         const targetId = this._mealPhotoTargetId;
                         this._mealPhotoTargetId = null;
                         await this.uploadAndAttachImage(targetId, file, 'file');
                         mealFileInput.value = '';
+                        this._clearPendingImage(false);
                     };
+                    this._mealPhotoFilePicker = onFilePicked;
                     mealFileInput.addEventListener('change', onFilePicked);
                     mealFileInput.click();
                     break;
@@ -2833,7 +2841,10 @@ class CalorieTracker {
             if (!groups[cat]) return;
             const items = groups[cat];
             const groupTotal = items.reduce((s, f) => s + parseFloat(f.calories), 0);
-            const targetId = items[0].id;
+            // Target the first entry without a photo so new uploads don't override an existing one
+            const noPhotoItem = items.find(f => !f.image_id && !f.image_url);
+            const allHavePhotos = !noPhotoItem;
+            const targetId = (noPhotoItem || items[0]).id;
 
             // Compute group macro totals
             let gP = 0, gC = 0, gF = 0, gHasMacros = false;
@@ -2847,6 +2858,10 @@ class CalorieTracker {
                 ? `<span class="meal-group-macros">${Math.round(gP)}g P &middot; ${Math.round(gC)}g C &middot; ${Math.round(gF)}g F</span>`
                 : '';
 
+            const photoBtn = allHavePhotos
+                ? `<button class="btn-meal-photo btn-meal-photo--full" disabled title="Every item in this meal already has a photo. Edit an item to replace its photo.">📷</button>`
+                : `<button class="btn-meal-photo" data-action="open-meal-photo" data-meal-cat="${cat}" data-target-id="${targetId}" title="Add photo to ${MEAL_LABELS[cat]}">📷</button>`;
+
             html += `<div class="meal-group">
                 <div class="meal-group-header">
                     <span class="meal-group-label">${MEAL_LABELS[cat]}</span>
@@ -2854,7 +2869,7 @@ class CalorieTracker {
                         <span class="meal-group-total">${Math.round(groupTotal)} kcal</span>
                         ${groupMacroHtml}
                     </div>
-                    <button class="btn-meal-photo" data-action="open-meal-photo" data-meal-cat="${cat}" data-target-id="${targetId}" title="Add photo to ${MEAL_LABELS[cat]}">📷</button>
+                    ${photoBtn}
                 </div>`;
             items.forEach(food => {
                 const escapedName = this.escapeHtml(this.capitalizeFirst(food.name));

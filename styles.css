@@ -6488,6 +6488,10 @@ body.dark-mode .legend-missed::before { background: #3a2f00; }
     opacity: 1;
     background: var(--bg-hover);
 }
+.btn-meal-photo--full:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
 
 /* ---- Day comment section ---- */
 #todayComment {
