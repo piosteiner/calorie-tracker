@@ -8774,9 +8774,12 @@ class CalorieTracker {
         const blanksBefore = (firstDay === 0 ? 6 : firstDay - 1); // shift to Mon-start
         const blanks = Array(blanksBefore).fill('<div class="cal-cell cal-blank"></div>').join('');
 
-        // Day cells
+        // Day cells — normalise date keys to YYYY-MM-DD regardless of ISO timestamp
         const dayMap = {};
-        calendarDays.forEach(d => { dayMap[d.date] = d; });
+        calendarDays.forEach(d => {
+            const key = (d.date || '').toString().split('T')[0];
+            dayMap[key] = d;
+        });
 
         const daysInMonth = new Date(year, month, 0).getDate();
         const today = new Date().toISOString().split('T')[0];
