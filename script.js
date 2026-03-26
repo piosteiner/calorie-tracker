@@ -3348,7 +3348,8 @@ class CalorieTracker {
      * View detailed logs for a specific day
      */
     async viewDayDetails(date) {
-        const dayCard = document.querySelector(`[data-date="${date}"]`).closest('.history-day-card');
+        const dayCard = document.querySelector(`#historyList .history-day-card[data-date="${date}"]`);
+        if (!dayCard) return;
         const detailsDiv = dayCard.querySelector('.day-details');
         
         // Toggle expansion
@@ -3484,7 +3485,10 @@ class CalorieTracker {
             foodsHtml = MEAL_ORDER.filter(cat => byCategory[cat]).map(cat => {
                 const items = byCategory[cat];
                 const photosHtml = items.filter(l => l.image_url)
-                    .map(l => `<img class="history-meal-thumb" src="${this.escapeHtml(l.image_url)}" alt="Meal photo">`)
+                    .map(l => {
+                        const src = l.image_url.startsWith('http') ? l.image_url : CONFIG.API_BASE_URL.replace(/\/api$/, '') + l.image_url;
+                        return `<img class="history-meal-thumb" data-auth-src="${this.escapeHtml(src)}" alt="Meal photo">`;
+                    })
                     .join('');
                 return `
                     <div class="history-meal-group">
@@ -3510,6 +3514,9 @@ class CalorieTracker {
         `;
 
         detailsDiv.style.display = 'block';
+
+        // Load auth-protected meal images
+        this._loadAuthImages(detailsDiv);
 
         // Async: load comment from API then swap in the real widget
         this.fetchDayComment(date).then(() => {
