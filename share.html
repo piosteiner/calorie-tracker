@@ -53,7 +53,7 @@
         .day-total {
             font-size: 0.9rem;
             font-weight: 600;
-            color: #888;
+            color: #667eea;
         }
 
         .meal-group {
@@ -71,6 +71,15 @@
             letter-spacing: .06em;
             padding: 9px 14px 7px;
             border-bottom: 1px solid #f0f2f8;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .meal-label-total {
+            color: #667eea;
+            font-size: 0.8rem;
+            text-transform: none;
+            letter-spacing: 0;
         }
         .log-row {
             display: flex;
@@ -291,8 +300,9 @@ async function main() {
             const photosHtml = groupPhotos.length
                 ? `<div class="share-meal-photos">${groupPhotos.map(u => `<img data-auth-src="${esc(u)}" alt="Meal photo" class="share-meal-thumb">`).join('')}</div>`
                 : '';
+            const mealTotal = items.reduce((sum, l) => sum + (parseFloat(l.calories) || 0), 0);
             mealsHtml += `<div class="meal-group">
-                <div class="meal-label">${MEAL_LABELS[cat]}</div>
+                <div class="meal-label"><span>${MEAL_LABELS[cat]}</span><span class="meal-label-total">${Math.round(mealTotal)} kcal</span></div>
                 ${itemsHtml}
                 ${photosHtml}
             </div>`;
