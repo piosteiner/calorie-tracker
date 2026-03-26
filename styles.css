@@ -1330,9 +1330,7 @@ body {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 28px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-primary);
+    margin-top: 16px;
 }
 
 .modal-actions .btn {
