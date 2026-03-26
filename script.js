@@ -8777,15 +8777,53 @@ class CalorieTracker {
         }
 
         try {
-            const response = await this.apiCall(
-                `/logs/calendar?year=${year}&month=${month}`,
-                'GET', null, { silent: true }
-            );
-            if (response.success && response.calendar) {
-                this.renderCalendarGrid(response.calendar, year, month);
-            } else {
-                grid.innerHTML = '<p class="empty-message">No data available.</p>';
+            // Fetch calendar structure + history for this month in parallel.
+            // The /logs/calendar endpoint returns correct dates but broken calories,
+            // so we also fetch /logs/history filtered to this month to get real totals.
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const startDate = `${year}-${String(month).padStart(2,'0')}-01`;
+            const endDate   = `${year}-${String(month).padStart(2,'0')}-${String(daysInMonth).padStart(2,'0')}`;
+
+            const [calResponse, histResponse] = await Promise.all([
+                this.apiCall(`/logs/calendar?year=${year}&month=${month}`, 'GET', null, { silent: true }),
+                this.apiCall(`/logs/history?start=${startDate}&end=${endDate}&limit=31&offset=0`, 'GET', null, { silent: true })
+            ]);
+
+            // Build a map from the history response (which has correct calories)
+            const histMap = {};
+            const histDays = histResponse?.history || histResponse?.days || [];
+            histDays.forEach(d => {
+                const key = (d.log_date || d.date || '').toString().split('T')[0].split(' ')[0];
+                if (key) histMap[key] = d;
+            });
+
+            // Use calendar response as the base (gives us all days incl. zeros),
+            // then patch in real calorie/goal data from history
+            let calendarDays = calResponse?.calendar || [];
+            if (calendarDays.length === 0) {
+                // Build synthetic day list if calendar endpoint fails entirely
+                calendarDays = Array.from({ length: daysInMonth }, (_, i) => ({
+                    date: `${year}-${String(month).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`,
+                    total_calories: 0
+                }));
             }
+
+            calendarDays = calendarDays.map(d => {
+                const key = (d.date || d.log_date || '').toString().split('T')[0].split(' ')[0];
+                const hist = histMap[key];
+                if (hist && parseFloat(hist.total_calories || 0) > 0) {
+                    return {
+                        ...d,
+                        date: key,
+                        total_calories: hist.total_calories,
+                        daily_goal: hist.daily_goal || d.daily_goal,
+                        goal_met: null  // will be computed in renderCalendarGrid
+                    };
+                }
+                return { ...d, date: key };
+            });
+
+            this.renderCalendarGrid(calendarDays, year, month);
         } catch (error) {
             logger.error('Failed to load calendar:', error);
             grid.innerHTML = '<p class="empty-message">Could not load calendar data.</p>';
@@ -8814,23 +8852,6 @@ class CalorieTracker {
             const raw = d.date || d.log_date || '';
             const key = raw.toString().split('T')[0].split(' ')[0];
             if (key) dayMap[key] = d;
-        });
-
-        // Supplement with historyData.days — the /logs/calendar API may return zero
-        // calories even on logged days; historyData is always accurate
-        (this.historyData.days || []).forEach(d => {
-            const key = (d.log_date || '').toString().split('T')[0].split(' ')[0];
-            if (!key) return;
-            const calEntry = dayMap[key];
-            const histCals = parseFloat(d.total_calories || 0);
-            if (histCals > 0 && (!calEntry || parseFloat(calEntry.total_calories || 0) === 0)) {
-                dayMap[key] = {
-                    date: key,
-                    total_calories: d.total_calories,
-                    daily_goal: d.daily_goal,
-                    goal_met: null  // will be computed below
-                };
-            }
         });
 
         const daysInMonth = new Date(year, month, 0).getDate();
