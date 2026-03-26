@@ -5198,6 +5198,7 @@ body {
     border-radius: 4px;
     height: 8px;
     overflow: hidden;
+    position: relative;
 }
 
 .weekly-day-bar {
@@ -5207,8 +5208,22 @@ body {
     transition: width 0.4s ease;
 }
 
+/* Goal marker line at the 50% midpoint */
+.weekly-day-goal-marker {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--text-secondary);
+    opacity: 0.6;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
 .weekly-day.goal-met   .weekly-day-bar { background: var(--accent-success); }
-.weekly-day.goal-missed .weekly-day-bar { background: var(--accent-warning); }
+.weekly-day.goal-over  .weekly-day-bar { background: var(--accent-warning); }
+.weekly-day.goal-under .weekly-day-bar { background: var(--accent-primary); }
 .weekly-day.no-data    .weekly-day-bar { width: 0 !important; }
 
 .weekly-day-kcal {

@@ -8675,13 +8675,15 @@ class CalorieTracker {
             const calories = Math.round(parseFloat(day.total_calories || 0));
             const dateObj = new Date(day.log_date || day.date);
             const label = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-            const pct = goal > 0 ? Math.min(Math.round((calories / goal) * 100), 100) : 0;
-            const statusClass = calories === 0 ? 'no-data' : (calories >= goal * 0.9 && calories <= goal * 1.1 ? 'goal-met' : 'goal-missed');
+            // Goal is the midpoint (50%): bars below goal sit left of center, above goal extend right
+            const pct = goal > 0 ? Math.min(Math.round((calories / (goal * 2)) * 100), 100) : 0;
+            const statusClass = calories === 0 ? 'no-data' : (calories >= goal * 0.9 && calories <= goal * 1.1 ? 'goal-met' : (calories > goal ? 'goal-over' : 'goal-under'));
             return `
                 <div class="weekly-day ${statusClass}">
                     <span class="weekly-day-label">${label}</span>
                     <div class="weekly-day-bar-wrap">
                         <div class="weekly-day-bar" style="width:${pct}%"></div>
+                        <div class="weekly-day-goal-marker"></div>
                     </div>
                     <span class="weekly-day-kcal">${calories > 0 ? calories.toLocaleString() + ' kcal' : '—'}</span>
                 </div>`;
