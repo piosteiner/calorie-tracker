@@ -47,13 +47,28 @@
             border-bottom: 2px solid #e0e4f0;
             margin-bottom: 14px;
             display: flex;
-            align-items: baseline;
+            align-items: center;
             justify-content: space-between;
+        }
+        .day-header-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
         }
         .day-total {
             font-size: 0.9rem;
             font-weight: 700;
             color: #667eea;
+            padding-right: 14px;
+        }
+        .day-macros {
+            display: flex;
+            gap: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #667eea;
+            opacity: 0.75;
             padding-right: 14px;
         }
 
@@ -178,10 +193,10 @@
             accent-color: #667eea;
         }
 
+        .day-macros span { white-space: nowrap; }
         #content.hide-images .share-meal-photos { display: none; }
-        #content.hide-text .log-row { display: none; }
 
-        .shared-day-comment {
+        #content.hide-text .log-row { display: none; }
             background: rgba(102, 126, 234, 0.08);
             border-left: 3px solid #667eea;
             border-radius: 4px 8px 8px 4px;
@@ -362,7 +377,8 @@ async function main() {
             ? `<div class="shared-day-comment">📝 ${esc(sharedComments[date])}</div>`
             : '';
         html += `<div class="day-group">
-            <div class="day-header"><span>${formatDate(date)}</span><span class="day-total">${Math.round(dayTotal)} kcal</span></div>            ${dayMacrosHtml}            ${mealsHtml}
+            <div class="day-header"><span>${formatDate(date)}</span><div class="day-header-right"><span class="day-total">${Math.round(dayTotal)}\u202fkcal</span>${dayMacrosHtml}</div></div>
+            ${mealsHtml}
             ${commentHtml}
         </div>`;
     });

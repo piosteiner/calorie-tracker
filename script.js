@@ -3520,9 +3520,9 @@ class CalorieTracker {
             <div class="day-details-content">
                 <div class="details-header">
                     <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">+ Add Item</button>
+                    ${dayMacroHtml}
                 </div>
                 <div class="food-items">${foodsHtml}</div>
-                ${dayMacroHtml}
                 <div class="day-comment-section" data-date="${date}"><span class="comment-loading">…</span></div>
             </div>
         `;
