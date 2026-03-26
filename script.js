@@ -8782,8 +8782,6 @@ class CalorieTracker {
                 'GET', null, { silent: true }
             );
             if (response.success && response.calendar) {
-                const withCals = response.calendar.filter(d => parseFloat(d.total_calories) > 0);
-                console.log('[Calendar] days with calories > 0:', JSON.stringify(withCals));
                 this.renderCalendarGrid(response.calendar, year, month);
             } else {
                 grid.innerHTML = '<p class="empty-message">No data available.</p>';
@@ -8816,6 +8814,23 @@ class CalorieTracker {
             const raw = d.date || d.log_date || '';
             const key = raw.toString().split('T')[0].split(' ')[0];
             if (key) dayMap[key] = d;
+        });
+
+        // Supplement with historyData.days — the /logs/calendar API may return zero
+        // calories even on logged days; historyData is always accurate
+        (this.historyData.days || []).forEach(d => {
+            const key = (d.log_date || '').toString().split('T')[0].split(' ')[0];
+            if (!key) return;
+            const calEntry = dayMap[key];
+            const histCals = parseFloat(d.total_calories || 0);
+            if (histCals > 0 && (!calEntry || parseFloat(calEntry.total_calories || 0) === 0)) {
+                dayMap[key] = {
+                    date: key,
+                    total_calories: d.total_calories,
+                    daily_goal: d.daily_goal,
+                    goal_met: null  // will be computed below
+                };
+            }
         });
 
         const daysInMonth = new Date(year, month, 0).getDate();
