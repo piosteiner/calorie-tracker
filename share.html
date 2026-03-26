@@ -48,53 +48,37 @@
             margin-bottom: 14px;
         }
 
-        .meal-group { margin-bottom: 18px; }
-        .share-meal-photos { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0 4px; }
-        .share-meal-thumb { width: 160px; height: 160px; object-fit: cover; border-radius: 10px; cursor: pointer; border: 1px solid #ddd; transition: transform 0.15s; }
-        .share-meal-thumb:hover { transform: scale(1.03); }
-        .meal-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: #888;
-            letter-spacing: .05em;
-            margin-bottom: 8px;
-            padding-left: 4px;
-        }
-
-        .log-card {
+        .meal-group {
             background: white;
             border-radius: 12px;
-            padding: 14px 16px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
             box-shadow: 0 2px 8px rgba(0,0,0,.07);
-        }
-        .log-card img {
-            width: 70px;
-            height: 70px;
-            object-fit: cover;
-            border-radius: 8px;
-            flex-shrink: 0;
-            cursor: pointer;
-        }
-        .log-info { flex: 1; min-width: 0; }
-        .log-name {
-            font-weight: 600;
-            font-size: 1rem;
-            white-space: nowrap;
+            margin-bottom: 14px;
             overflow: hidden;
-            text-overflow: ellipsis;
         }
-        .log-details { color: #888; font-size: 0.85rem; margin-top: 2px; }
-        .log-kcal {
+        .meal-label {
+            font-size: 0.75rem;
             font-weight: 700;
-            font-size: 1rem;
-            color: #667eea;
-            white-space: nowrap;
+            text-transform: uppercase;
+            color: #888;
+            letter-spacing: .06em;
+            padding: 9px 14px 7px;
+            border-bottom: 1px solid #f0f2f8;
         }
+        .log-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            padding: 7px 14px;
+            border-bottom: 1px solid #f5f5f8;
+            font-size: 0.88rem;
+        }
+        .log-row:last-of-type { border-bottom: none; }
+        .log-name { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .log-details { color: #aaa; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
+        .log-kcal { font-weight: 700; font-size: 0.85rem; color: #667eea; white-space: nowrap; flex-shrink: 0; }
+        .share-meal-photos { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 14px; border-top: 1px solid #f0f2f8; }
+        .share-meal-thumb { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; transition: transform 0.15s; }
+        .share-meal-thumb:hover { transform: scale(1.03); }
 
         .lightbox {
             display: none;
@@ -155,8 +139,7 @@
         }
 
         #content.hide-images .share-meal-photos { display: none; }
-        #content.hide-images .log-card img { display: none; }
-        #content.hide-text .log-card { display: none; }
+        #content.hide-text .log-row { display: none; }
 
         .shared-day-comment {
             background: rgba(102, 126, 234, 0.08);
@@ -292,14 +275,7 @@ async function main() {
             let itemsHtml = '';
             items.forEach(log => {
                 const time = log.meal_time ? ` · ${log.meal_time.slice(0,5)}` : '';
-                itemsHtml += `
-                    <div class="log-card">
-                        <div class="log-info">
-                            <div class="log-name">${esc(log.food_name)}</div>
-                            <div class="log-details">${Math.round(log.quantity)} ${esc(log.unit || 'g')}${time}</div>
-                        </div>
-                        <div class="log-kcal">${Math.round(log.calories)} kcal</div>
-                    </div>`;
+                itemsHtml += `<div class="log-row"><span class="log-name">${esc(log.food_name)}</span><span class="log-details">${Math.round(log.quantity)} ${esc(log.unit || 'g')}${time}</span><span class="log-kcal">${Math.round(log.calories)} kcal</span></div>`;
             });
             const groupPhotos = items
                 .filter(l => l.image_url)
