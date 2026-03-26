@@ -791,7 +791,7 @@ class CalorieTracker {
                 case 'save-day-comment': {
                     e.preventDefault();
                     const saveDate = target.dataset.date;
-                    const saveSection = document.querySelector(`.day-comment-section[data-date="${saveDate}"]`);
+                    const saveSection = target.closest('.day-comment-section');
                     const saveText = saveSection?.querySelector('.comment-textarea')?.value || '';
                     // Disable buttons while saving
                     saveSection?.querySelectorAll('button').forEach(b => b.disabled = true);
@@ -3004,10 +3004,12 @@ class CalorieTracker {
     }
 
     swapCommentSection(date, newHtml) {
-        const section = document.querySelector(`.day-comment-section[data-date="${date}"]`);
-        if (!section) return;
-        section.insertAdjacentHTML('afterend', newHtml);
-        section.remove();
+        // Replace ALL matching sections — today's date appears both in the dashboard and in history
+        const sections = document.querySelectorAll(`.day-comment-section[data-date="${date}"]`);
+        sections.forEach(section => {
+            section.insertAdjacentHTML('afterend', newHtml);
+            section.remove();
+        });
         const textarea = document.querySelector(`.day-comment-section[data-date="${date}"] .comment-textarea`);
         if (textarea) { textarea.focus(); textarea.setSelectionRange(textarea.value.length, textarea.value.length); }
     }
