@@ -8782,6 +8782,8 @@ class CalorieTracker {
                 'GET', null, { silent: true }
             );
             if (response.success && response.calendar) {
+                const withCals = response.calendar.filter(d => parseFloat(d.total_calories) > 0);
+                console.log('[Calendar] days with calories > 0:', JSON.stringify(withCals));
                 this.renderCalendarGrid(response.calendar, year, month);
             } else {
                 grid.innerHTML = '<p class="empty-message">No data available.</p>';
