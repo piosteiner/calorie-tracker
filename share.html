@@ -302,6 +302,21 @@ async function main() {
         catch (e) { console.warn('Could not parse day comments', e); }
     }
 
+    // Helper: get per-100g protein/carbs/fat value from a log (tries both field naming conventions)
+    const getPer100 = (l, field) => {
+        const v100 = l[field + '_per_100g'];
+        if (v100 != null) return parseFloat(v100);
+        const v = l[field];
+        if (v != null) return parseFloat(v);
+        return null;
+    };
+    const macroG = (l, field) => {
+        const per100 = getPer100(l, field);
+        if (per100 == null) return null;
+        return (per100 / 100) * (parseFloat(l.quantity) || 0);
+    };
+    const hasMacro = l => getPer100(l, 'protein') != null || getPer100(l, 'carbs') != null || getPer100(l, 'fat') != null;
+
     // Sort dates ascending
     const sortedDates = Object.keys(byDate).sort();
 
@@ -324,10 +339,10 @@ async function main() {
                 ? `<div class="share-meal-photos">${groupPhotos.map(u => `<img data-auth-src="${esc(u)}" alt="Meal photo" class="share-meal-thumb">`).join('')}</div>`
                 : '';
             const mealTotal = items.reduce((sum, l) => sum + (parseFloat(l.calories) || 0), 0);
-            const shareHasMacros = items.some(l => l.protein_per_100g != null || l.carbs_per_100g != null || l.fat_per_100g != null);
-            const sP = items.reduce((s,l) => l.protein_per_100g != null ? s + (parseFloat(l.protein_per_100g)/100*(parseFloat(l.quantity)||0)) : s, 0);
-            const sC = items.reduce((s,l) => l.carbs_per_100g   != null ? s + (parseFloat(l.carbs_per_100g)  /100*(parseFloat(l.quantity)||0)) : s, 0);
-            const sF = items.reduce((s,l) => l.fat_per_100g     != null ? s + (parseFloat(l.fat_per_100g)    /100*(parseFloat(l.quantity)||0)) : s, 0);
+            const shareHasMacros = items.some(hasMacro);
+            const sP = items.reduce((s,l) => { const v = macroG(l,'protein'); return v != null ? s+v : s; }, 0);
+            const sC = items.reduce((s,l) => { const v = macroG(l,'carbs');   return v != null ? s+v : s; }, 0);
+            const sF = items.reduce((s,l) => { const v = macroG(l,'fat');     return v != null ? s+v : s; }, 0);
             const shareMealMacros = shareHasMacros ? `<span class="meal-label-macros">${Math.round(sP)}g P\u00a0\u00b7\u00a0${Math.round(sC)}g C\u00a0\u00b7\u00a0${Math.round(sF)}g F</span>` : '';
             mealsHtml += `<div class="meal-group">
                 <div class="meal-label"><span>${MEAL_LABELS[cat]}</span><span class="meal-label-right">${shareMealMacros}<span class="meal-label-total">${Math.round(mealTotal)}\u202fkcal</span></span></div>
@@ -338,10 +353,10 @@ async function main() {
 
         const dayTotal = Object.values(cats).flat().reduce((sum, l) => sum + (parseFloat(l.calories) || 0), 0);
         const allItems = Object.values(cats).flat();
-        const dayHasMacros = allItems.some(l => l.protein_per_100g != null || l.carbs_per_100g != null || l.fat_per_100g != null);
-        const dP = allItems.reduce((s,l) => l.protein_per_100g != null ? s + (parseFloat(l.protein_per_100g)/100*(parseFloat(l.quantity)||0)) : s, 0);
-        const dC = allItems.reduce((s,l) => l.carbs_per_100g   != null ? s + (parseFloat(l.carbs_per_100g)  /100*(parseFloat(l.quantity)||0)) : s, 0);
-        const dF = allItems.reduce((s,l) => l.fat_per_100g     != null ? s + (parseFloat(l.fat_per_100g)    /100*(parseFloat(l.quantity)||0)) : s, 0);
+        const dayHasMacros = allItems.some(hasMacro);
+        const dP = allItems.reduce((s,l) => { const v = macroG(l,'protein'); return v != null ? s+v : s; }, 0);
+        const dC = allItems.reduce((s,l) => { const v = macroG(l,'carbs');   return v != null ? s+v : s; }, 0);
+        const dF = allItems.reduce((s,l) => { const v = macroG(l,'fat');     return v != null ? s+v : s; }, 0);
         const dayMacrosHtml = dayHasMacros ? `<div class="day-macros"><span>${Math.round(dP)}g Protein</span><span>${Math.round(dC)}g Carbs</span><span>${Math.round(dF)}g Fat</span></div>` : '';
         const commentHtml = sharedComments[date]
             ? `<div class="shared-day-comment">📝 ${esc(sharedComments[date])}</div>`
