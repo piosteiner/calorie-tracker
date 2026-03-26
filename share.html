@@ -76,11 +76,33 @@
             justify-content: space-between;
             align-items: baseline;
         }
+        .meal-label-right {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+        .meal-label-macros {
+            color: #bbb;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: none;
+            letter-spacing: 0;
+        }
         .meal-label-total {
             color: #667eea;
             font-size: 0.8rem;
             text-transform: none;
             letter-spacing: 0;
+        }
+        .day-macros {
+            display: flex;
+            gap: 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #667eea;
+            padding-bottom: 10px;
+            padding-right: 14px;
+            justify-content: flex-end;
         }
         .log-row {
             display: flex;
@@ -302,20 +324,30 @@ async function main() {
                 ? `<div class="share-meal-photos">${groupPhotos.map(u => `<img data-auth-src="${esc(u)}" alt="Meal photo" class="share-meal-thumb">`).join('')}</div>`
                 : '';
             const mealTotal = items.reduce((sum, l) => sum + (parseFloat(l.calories) || 0), 0);
+            const shareHasMacros = items.some(l => l.protein_per_100g != null || l.carbs_per_100g != null || l.fat_per_100g != null);
+            const sP = items.reduce((s,l) => l.protein_per_100g != null ? s + (parseFloat(l.protein_per_100g)/100*(parseFloat(l.quantity)||0)) : s, 0);
+            const sC = items.reduce((s,l) => l.carbs_per_100g   != null ? s + (parseFloat(l.carbs_per_100g)  /100*(parseFloat(l.quantity)||0)) : s, 0);
+            const sF = items.reduce((s,l) => l.fat_per_100g     != null ? s + (parseFloat(l.fat_per_100g)    /100*(parseFloat(l.quantity)||0)) : s, 0);
+            const shareMealMacros = shareHasMacros ? `<span class="meal-label-macros">${Math.round(sP)}g P\u00a0\u00b7\u00a0${Math.round(sC)}g C\u00a0\u00b7\u00a0${Math.round(sF)}g F</span>` : '';
             mealsHtml += `<div class="meal-group">
-                <div class="meal-label"><span>${MEAL_LABELS[cat]}</span><span class="meal-label-total">${Math.round(mealTotal)} kcal</span></div>
+                <div class="meal-label"><span>${MEAL_LABELS[cat]}</span><span class="meal-label-right">${shareMealMacros}<span class="meal-label-total">${Math.round(mealTotal)}\u202fkcal</span></span></div>
                 ${itemsHtml}
                 ${photosHtml}
             </div>`;
         });
 
         const dayTotal = Object.values(cats).flat().reduce((sum, l) => sum + (parseFloat(l.calories) || 0), 0);
+        const allItems = Object.values(cats).flat();
+        const dayHasMacros = allItems.some(l => l.protein_per_100g != null || l.carbs_per_100g != null || l.fat_per_100g != null);
+        const dP = allItems.reduce((s,l) => l.protein_per_100g != null ? s + (parseFloat(l.protein_per_100g)/100*(parseFloat(l.quantity)||0)) : s, 0);
+        const dC = allItems.reduce((s,l) => l.carbs_per_100g   != null ? s + (parseFloat(l.carbs_per_100g)  /100*(parseFloat(l.quantity)||0)) : s, 0);
+        const dF = allItems.reduce((s,l) => l.fat_per_100g     != null ? s + (parseFloat(l.fat_per_100g)    /100*(parseFloat(l.quantity)||0)) : s, 0);
+        const dayMacrosHtml = dayHasMacros ? `<div class="day-macros"><span>${Math.round(dP)}g Protein</span><span>${Math.round(dC)}g Carbs</span><span>${Math.round(dF)}g Fat</span></div>` : '';
         const commentHtml = sharedComments[date]
             ? `<div class="shared-day-comment">📝 ${esc(sharedComments[date])}</div>`
             : '';
         html += `<div class="day-group">
-            <div class="day-header"><span>${formatDate(date)}</span><span class="day-total">${Math.round(dayTotal)} kcal</span></div>
-            ${mealsHtml}
+            <div class="day-header"><span>${formatDate(date)}</span><span class="day-total">${Math.round(dayTotal)} kcal</span></div>            ${dayMacrosHtml}            ${mealsHtml}
             ${commentHtml}
         </div>`;
     });

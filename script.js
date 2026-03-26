@@ -3491,9 +3491,14 @@ class CalorieTracker {
                         return `<img class="history-meal-thumb" data-auth-src="${this.escapeHtml(src)}" alt="Meal photo">`;
                     })
                     .join('');
+                const hasMealMacros = items.some(l => l.protein_per_100g != null || l.carbs_per_100g != null || l.fat_per_100g != null);
+                const mP = items.reduce((s,l) => l.protein_per_100g != null ? s + (parseFloat(l.protein_per_100g)/100*(parseFloat(l.quantity)||0)) : s, 0);
+                const mC = items.reduce((s,l) => l.carbs_per_100g   != null ? s + (parseFloat(l.carbs_per_100g)  /100*(parseFloat(l.quantity)||0)) : s, 0);
+                const mF = items.reduce((s,l) => l.fat_per_100g     != null ? s + (parseFloat(l.fat_per_100g)    /100*(parseFloat(l.quantity)||0)) : s, 0);
+                const mealMacroHtml = hasMealMacros ? `<span class="history-meal-macros">${Math.round(mP)}g P\u00b7${Math.round(mC)}g C\u00b7${Math.round(mF)}g F</span>` : '';
                 return `
                     <div class="history-meal-group">
-                        <div class="history-meal-label">${MEAL_LABELS[cat]}</div>
+                        <div class="history-meal-label"><span>${MEAL_LABELS[cat]}</span>${mealMacroHtml}</div>
                         ${items.map(renderRow).join('')}
                         ${photosHtml ? `<div class="history-meal-photos">${photosHtml}</div>` : ''}
                     </div>`;
@@ -3503,12 +3508,21 @@ class CalorieTracker {
             foodsHtml = logs.map(renderRow).join('');
         }
 
+        const dayHasMacros = logs.some(l => l.protein_per_100g != null || l.carbs_per_100g != null || l.fat_per_100g != null);
+        const dayP = logs.reduce((s,l) => l.protein_per_100g != null ? s + (parseFloat(l.protein_per_100g)/100*(parseFloat(l.quantity)||0)) : s, 0);
+        const dayC = logs.reduce((s,l) => l.carbs_per_100g   != null ? s + (parseFloat(l.carbs_per_100g)  /100*(parseFloat(l.quantity)||0)) : s, 0);
+        const dayF = logs.reduce((s,l) => l.fat_per_100g     != null ? s + (parseFloat(l.fat_per_100g)    /100*(parseFloat(l.quantity)||0)) : s, 0);
+        const dayMacroHtml = dayHasMacros
+            ? `<div class="history-day-macros"><span>${Math.round(dayP)}g Protein</span><span>${Math.round(dayC)}g Carbs</span><span>${Math.round(dayF)}g Fat</span></div>`
+            : '';
+
         detailsDiv.innerHTML = `
             <div class="day-details-content">
                 <div class="details-header">
                     <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">+ Add Item</button>
                 </div>
                 <div class="food-items">${foodsHtml}</div>
+                ${dayMacroHtml}
                 <div class="day-comment-section" data-date="${date}"><span class="comment-loading">…</span></div>
             </div>
         `;
