@@ -8633,8 +8633,16 @@ class CalorieTracker {
             // Populate 30-day summary tiles
             if (statsResponse.success && statsResponse.stats) {
                 const s = statsResponse.stats;
+
+                // Compute average from local history data (last 30 calendar days, logged days only)
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                const recentDays = this.historyData.days.filter(day => new Date(day.log_date) >= thirtyDaysAgo && parseFloat(day.total_calories || 0) > 0);
+                const totalCalories = recentDays.reduce((sum, day) => sum + parseFloat(day.total_calories || 0), 0);
+                const avgCalories = recentDays.length > 0 ? Math.round(totalCalories / recentDays.length) : 0;
+
                 document.getElementById('statsAvgCalories').textContent =
-                    s.averageCaloriesPerDay.toLocaleString();
+                    avgCalories.toLocaleString();
                 document.getElementById('statsGoalRate').textContent =
                     `${s.goalAchievementRate}%`;
                 document.getElementById('statsDaysLogged').textContent =
