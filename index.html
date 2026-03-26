@@ -266,6 +266,74 @@
                     </div>
                 </div>
 
+                <!-- Food Log History -->
+                <div class="history-card">
+                    <div class="card-header-with-action" data-action="toggle-history">
+                        <h3>📅 Food Log History</h3>
+                        <button id="toggleHistoryBtn" class="btn btn-secondary" data-action="toggle-history">
+                            <span id="historyBtnText">Show History</span>
+                        </button>
+                    </div>
+                    
+                    <div id="historyContent" class="history-content" style="display: none;">
+
+                        <!-- 30-Day Stats & Weekly Breakdown (loaded when history opens) -->
+                        <div id="statsSection" class="stats-section" style="display: none;">
+                            <h4 class="stats-heading">📊 Last 30 Days</h4>
+                            <div class="stats-summary-grid">
+                                <div class="stat-summary-item">
+                                    <div class="stat-summary-value" id="statsAvgCalories">—</div>
+                                    <div class="stat-summary-label">Avg kcal / day</div>
+                                </div>
+                                <div class="stat-summary-item">
+                                    <div class="stat-summary-value" id="statsGoalRate">—</div>
+                                    <div class="stat-summary-label">Goal hit rate</div>
+                                </div>
+                                <div class="stat-summary-item">
+                                    <div class="stat-summary-value" id="statsDaysLogged">—</div>
+                                    <div class="stat-summary-label">Days logged</div>
+                                </div>
+                            </div>
+
+                            <h4 class="stats-heading">📆 This Week</h4>
+                            <div id="weeklyBreakdown" class="weekly-breakdown"></div>
+
+                            <hr class="stats-divider">
+                        </div>
+
+                        <div id="historyList" class="history-list">
+                            <p class="loading">Loading your food log history...</p>
+                        </div>
+                        
+                        <button id="loadMoreHistoryBtn" class="btn btn-secondary load-more-btn" style="display: none;" data-action="load-more-history">
+                            Load More Days
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Monthly Calendar -->
+                <div class="weight-tracking-card">
+                    <div class="card-header-with-action" data-action="toggle-calendar">
+                        <h3>📅 Monthly Calendar</h3>
+                        <button class="btn btn-secondary" data-action="toggle-calendar">
+                            <span id="calendarBtnText">Show Calendar</span>
+                        </button>
+                    </div>
+                    <div id="calendarContent" style="display: none;">
+                        <div class="calendar-nav">
+                            <button class="btn btn-outline btn-sm" data-action="prev-month">← Prev</button>
+                            <span id="calendarMonthLabel" class="calendar-month-label"></span>
+                            <button class="btn btn-outline btn-sm" data-action="next-month">Next →</button>
+                        </div>
+                        <div class="calendar-legend">
+                            <span class="legend-item legend-met">Goal met</span>
+                            <span class="legend-item legend-missed">Over / under goal</span>
+                            <span class="legend-item legend-empty">No data</span>
+                        </div>
+                        <div id="calendarGrid"></div>
+                    </div>
+                </div>
+
                 <!-- Weight Tracking Section -->
                 <div class="weight-tracking-card">
                     <div class="card-header-with-action" data-action="toggle-weight-tracking">
@@ -430,74 +498,6 @@
                                 <span class="coming-soon-badge">Soon</span>
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Monthly Calendar -->
-                <div class="weight-tracking-card">
-                    <div class="card-header-with-action" data-action="toggle-calendar">
-                        <h3>📅 Monthly Calendar</h3>
-                        <button class="btn btn-secondary" data-action="toggle-calendar">
-                            <span id="calendarBtnText">Show Calendar</span>
-                        </button>
-                    </div>
-                    <div id="calendarContent" style="display: none;">
-                        <div class="calendar-nav">
-                            <button class="btn btn-outline btn-sm" data-action="prev-month">← Prev</button>
-                            <span id="calendarMonthLabel" class="calendar-month-label"></span>
-                            <button class="btn btn-outline btn-sm" data-action="next-month">Next →</button>
-                        </div>
-                        <div class="calendar-legend">
-                            <span class="legend-item legend-met">Goal met</span>
-                            <span class="legend-item legend-missed">Over / under goal</span>
-                            <span class="legend-item legend-empty">No data</span>
-                        </div>
-                        <div id="calendarGrid"></div>
-                    </div>
-                </div>
-
-                <!-- Food Log History -->
-                <div class="history-card">
-                    <div class="card-header-with-action" data-action="toggle-history">
-                        <h3>📅 Food Log History</h3>
-                        <button id="toggleHistoryBtn" class="btn btn-secondary" data-action="toggle-history">
-                            <span id="historyBtnText">Show History</span>
-                        </button>
-                    </div>
-                    
-                    <div id="historyContent" class="history-content" style="display: none;">
-
-                        <!-- 30-Day Stats & Weekly Breakdown (loaded when history opens) -->
-                        <div id="statsSection" class="stats-section" style="display: none;">
-                            <h4 class="stats-heading">📊 Last 30 Days</h4>
-                            <div class="stats-summary-grid">
-                                <div class="stat-summary-item">
-                                    <div class="stat-summary-value" id="statsAvgCalories">—</div>
-                                    <div class="stat-summary-label">Avg kcal / day</div>
-                                </div>
-                                <div class="stat-summary-item">
-                                    <div class="stat-summary-value" id="statsGoalRate">—</div>
-                                    <div class="stat-summary-label">Goal hit rate</div>
-                                </div>
-                                <div class="stat-summary-item">
-                                    <div class="stat-summary-value" id="statsDaysLogged">—</div>
-                                    <div class="stat-summary-label">Days logged</div>
-                                </div>
-                            </div>
-
-                            <h4 class="stats-heading">📆 This Week</h4>
-                            <div id="weeklyBreakdown" class="weekly-breakdown"></div>
-
-                            <hr class="stats-divider">
-                        </div>
-
-                        <div id="historyList" class="history-list">
-                            <p class="loading">Loading your food log history...</p>
-                        </div>
-                        
-                        <button id="loadMoreHistoryBtn" class="btn btn-secondary load-more-btn" style="display: none;" data-action="load-more-history">
-                            Load More Days
-                        </button>
                     </div>
                 </div>
 
