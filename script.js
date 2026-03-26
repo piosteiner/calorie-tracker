@@ -3505,7 +3505,6 @@ class CalorieTracker {
         detailsDiv.innerHTML = `
             <div class="day-details-content">
                 <div class="details-header">
-                    <span class="details-total">Total: ${Math.round(totalCalories).toLocaleString()} kcal</span>
                     <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">+ Add Item</button>
                 </div>
                 <div class="food-items">${foodsHtml}</div>
@@ -4440,14 +4439,6 @@ class CalorieTracker {
                     const currentTotal = parseInt(caloriesSpan.textContent.replace(/[^\d]/g, '')) || 0;
                     const newTotal = Math.max(0, currentTotal - calories);
                     caloriesSpan.textContent = `${newTotal.toLocaleString()} kcal`;
-                }
-                
-                // Update detailed view total if expanded
-                const detailsTotal = dayCard.querySelector('.details-total');
-                if (detailsTotal) {
-                    const currentDetailTotal = parseInt(detailsTotal.textContent.replace(/[^\d]/g, '')) || 0;
-                    const newDetailTotal = Math.max(0, currentDetailTotal - calories);
-                    detailsTotal.textContent = `Total: ${newDetailTotal.toLocaleString()} kcal`;
                 }
                 
                 // Update meals count (no longer displayed — removed)
