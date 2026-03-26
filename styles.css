@@ -6478,9 +6478,9 @@ body.dark-mode .legend-missed::before { background: #3a2f00; }
     margin-top: 2px;
 }
 /* Color-code the three macros */
-.macro-stat:nth-child(1) .macro-value { color: #3b82f6; } /* protein — blue */
-.macro-stat:nth-child(2) .macro-value { color: #f59e0b; } /* carbs — amber */
-.macro-stat:nth-child(3) .macro-value { color: #ef4444; } /* fat — red */
+.macro-stat:nth-child(1) .macro-value { color: #667eea; }
+.macro-stat:nth-child(2) .macro-value { color: #667eea; }
+.macro-stat:nth-child(3) .macro-value { color: #667eea; }
 
 /* Per-item macro line in food log & history */
 .food-macros {
