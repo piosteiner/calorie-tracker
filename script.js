@@ -3357,6 +3357,8 @@ class CalorieTracker {
             this.historyData.expandedDays.delete(date);
             detailsDiv.style.display = 'none';
             dayCard.classList.remove('expanded');
+            const btn = dayCard.querySelector('.btn-view-details');
+            if (btn) btn.querySelector('.expand-text').textContent = 'View Details';
             return;
         }
 
@@ -3401,7 +3403,7 @@ class CalorieTracker {
 
             return `
                 <div class="history-day-card" data-date="${date}">
-                    <div class="day-summary">
+                    <div class="day-summary" data-action="view-day-details" data-date="${date}">
                         <div class="day-info">
                             <h4>📅 ${displayDate}</h4>
                             <p class="day-stats">
@@ -3432,7 +3434,7 @@ class CalorieTracker {
         const expandText = dayCard.querySelector('.expand-text');
         const date = dayCard.getAttribute('data-date');
 
-        expandIcon.textContent = '▼';
+        expandIcon.textContent = '▶';
         expandText.textContent = 'Hide Details';
 
         const MEAL_LABELS = {
