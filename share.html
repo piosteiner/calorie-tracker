@@ -46,6 +46,14 @@
             padding: 8px 0 6px;
             border-bottom: 2px solid #e0e4f0;
             margin-bottom: 14px;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+        .day-total {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #888;
         }
 
         .meal-group {
@@ -290,11 +298,12 @@ async function main() {
             </div>`;
         });
 
+        const dayTotal = Object.values(cats).flat().reduce((sum, l) => sum + (parseFloat(l.calories) || 0), 0);
         const commentHtml = sharedComments[date]
             ? `<div class="shared-day-comment">📝 ${esc(sharedComments[date])}</div>`
             : '';
         html += `<div class="day-group">
-            <div class="day-header">${formatDate(date)}</div>
+            <div class="day-header"><span>${formatDate(date)}</span><span class="day-total">${Math.round(dayTotal)} kcal</span></div>
             ${mealsHtml}
             ${commentHtml}
         </div>`;
