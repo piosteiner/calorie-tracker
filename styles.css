@@ -819,6 +819,7 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+    cursor: pointer;
 }
 
 .card-header-with-action h3 {
