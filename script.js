@@ -752,11 +752,6 @@ class CalorieTracker {
                     this.toggleWeightTracking();
                     break;
                 
-                case 'toggle-calorie-chart':
-                    e.preventDefault();
-                    this.toggleCalorieChart();
-                    break;
-                
                 case 'view-day-details':
                     e.preventDefault();
                     this.viewDayDetails(target.dataset.date);
@@ -3272,6 +3267,8 @@ class CalorieTracker {
             }
             // Load 30-day stats whenever history is opened
             await this.loadUserStats();
+            // Load calorie chart (now embedded in history section)
+            await this.loadCalorieChartData();
         } else {
             historyContent.style.display = 'none';
             historyBtnText.textContent = 'Show History';
@@ -3926,22 +3923,6 @@ class CalorieTracker {
     /**
      * Toggle calorie chart visibility
      */
-    async toggleCalorieChart() {
-        const content = document.getElementById('calorieChartContent');
-        const btn = document.getElementById('calorieChartBtnText');
-        
-        if (content.style.display === 'none') {
-            content.style.display = 'block';
-            btn.textContent = 'Hide Chart';
-            
-            // Load and render calorie data for last 28 days
-            await this.loadCalorieChartData();
-        } else {
-            content.style.display = 'none';
-            btn.textContent = 'Show Chart';
-        }
-    }
-
     /**
      * Load calorie data for the last 28 days
      */

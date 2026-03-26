@@ -249,23 +249,6 @@
                     <input type="hidden" id="pendingImageId">
                 </div>
 
-                <!-- Calorie Tracking Chart -->
-                <div class="weight-tracking-card">
-                    <div class="card-header-with-action" data-action="toggle-calorie-chart">
-                        <h3>📊 Calorie Tracking (Last 28 Days)</h3>
-                        <button id="toggleCalorieChartBtn" class="btn btn-secondary" data-action="toggle-calorie-chart">
-                            <span id="calorieChartBtnText">Show Chart</span>
-                        </button>
-                    </div>
-                    
-                    <div id="calorieChartContent" class="weight-content" style="display: none;">
-                        <!-- Calorie Chart -->
-                        <div class="weight-chart-container">
-                            <canvas id="calorieChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Food Log History -->
                 <div class="history-card">
                     <div class="card-header-with-action" data-action="toggle-history">
@@ -299,6 +282,11 @@
                             <div id="weeklyBreakdown" class="weekly-breakdown"></div>
 
                             <hr class="stats-divider">
+                        </div>
+
+                        <!-- Calorie Tracking Chart (Last 28 Days) -->
+                        <div class="weight-chart-container calorie-chart-in-history">
+                            <canvas id="calorieChart"></canvas>
                         </div>
 
                         <div id="historyList" class="history-list">
