@@ -3430,53 +3430,85 @@ class CalorieTracker {
         const expandIcon = dayCard.querySelector('.expand-icon');
         const expandText = dayCard.querySelector('.expand-text');
         const date = dayCard.getAttribute('data-date');
-        
+
         expandIcon.textContent = '▼';
         expandText.textContent = 'Hide Details';
-        
+
+        const MEAL_LABELS = {
+            breakfast: '🌅 Breakfast',
+            lunch:     '☀️ Lunch',
+            dinner:    '🌙 Dinner',
+            snack:     '🍿 Snack',
+            other:     '📝 Other'
+        };
+        const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
+
+        const renderRow = (log) => {
+            const brandText = log.brand ? ` by ${this.escapeHtml(log.brand)}` : '';
+            const distributorText = log.distributor ? ` @ ${this.escapeHtml(log.distributor)}` : '';
+            const timeText = log.meal_time ? ` · ${String(log.meal_time).slice(0, 5)}` : '';
+            let macrosHtml = '';
+            if (log.protein_per_100g != null || log.carbs_per_100g != null || log.fat_per_100g != null) {
+                const qty = parseFloat(log.quantity) || 0;
+                const p = log.protein_per_100g != null ? Math.round((parseFloat(log.protein_per_100g) / 100) * qty) + 'g P' : null;
+                const c = log.carbs_per_100g   != null ? Math.round((parseFloat(log.carbs_per_100g)   / 100) * qty) + 'g C' : null;
+                const f = log.fat_per_100g     != null ? Math.round((parseFloat(log.fat_per_100g)     / 100) * qty) + 'g F' : null;
+                macrosHtml = `<span class="food-macros">${[p,c,f].filter(Boolean).join(' · ')}</span>`;
+            }
+            return `
+                <div class="food-item-row editable" data-log-id="${log.id}">
+                    <div class="food-item-content">
+                        <span class="food-item-name">${this.escapeHtml(log.food_name)}${brandText}${distributorText}</span>
+                        <span class="food-item-details">${Math.round(parseFloat(log.quantity))} ${log.unit}${timeText}</span>
+                        <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} kcal</span>
+                        ${macrosHtml}
+                    </div>
+                    <div class="food-item-actions">
+                        <button class="btn-icon btn-edit" data-action="edit-food-log" data-log-id="${log.id}" data-date="${date}" title="Edit">✏️</button>
+                        <button class="btn-icon btn-delete" data-action="delete-food-log" data-log-id="${log.id}" data-food-name="${this.escapeHtml(log.food_name)}" data-date="${date}" title="Delete">🗑️</button>
+                    </div>
+                </div>`;
+        };
+
+        let foodsHtml;
+        if (logs.length === 0) {
+            foodsHtml = '<p class="empty-message">No food logged for this day</p>';
+        } else if (logs.some(l => l.meal_category)) {
+            // Group by meal category
+            const byCategory = {};
+            logs.forEach(log => {
+                const cat = (log.meal_category || 'other').toLowerCase();
+                if (!byCategory[cat]) byCategory[cat] = [];
+                byCategory[cat].push(log);
+            });
+            foodsHtml = MEAL_ORDER.filter(cat => byCategory[cat]).map(cat => {
+                const items = byCategory[cat];
+                const photosHtml = items.filter(l => l.image_url)
+                    .map(l => `<img class="history-meal-thumb" src="${this.escapeHtml(l.image_url)}" alt="Meal photo">`)
+                    .join('');
+                return `
+                    <div class="history-meal-group">
+                        <div class="history-meal-label">${MEAL_LABELS[cat]}</div>
+                        ${items.map(renderRow).join('')}
+                        ${photosHtml ? `<div class="history-meal-photos">${photosHtml}</div>` : ''}
+                    </div>`;
+            }).join('');
+        } else {
+            // No category data — flat list
+            foodsHtml = logs.map(renderRow).join('');
+        }
+
         detailsDiv.innerHTML = `
             <div class="day-details-content">
                 <div class="details-header">
                     <span class="details-total">Total: ${Math.round(totalCalories).toLocaleString()} kcal</span>
-                    <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">
-                        + Add Item
-                    </button>
+                    <button class="btn btn-add-item" data-action="add-food-log" data-date="${date}">+ Add Item</button>
                 </div>
-                <div class="food-items">
-                    ${logs.length === 0 
-                        ? '<p class="empty-message">No food logged for this day</p>'
-                        : logs.map(log => {
-                            const brandText = log.brand ? ` by ${this.escapeHtml(log.brand)}` : '';
-                            const distributorText = log.distributor ? ` @ ${this.escapeHtml(log.distributor)}` : '';
-                            return `
-                        <div class="food-item-row editable" data-log-id="${log.id}">
-                            <div class="food-item-content">
-                                <span class="food-item-name">${this.escapeHtml(log.food_name)}${brandText}${distributorText}</span>
-                                <span class="food-item-details">${Math.round(parseFloat(log.quantity))} ${log.unit}</span>
-                                <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} kcal</span>
-                                ${(log.protein_per_100g != null || log.carbs_per_100g != null || log.fat_per_100g != null) ? (() => {
-                                    const qty = parseFloat(log.quantity) || 0;
-                                    const p = log.protein_per_100g != null ? Math.round((parseFloat(log.protein_per_100g) / 100) * qty) + 'g P' : null;
-                                    const c = log.carbs_per_100g   != null ? Math.round((parseFloat(log.carbs_per_100g)   / 100) * qty) + 'g C' : null;
-                                    const f = log.fat_per_100g     != null ? Math.round((parseFloat(log.fat_per_100g)     / 100) * qty) + 'g F' : null;
-                                    return `<span class="food-macros">${[p,c,f].filter(Boolean).join(' · ')}</span>`;
-                                })() : ''}
-                            </div>
-                            <div class="food-item-actions">
-                                <button class="btn-icon btn-edit" data-action="edit-food-log" data-log-id="${log.id}" data-date="${date}" title="Edit">
-                                    ✏️
-                                </button>
-                                <button class="btn-icon btn-delete" data-action="delete-food-log" data-log-id="${log.id}" data-food-name="${this.escapeHtml(log.food_name)}" data-date="${date}" title="Delete">
-                                    🗑️
-                                </button>
-                            </div>
-                        </div>
-                    `;}).join('')}
-                </div>
+                <div class="food-items">${foodsHtml}</div>
                 <div class="day-comment-section" data-date="${date}"><span class="comment-loading">…</span></div>
             </div>
         `;
-        
+
         detailsDiv.style.display = 'block';
 
         // Async: load comment from API then swap in the real widget

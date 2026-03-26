@@ -941,6 +941,45 @@ body {
     gap: 8px;
 }
 
+/* Meal category groups inside expanded history day */
+.history-meal-group {
+    margin-bottom: 12px;
+}
+
+.history-meal-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 0 6px 2px;
+    border-bottom: 1px solid var(--border-primary);
+    margin-bottom: 6px;
+}
+
+.history-meal-photos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 0 2px;
+}
+
+.history-meal-thumb {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0.9;
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+.history-meal-thumb:hover {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
 .food-item-row {
     display: flex;
     justify-content: space-between;
