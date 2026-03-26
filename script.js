@@ -9138,6 +9138,8 @@ class CalorieTracker {
         if (end)   end.value   = today;
         document.getElementById('shareLinkResult').style.display = 'none';
         document.getElementById('shareModal').style.display = 'flex';
+        // Auto-generate link with default date range
+        this.generateShareLink();
     }
 
     closeShareModal() {
