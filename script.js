@@ -8782,8 +8782,10 @@ class CalorieTracker {
                 'GET', null, { silent: true }
             );
             if (response.success && response.calendar) {
+                console.log('[Calendar] raw response sample:', JSON.stringify(response.calendar.slice(0, 3)));
                 this.renderCalendarGrid(response.calendar, year, month);
             } else {
+                console.log('[Calendar] response was:', JSON.stringify(response));
                 grid.innerHTML = '<p class="empty-message">No data available.</p>';
             }
         } catch (error) {
