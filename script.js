@@ -8808,11 +8808,12 @@ class CalorieTracker {
         const blanksBefore = (firstDay === 0 ? 6 : firstDay - 1); // shift to Mon-start
         const blanks = Array(blanksBefore).fill('<div class="cal-cell cal-blank"></div>').join('');
 
-        // Day cells — normalise date keys to YYYY-MM-DD regardless of ISO timestamp
+        // Day cells — normalise date keys to YYYY-MM-DD regardless of ISO timestamp or field name
         const dayMap = {};
         calendarDays.forEach(d => {
-            const key = (d.date || '').toString().split('T')[0];
-            dayMap[key] = d;
+            const raw = d.date || d.log_date || '';
+            const key = raw.toString().split('T')[0].split(' ')[0];
+            if (key) dayMap[key] = d;
         });
 
         const daysInMonth = new Date(year, month, 0).getDate();
@@ -8825,9 +8826,15 @@ class CalorieTracker {
             let cls = 'cal-cell';
             let tooltip = '';
             if (isToday) cls += ' cal-today';
-            if (info && info.total_calories > 0) {
-                cls += info.goal_met ? ' cal-goal-met' : ' cal-goal-missed';
-                tooltip = `${Math.round(info.total_calories)} kcal`;
+            if (info && parseFloat(info.total_calories) > 0) {
+                const calories = parseFloat(info.total_calories);
+                const goal = parseFloat(info.daily_goal || info.goal || this.calorieGoal || 2000);
+                // goal_met may come as boolean, 1/0, or be absent — compute it ourselves as fallback
+                const goalMet = info.goal_met != null
+                    ? !!info.goal_met
+                    : (calories >= goal * 0.9 && calories <= goal * 1.1);
+                cls += goalMet ? ' cal-goal-met' : ' cal-goal-missed';
+                tooltip = `${Math.round(calories)} kcal`;
             }
             dayCells.push(
                 `<div class="${cls}" title="${tooltip}">
