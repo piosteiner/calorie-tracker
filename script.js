@@ -3147,15 +3147,15 @@ class CalorieTracker {
     _onRemoteDataChanged() {
         if (!this.isOnline || !this.authToken || !this.currentUser) return;
 
-        // Only refresh when the dashboard section is active
-        const dashboard = document.getElementById('dashboard');
-        if (!dashboard || dashboard.style.display === 'none') return;
+        // Only refresh when the dashboard section is active (sections toggle via .active class)
+        const dashboardSection = document.getElementById('dashboardSection');
+        if (!dashboardSection || !dashboardSection.classList.contains('active')) return;
 
         this.loadTodaysData().catch(() => {});
 
         // Refresh rewards counters if that section is currently visible
         const rewardsSection = document.getElementById('rewardsSection');
-        if (rewardsSection && rewardsSection.style.display !== 'none') {
+        if (rewardsSection && rewardsSection.classList.contains('active')) {
             this.loadRewardsData().catch(() => {});
         }
     }
