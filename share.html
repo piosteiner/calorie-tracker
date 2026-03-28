@@ -334,7 +334,7 @@ async function main() {
     const hasMacro = l => getPer100(l, 'protein') != null || getPer100(l, 'carbs') != null || getPer100(l, 'fat') != null;
 
     // Sort dates ascending
-    const sortedDates = Object.keys(byDate).sort();
+    const sortedDates = Object.keys(byDate).sort().reverse();
 
     let html = '';
     sortedDates.forEach(date => {
