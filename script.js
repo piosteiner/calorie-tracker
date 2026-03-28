@@ -526,11 +526,22 @@ class CalorieTracker {
                 const now = new Date();
                 mealTimeInput.value = now.toTimeString().slice(0, 5); // HH:MM format
             }
+
+            // Update time field whenever the user changes the meal category
+            if (!mealCategoryInput._timeListenerBound) {
+                mealCategoryInput._timeListenerBound = true;
+                mealCategoryInput.addEventListener('change', () => {
+                    const t = this.getMealTimeForCategory(mealCategoryInput.value);
+                    mealTimeInput.value = t || new Date().toTimeString().slice(0, 5);
+                });
+            }
         }
     }
 
-    // Returns HH:MM time of first existing log entry for the given meal category, or null
+    // Returns HH:MM time of first existing log entry for the given meal category, or null.
+    // 'snack' always returns null so the time defaults to now (snacks are ad-hoc).
     getMealTimeForCategory(category) {
+        if (category === 'snack') return null;
         const entry = this.foodLog.find(f => (f.meal_category || 'other') === category && f.meal_time);
         return entry ? entry.meal_time : null; // meal_time is already HH:MM
     }
