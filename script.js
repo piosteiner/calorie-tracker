@@ -9003,10 +9003,14 @@ class CalorieTracker {
                 const calories = parseFloat(info.total_calories);
                 const goal = parseFloat(info.daily_goal || info.goal || this.calorieGoal || 2000);
                 // goal_met may come as boolean, 1/0, or be absent — compute it ourselves as fallback
-                const goalMet = info.goal_met != null
-                    ? !!info.goal_met
-                    : (calories >= goal * 0.9 && calories <= goal * 1.1);
-                cls += goalMet ? ' cal-goal-met' : ' cal-goal-missed';
+                // Green: within ±10% of goal. Yellow: below by >10%. Red: above by >10%.
+                if (calories >= goal * 0.9 && calories <= goal * 1.1) {
+                    cls += ' cal-goal-met';
+                } else if (calories > goal * 1.1) {
+                    cls += ' cal-goal-over';
+                } else {
+                    cls += ' cal-goal-missed';
+                }
                 tooltip = `${Math.round(calories)} kcal`;
             }
             dayCells.push(
