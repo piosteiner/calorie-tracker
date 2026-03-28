@@ -7,6 +7,7 @@
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>">
     <meta name="description" content="Track your daily nutrition intake with our easy-to-use calorie tracker">
     <meta name="keywords" content="calorie tracker, nutrition, diet, health, food logging">
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
 </head>
@@ -1318,6 +1319,15 @@
                 </div>
 
                 <hr class="modal-divider">
+
+                <!-- Push Notification Settings -->
+                <div class="profile-section" id="pushNotificationSection">
+                    <h4 class="section-subtitle">🔔 Push Notifications</h4>
+                    <p class="profile-meta" id="pushStatusText">Loading…</p>
+                    <button type="button" class="btn btn-outline btn-sm" id="pushToggleBtn" data-action="toggle-push-notifications" style="display:none;">Enable Notifications</button>
+                </div>
+
+                <hr class="modal-divider">
                 <h4 class="section-subtitle">🔒 Change Password</h4>
                 <p class="modal-description">Update your password to keep your account secure</p>
 
@@ -1591,6 +1601,14 @@
     <script src="validators.js"></script>
     <script src="themeToggle.js"></script>
     <script src="realtimeSync.js"></script>
+    <script src="pushManager.js"></script>
     <script src="script.js?v=20260326-4"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function () {});
+            });
+        }
+    </script>
 </body>
 </html>

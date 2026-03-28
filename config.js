@@ -50,7 +50,12 @@ const CONFIG = {
 
     // Offline mode settings (when backend is not available)
     ENABLE_OFFLINE_MODE: true,
-    OFFLINE_STORAGE_KEY: 'calorieTrackerOffline'
+    OFFLINE_STORAGE_KEY: 'calorieTrackerOffline',
+
+    // Push Notifications (Web Push / VAPID)
+    // Generate keys with: npx web-push generate-vapid-keys
+    // Set VAPID_PUBLIC_KEY to your base64url-encoded public key string.
+    VAPID_PUBLIC_KEY: ''
 };
 
 // Make available as global variable

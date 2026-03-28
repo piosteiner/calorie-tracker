@@ -1148,6 +1148,11 @@ class CalorieTracker {
                     this.handleUpdateEmail();
                     break;
 
+                case 'toggle-push-notifications':
+                    e.preventDefault();
+                    this.togglePushNotifications();
+                    break;
+
                 // ── Image attachment (add form) ────────────────────────────
                 case 'toggle-image-attach':
                     e.preventDefault();
@@ -1580,6 +1585,7 @@ class CalorieTracker {
 
                     // Start live cross-device sync
                     this._startRealtimeSync();
+                    pushManager.init(this.authToken).catch(() => {});
                     
                     return;
                 }
@@ -1971,6 +1977,7 @@ class CalorieTracker {
                     this.toggleAdminInterface();
                     await this.loadRewardsData(); // Load rewards system data
                     this._startRealtimeSync();
+                    pushManager.init(this.authToken).catch(() => {});
                     this.showMessage('Login successful! (Connected to backend)', 'success');
                     return;
                 } catch (error) {
@@ -2034,6 +2041,7 @@ class CalorieTracker {
                 
                 await this.loadRewardsData(); // Load rewards system data
                 this._startRealtimeSync();
+                pushManager.init(this.authToken).catch(() => {});
                 
                 this.showMessage('Login successful!', 'success');
                 
@@ -3167,6 +3175,71 @@ class CalorieTracker {
                 return '';
             }
         });
+    }
+
+    // ── Push notification helpers ────────────────────────────────────────────
+
+    /**
+     * Toggle push subscription on/off.  Called by the profile-modal button.
+     */
+    async togglePushNotifications() {
+        if (!pushManager.isSupported()) return;
+        try {
+            if (pushManager.isSubscribed) {
+                await pushManager.unsubscribe(this.authToken);
+                this.showMessage('Push notifications disabled.', 'info');
+            } else {
+                await pushManager.subscribe(this.authToken);
+                this.showMessage('Push notifications enabled!', 'success');
+            }
+        } catch (err) {
+            this.showMessage('Could not change notification setting: ' + err.message, 'error');
+        }
+        this._updatePushUI();
+    }
+
+    /**
+     * Refresh the push-notification section inside the Profile modal.
+     * Safe to call whether the modal is open or not.
+     */
+    _updatePushUI() {
+        const section = document.getElementById('pushNotificationSection');
+        const statusText = document.getElementById('pushStatusText');
+        const btn = document.getElementById('pushToggleBtn');
+        if (!section || !statusText || !btn) return;
+
+        // Hide the whole section until a VAPID public key is configured
+        if (!CONFIG.VAPID_PUBLIC_KEY) {
+            section.style.display = 'none';
+            return;
+        }
+        section.style.display = '';
+
+        if (!pushManager.isSupported()) {
+            statusText.textContent = 'Push notifications are not supported in this browser.';
+            btn.style.display = 'none';
+            return;
+        }
+
+        const permission = pushManager.getPermission();
+        if (permission === 'denied') {
+            statusText.textContent = 'Notifications blocked by browser. Change in browser settings to enable.';
+            btn.style.display = 'none';
+            return;
+        }
+
+        btn.style.display = '';
+        if (pushManager.isSubscribed) {
+            statusText.textContent = 'You will receive meal reminders and updates.';
+            btn.textContent = 'Disable Notifications';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline');
+        } else {
+            statusText.textContent = 'Get meal reminders and activity updates.';
+            btn.textContent = 'Enable Notifications';
+            btn.classList.remove('btn-outline');
+            btn.classList.add('btn-primary');
+        }
     }
 
     /**
@@ -8360,6 +8433,9 @@ class CalorieTracker {
                 memberSinceEl.textContent = new Date(this.currentUser.createdAt).toLocaleDateString();
             }
             
+            // Refresh push notification UI
+            this._updatePushUI();
+
             // Show modal
             modal.style.display = 'flex';
         }
