@@ -216,8 +216,13 @@
 
     RealtimeSync.prototype._onVisibilityChange = function () {
         if (document.visibilityState === 'visible') {
-            // User returned to the tab — reconnect and refresh immediately
+            // Re-establish the live connection (SSE or polling).
             this._connect();
+            // Always do an immediate catch-up poll so changes that arrived while
+            // the tab was hidden are picked up right away, without waiting for the
+            // next SSE event (which won't come because it was emitted to a closed
+            // connection) or the next polling tick.
+            this._poll();
         } else {
             // Tab hidden — conserve resources
             this._clearPoll();
