@@ -466,6 +466,12 @@ class CalorieTracker {
                 this.processSyncQueue();
             }
         }, 30000);
+
+        // Live cross-device sync — triggers a silent data refresh when another
+        // device adds food, uploads a photo, or modifies data.
+        if (typeof realtimeSync !== 'undefined') {
+            realtimeSync.onUpdate(() => this._onRemoteDataChanged());
+        }
         
         // Initialize food form date and meal category
         this.initializeFoodForm();
@@ -1542,6 +1548,9 @@ class CalorieTracker {
                     
                     // Load rewards data
                     await this.loadRewardsData();
+
+                    // Start live cross-device sync
+                    this._startRealtimeSync();
                     
                     return;
                 }
@@ -1932,6 +1941,7 @@ class CalorieTracker {
                     await this.checkAdminStatus();
                     this.toggleAdminInterface();
                     await this.loadRewardsData(); // Load rewards system data
+                    this._startRealtimeSync();
                     this.showMessage('Login successful! (Connected to backend)', 'success');
                     return;
                 } catch (error) {
@@ -1994,6 +2004,7 @@ class CalorieTracker {
                 this.toggleAdminInterface();
                 
                 await this.loadRewardsData(); // Load rewards system data
+                this._startRealtimeSync();
                 
                 this.showMessage('Login successful!', 'success');
                 
@@ -2010,6 +2021,9 @@ class CalorieTracker {
     }
 
     async handleLogout() {
+        // Stop live sync before clearing auth state
+        if (typeof realtimeSync !== 'undefined') realtimeSync.stop();
+
         if (this.isOnline && this.authToken && !CONFIG.DEVELOPMENT_MODE) {
             try {
                 await this.apiCall('/auth/logout', 'POST');
@@ -3104,6 +3118,46 @@ class CalorieTracker {
 
         this.updateFoodLog();
         this.showMessage('Offline data synced successfully', 'success');
+    }
+
+    // ── Realtime sync helpers ────────────────────────────────────────────────
+
+    /**
+     * Start the RealtimeSync service for the currently authenticated user.
+     * Uses SSE if the backend supports it, otherwise falls back to polling.
+     */
+    _startRealtimeSync() {
+        if (typeof realtimeSync === 'undefined' || !this.authToken) return;
+        const self = this;
+        realtimeSync.start(this.authToken, async function () {
+            const today = new Date().toISOString().split('T')[0];
+            try {
+                const data = await self.apiCall(`/logs?date=${today}`);
+                return JSON.stringify(data);
+            } catch (_) {
+                return '';
+            }
+        });
+    }
+
+    /**
+     * Called by RealtimeSync when another device has modified data.
+     * Silently reloads today's food log (and rewards if open).
+     */
+    _onRemoteDataChanged() {
+        if (!this.isOnline || !this.authToken || !this.currentUser) return;
+
+        // Only refresh when the dashboard section is active
+        const dashboard = document.getElementById('dashboard');
+        if (!dashboard || dashboard.style.display === 'none') return;
+
+        this.loadTodaysData().catch(() => {});
+
+        // Refresh rewards counters if that section is currently visible
+        const rewardsSection = document.getElementById('rewardsSection');
+        if (rewardsSection && rewardsSection.style.display !== 'none') {
+            this.loadRewardsData().catch(() => {});
+        }
     }
 
     capitalizeFirst(str) {
