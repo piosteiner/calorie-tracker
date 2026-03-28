@@ -27,6 +27,7 @@
         this._lastSnapshot = null;
         this._debounceTimer = null;
         this._sseOpenTime  = 0;
+        this._sseOpened    = false;  // true once the first onopen fires — never fall back after that
         this._visHandler   = this._onVisibilityChange.bind(this);
     }
 
@@ -51,7 +52,8 @@
 
     /** Stop all sync activity and release resources. */
     RealtimeSync.prototype.stop = function () {
-        this._running = false;
+        this._running   = false;
+        this._sseOpened = false;
         this._clearPoll();
         this._closeSSE();
         clearTimeout(this._debounceTimer);
@@ -96,16 +98,48 @@
         this._closeSSE();
         if (!this._authToken) { this._startPolling(); return; }
 
+        var self = this;
         var base = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE_URL) ? CONFIG.API_BASE_URL : '';
-        var url  = base + '/sync/events?token=' + encodeURIComponent(this._authToken);
 
-        var es;
-        try { es = new EventSource(url); }
-        catch (_) { this._useSse = false; this._startPolling(); return; }
+        // Step 1: exchange the JWT for a short-lived single-use ticket via a normal
+        // authenticated POST (bearer header — never touches a query string / access log).
+        fetch(base + '/sync/ticket', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + this._authToken }
+        })
+        .then(function (r) {
+            if (!r.ok) throw new Error('ticket ' + r.status);
+            return r.json();
+        })
+        .then(function (body) {
+            if (!self._running) return;  // stopped while we were waiting
+            var ticket = body.ticket || body.data && body.data.ticket;
+            if (!ticket) throw new Error('no ticket in response');
 
+            // Step 2: open the SSE stream with the opaque ticket instead of the JWT.
+            var url = base + '/sync/events?ticket=' + encodeURIComponent(ticket);
+            var eventSource;
+            try { eventSource = new EventSource(url); }
+            catch (_) { self._useSse = false; self._startPolling(); return; }
+            self._openEventSource(eventSource);
+        })
+        .catch(function () {
+            if (!self._running) return;
+            // Ticket endpoint unreachable or returned an error — fall back to polling.
+            self._useSse = false;
+            self._startPolling();
+        });
+    };
+
+    /** Attach all event handlers to a freshly created EventSource. */
+    RealtimeSync.prototype._openEventSource = function (es) {
         this._eventSource = es;
         this._sseOpenTime = Date.now();
         var self = this;
+
+        es.onopen = function () {
+            self._sseOpened = true;   // connection confirmed — never fall back to polling
+        };
 
         // Named event emitted by the backend when any data changes
         es.addEventListener('data_updated', function (e) {
@@ -122,17 +156,22 @@
         };
 
         es.onerror = function () {
-            var elapsed = Date.now() - self._sseOpenTime;
-            self._closeSSE();
             if (!self._running) return;
 
-            // If the connection never established (< 3 s), SSE likely not supported —
-            // fall back to polling permanently for this session.
-            if (elapsed < 3000) {
+            // readyState CONNECTING means the browser is already auto-reconnecting
+            // via the SSE spec retry mechanism — leave it alone.
+            if (es.readyState === EventSource.CONNECTING) return;
+
+            // readyState CLOSED: the connection is gone and won't recover on its own.
+            self._closeSSE();
+
+            var elapsed = Date.now() - self._sseOpenTime;
+            if (!self._sseOpened && elapsed < 3000) {
+                // Never successfully opened within 3 s — SSE probably not supported.
                 self._useSse = false;
                 self._startPolling();
             } else {
-                // Transient network error — retry SSE after a delay
+                // Was working before (or took a while to fail) — retry SSE after a delay.
                 setTimeout(function () {
                     if (self._running) self._connectSSE();
                 }, SSE_RETRY_DELAY);
