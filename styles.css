@@ -5316,6 +5316,110 @@ body {
     color: var(--text-primary);
 }
 
+/* Clickable month/year label */
+.calendar-month-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s;
+}
+.calendar-month-btn::after {
+    content: '▾';
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+.calendar-month-btn:hover {
+    background: var(--bg-secondary, rgba(0,0,0,0.06));
+}
+
+/* Picker wrapper — provides the anchor for absolute positioning */
+.cal-month-picker-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Picker dropdown panel */
+.cal-picker {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+    padding: 12px;
+    min-width: 220px;
+}
+
+/* Year navigation row */
+.cal-picker-year-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+.cal-picker-nav-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 2px 8px;
+    border-radius: 6px;
+    color: var(--text-primary);
+    transition: background 0.15s;
+}
+.cal-picker-nav-btn:hover {
+    background: var(--bg-secondary, rgba(0,0,0,0.06));
+}
+
+/* 4×3 month grid */
+.cal-picker-months {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+}
+.cal-picker-month-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 4px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background 0.15s, color 0.15s;
+    text-align: center;
+}
+.cal-picker-month-btn:hover:not(:disabled) {
+    background: var(--primary-color, #4a90e2);
+    color: #fff;
+}
+.cal-picker-month-btn.active {
+    background: var(--primary-color, #4a90e2);
+    color: #fff;
+    font-weight: 700;
+}
+.cal-picker-month-btn.disabled,
+.cal-picker-month-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
 .calendar-legend {
     display: flex;
     gap: 16px;

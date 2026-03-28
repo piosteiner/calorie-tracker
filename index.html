@@ -310,7 +310,17 @@
                     <div id="calendarContent" style="display: none;">
                         <div class="calendar-nav">
                             <button class="btn btn-outline btn-sm" data-action="prev-month">← Prev</button>
-                            <span id="calendarMonthLabel" class="calendar-month-label"></span>
+                            <div class="cal-month-picker-wrap">
+                                <button id="calendarMonthLabel" class="calendar-month-label calendar-month-btn" data-action="open-cal-picker" type="button"></button>
+                                <div id="calendarPicker" class="cal-picker" style="display:none;">
+                                    <div class="cal-picker-year-nav">
+                                        <button type="button" class="cal-picker-nav-btn" data-action="cal-picker-year" data-dir="-1">‹</button>
+                                        <span id="calPickerYear"></span>
+                                        <button type="button" class="cal-picker-nav-btn" data-action="cal-picker-year" data-dir="1">›</button>
+                                    </div>
+                                    <div id="calPickerMonths" class="cal-picker-months"></div>
+                                </div>
+                            </div>
                             <button class="btn btn-outline btn-sm" data-action="next-month">Next →</button>
                         </div>
                         <div class="calendar-legend">

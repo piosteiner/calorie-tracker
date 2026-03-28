@@ -261,7 +261,8 @@ class CalorieTracker {
         this.calendarState = {
             year: now.getFullYear(),
             month: now.getMonth() + 1, // 1-based
-            isExpanded: false
+            isExpanded: false,
+            pickerYear: now.getFullYear()
         };
         
         // CRUD operation context
@@ -1112,6 +1113,23 @@ class CalorieTracker {
                 case 'next-month':
                     e.preventDefault();
                     this.navigateCalendar(1);
+                    break;
+
+                case 'open-cal-picker':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.openCalendarPicker();
+                    break;
+
+                case 'cal-picker-year':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.stepCalPickerYear(parseInt(target.dataset.dir, 10));
+                    break;
+
+                case 'cal-picker-month':
+                    e.preventDefault();
+                    this.selectCalPickerMonth(parseInt(target.dataset.month, 10));
                     break;
 
                 case 'update-email':
@@ -8805,6 +8823,74 @@ class CalorieTracker {
         if (this.calendarState.month > 12) { this.calendarState.month = 1; this.calendarState.year++; }
         if (this.calendarState.month < 1)  { this.calendarState.month = 12; this.calendarState.year--; }
         this.loadCalendar(this.calendarState.year, this.calendarState.month);
+    }
+
+    /** Open/close the month+year picker dropdown */
+    openCalendarPicker() {
+        const picker = document.getElementById('calendarPicker');
+        if (!picker) return;
+
+        const isOpen = picker.style.display !== 'none';
+        if (isOpen) {
+            picker.style.display = 'none';
+            return;
+        }
+
+        // Sync picker year to currently displayed year
+        this.calendarState.pickerYear = this.calendarState.year;
+        this._renderCalPickerMonths();
+        picker.style.display = 'block';
+
+        // Close when clicking outside the wrapper
+        const closeOnOutside = (ev) => {
+            const wrap = document.querySelector('.cal-month-picker-wrap');
+            if (wrap && !wrap.contains(ev.target)) {
+                picker.style.display = 'none';
+                document.removeEventListener('mousedown', closeOnOutside);
+            }
+        };
+        setTimeout(() => document.addEventListener('mousedown', closeOnOutside), 0);
+    }
+
+    /** Step the picker's year display without changing the calendar */
+    stepCalPickerYear(dir) {
+        const now = new Date();
+        const next = this.calendarState.pickerYear + dir;
+        // Don't allow browsing into the future beyond the current year
+        if (next > now.getFullYear()) return;
+        this.calendarState.pickerYear = next;
+        this._renderCalPickerMonths();
+    }
+
+    /** Navigate calendar to the month selected in the picker */
+    selectCalPickerMonth(month) {
+        const picker = document.getElementById('calendarPicker');
+        if (picker) picker.style.display = 'none';
+        this.calendarState.year  = this.calendarState.pickerYear;
+        this.calendarState.month = month;
+        this.loadCalendar(this.calendarState.year, this.calendarState.month);
+    }
+
+    /** Render the 12-month grid inside the picker for the current pickerYear */
+    _renderCalPickerMonths() {
+        const yearEl   = document.getElementById('calPickerYear');
+        const monthsEl = document.getElementById('calPickerMonths');
+        if (!yearEl || !monthsEl) return;
+
+        const py  = this.calendarState.pickerYear;
+        const now = new Date();
+        yearEl.textContent = py;
+
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        monthsEl.innerHTML = monthNames.map((name, i) => {
+            const m       = i + 1;
+            const isActive  = py === this.calendarState.year && m === this.calendarState.month;
+            const isFuture  = py > now.getFullYear() ||
+                              (py === now.getFullYear() && m > now.getMonth() + 1);
+            const classes = ['cal-picker-month-btn', isActive ? 'active' : '', isFuture ? 'disabled' : '']
+                .filter(Boolean).join(' ');
+            return `<button type="button" class="${classes}" data-action="cal-picker-month" data-month="${m}"${isFuture ? ' disabled' : ''}>${name}</button>`;
+        }).join('');
     }
 
     /**
