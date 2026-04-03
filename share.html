@@ -251,10 +251,21 @@ function esc(str) {
     return d.innerHTML;
 }
 
+const API_ORIGIN = new URL(API).origin;  // https://api.calorie-tracker.piogino.ch
+
 function formatDate(dateStr) {
     // Normalise to plain YYYY-MM-DD before parsing (strips any time/timezone suffix)
-    const plain = String(dateStr).split('T')[0].split(' ')[0];
-    const d = new Date(plain + 'T00:00:00');
+    const str = String(dateStr);
+    const plain = str.split('T')[0].split(' ')[0];
+    let d = new Date(plain + 'T00:00:00');
+    if (isNaN(d.getTime())) {
+        // Last-resort: let the engine try to parse whatever the backend sent
+        d = new Date(dateStr);
+    }
+    if (isNaN(d.getTime())) {
+        console.warn('formatDate: could not parse', JSON.stringify(dateStr));
+        return String(dateStr);
+    }
     return d.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 }
 
@@ -275,6 +286,7 @@ async function loadRange(token) {
     if (!json.success) { showError('This share link is invalid or has expired.'); return; }
 
     const { shared_by, date_from, date_to, data } = json;
+    console.log('[loadRange] date_from:', JSON.stringify(date_from), 'date_to:', JSON.stringify(date_to), 'data keys:', Object.keys(data || {}).slice(0, 3));
 
     const periodEl = document.getElementById('headerMeta');
     if (date_from && date_to) periodEl.textContent = `${formatDate(date_from)} \u2014 ${formatDate(date_to)}`;
@@ -307,7 +319,7 @@ async function loadRange(token) {
                 itemsHtml += `<div class="log-row"><span class="log-name">${esc(log.food_name)}</span><span class="log-details">${Math.round(log.quantity)} ${esc(log.unit || 'g')}${time}</span><span class="log-kcal">${Math.round(log.calories)} kcal</span></div>`;
             });
             const groupPhotos = catItems.filter(l => l.image_url).map(l => l.image_url);
-            const resolveImg = u => u.startsWith('http') ? u : API + u;
+            const resolveImg = u => u.startsWith('http') ? u : API_ORIGIN + u;
             const photosHtml = groupPhotos.length
                 ? `<div class="share-meal-photos">${groupPhotos.map(u => `<img src="${esc(resolveImg(u))}" alt="Meal photo" class="share-meal-thumb" loading="lazy">`).join('')}</div>`
                 : '';
