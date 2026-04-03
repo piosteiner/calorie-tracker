@@ -292,7 +292,7 @@ async function loadRange(token) {
     if (date_from && date_to) periodEl.textContent = `${formatDate(date_from)} \u2014 ${formatDate(date_to)}`;
     else periodEl.textContent = '';
 
-    const sortedDates = Object.keys(data || {}).sort().reverse();
+    const sortedDates = Object.keys(data || {}).sort((a, b) => new Date(b) - new Date(a));
     if (sortedDates.length === 0) { showError('No meals in this shared range.'); return; }
 
     const macroVal = (l, field) => { const v = parseFloat(l[field]); return isNaN(v) ? null : v; };
