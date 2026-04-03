@@ -9406,7 +9406,7 @@ class CalorieTracker {
         const btn = document.querySelector('[data-action="generate-share-link"]');
         try {
             if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
-            const resp = await this.apiCall('/logs/range/share', 'POST', { date_from: startDate, date_to: endDate });
+            const resp = await this.apiCall('/logs/range/share', 'POST', { start_date: startDate, end_date: endDate });
             const token = resp.token || resp.share_token;
             if (!token) {
                 this.showMessage('Failed to generate share link', 'error');
