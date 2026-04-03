@@ -258,6 +258,71 @@ function formatDate(dateStr) {
 
 async function main() {
     const params = new URLSearchParams(location.search);
+    const rangeToken = params.get('r');
+    if (rangeToken) {
+        await loadRange(rangeToken);
+    } else {
+        await loadLegacy(params);
+    }
+}
+
+async function loadRange(token) {
+    const res = await fetch(`${API}/share/range/${encodeURIComponent(token)}`);
+    if (!res.ok) { showError(`Could not load shared data (HTTP ${res.status}).`); return; }
+    const json = await res.json();
+    if (!json.success) { showError('This share link is invalid or has expired.'); return; }
+
+    const { shared_by, date_from, date_to, data } = json;
+
+    const periodEl = document.getElementById('headerMeta');
+    if (date_from && date_to) periodEl.textContent = `${formatDate(date_from)} \u2014 ${formatDate(date_to)}`;
+    else periodEl.textContent = '';
+
+    const sortedDates = Object.keys(data || {}).sort().reverse();
+    if (sortedDates.length === 0) { showError('No meals in this shared range.'); return; }
+
+    let html = '';
+    sortedDates.forEach(date => {
+        const { logs: items = [], total_calories, comment } = data[date];
+
+        const cats = {};
+        items.forEach(log => {
+            const cat = (log.meal_category || 'other').toLowerCase();
+            if (!cats[cat]) cats[cat] = [];
+            cats[cat].push(log);
+        });
+
+        let mealsHtml = '';
+        MEAL_ORDER.forEach(cat => {
+            if (!cats[cat]) return;
+            const catItems = cats[cat];
+            let itemsHtml = '';
+            catItems.forEach(log => {
+                const time = log.meal_time ? ` \u00b7 ${String(log.meal_time).slice(0, 5)}` : '';
+                itemsHtml += `<div class="log-row"><span class="log-name">${esc(log.food_name)}</span><span class="log-details">${Math.round(log.quantity)} ${esc(log.unit || 'g')}${time}</span><span class="log-kcal">${Math.round(log.calories)} kcal</span></div>`;
+            });
+            const mealTotal = catItems.reduce((s, l) => s + (parseFloat(l.calories) || 0), 0);
+            mealsHtml += `<div class="meal-group">
+                <div class="meal-label"><span>${MEAL_LABELS[cat]}</span><span class="meal-label-right"><span class="meal-label-total">${Math.round(mealTotal)}\u202fkcal</span></span></div>
+                ${itemsHtml}
+            </div>`;
+        });
+
+        const dayTotal = total_calories ?? items.reduce((s, l) => s + (parseFloat(l.calories) || 0), 0);
+        const commentHtml = comment ? `<div class="shared-day-comment">\ud83d\udcdd ${esc(comment)}</div>` : '';
+        html += `<div class="day-group">
+            <div class="day-header"><span>${formatDate(date)}</span><div class="day-header-right"><span class="day-total">${Math.round(dayTotal)}\u202fkcal</span></div></div>
+            ${mealsHtml}
+            ${commentHtml}
+        </div>`;
+    });
+
+    const content = document.getElementById('content');
+    const metaHtml = shared_by ? `<p class="meta">Shared by <strong>${esc(shared_by)}</strong></p>` : '';
+    content.innerHTML = metaHtml + html;
+}
+
+async function loadLegacy(params) {
     const tokenStr = params.get('t') || '';
     const from  = params.get('from');
     const to    = params.get('to');
@@ -270,7 +335,7 @@ async function main() {
 
     // Set header period info
     const periodEl = document.getElementById('headerMeta');
-    if (from && to) periodEl.textContent = `${formatDate(from)} — ${formatDate(to)}`;
+    if (from && to) periodEl.textContent = `${formatDate(from)} \u2014 ${formatDate(to)}`;
     else periodEl.textContent = '';
 
     // Fetch all log entries in parallel
@@ -296,7 +361,7 @@ async function main() {
         .filter(Boolean);
 
     if (logs.length === 0) {
-        showError('No meals could be loaded — the link may have expired or been revoked. Make sure the backend migration (add_images_and_sharing.sql) has been run on the production database.');
+        showError('No meals could be loaded — the link may have expired or been revoked.');
         return;
     }
 

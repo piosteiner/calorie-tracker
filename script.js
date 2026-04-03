@@ -9403,67 +9403,23 @@ class CalorieTracker {
             return;
         }
 
+        const btn = document.querySelector('[data-action="generate-share-link"]');
         try {
-            // Fetch all logs in range
-            const resp = await this.apiCall(`/logs/range?start_date=${startDate}&end_date=${endDate}`);
-            // resp.data is { "YYYY-MM-DD": { logs: [...], ... }, ... }
-            const logs = [];
-            if (resp.data && typeof resp.data === 'object') {
-                for (const dayData of Object.values(resp.data)) {
-                    if (Array.isArray(dayData.logs)) logs.push(...dayData.logs);
-                }
-            }
-
-            if (logs.length === 0) {
-                this.showMessage('No meals found in the selected date range', 'warning');
-                return;
-            }
-
-            // Generate a share token for each log entry (parallel)
-            const btn = document.querySelector('[data-action="generate-share-link"]');
             if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
-            let tokens = [];
-            try {
-                const tokenResps = await Promise.all(
-                    logs.map(log => this.apiCall(`/logs/${log.id}/share`, 'POST').catch(() => null))
-                );
-                tokens = tokenResps
-                    .filter(Boolean)
-                    .map(r => r.share_token || r.token)
-                    .filter(Boolean);
-            } finally {
-                if (btn) { btn.disabled = false; btn.textContent = 'Generate Link'; }
-            }
-
-            if (tokens.length === 0) {
-                this.showMessage('Failed to generate share tokens', 'error');
+            const resp = await this.apiCall('/logs/range/share', 'POST', { date_from: startDate, date_to: endDate });
+            const token = resp.token || resp.share_token;
+            if (!token) {
+                this.showMessage('Failed to generate share link', 'error');
                 return;
             }
-
-            const base = window.location.origin;
-            let url  = `${base}/share.html?t=${tokens.join(',')}&from=${startDate}&to=${endDate}`;
-
-            // Attach day comments for the selected date range
-            const rangeDates = [];
-            for (let d = new Date(startDate + 'T12:00:00'); d <= new Date(endDate + 'T12:00:00'); d.setDate(d.getDate() + 1)) {
-                rangeDates.push(d.toISOString().split('T')[0]);
-            }
-            const commentEntries = await Promise.all(
-                rangeDates.map(async date => [date, await this.fetchDayComment(date)])
-            );
-            const rangeComments = {};
-            commentEntries.forEach(([date, comment]) => {
-                if (comment) rangeComments[date] = comment;
-            });
-            if (Object.keys(rangeComments).length > 0) {
-                url += '&c=' + encodeURIComponent(JSON.stringify(rangeComments));
-            }
-
+            const url = `${window.location.origin}/share.html?r=${encodeURIComponent(token)}&from=${startDate}&to=${endDate}`;
             document.getElementById('shareLinkInput').value = url;
             document.getElementById('shareLinkResult').style.display = '';
         } catch (err) {
             console.error('Generate share link error:', err);
             this.showMessage('Failed to generate share link: ' + err.message, 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Generate Link'; }
         }
     }
 
