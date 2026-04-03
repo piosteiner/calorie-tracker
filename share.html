@@ -252,7 +252,9 @@ function esc(str) {
 }
 
 function formatDate(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
+    // Normalise to plain YYYY-MM-DD before parsing (strips any time/timezone suffix)
+    const plain = String(dateStr).split('T')[0].split(' ')[0];
+    const d = new Date(plain + 'T00:00:00');
     return d.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 }
 
@@ -305,8 +307,9 @@ async function loadRange(token) {
                 itemsHtml += `<div class="log-row"><span class="log-name">${esc(log.food_name)}</span><span class="log-details">${Math.round(log.quantity)} ${esc(log.unit || 'g')}${time}</span><span class="log-kcal">${Math.round(log.calories)} kcal</span></div>`;
             });
             const groupPhotos = catItems.filter(l => l.image_url).map(l => l.image_url);
+            const resolveImg = u => u.startsWith('http') ? u : API + u;
             const photosHtml = groupPhotos.length
-                ? `<div class="share-meal-photos">${groupPhotos.map(u => `<img src="${esc(u)}" alt="Meal photo" class="share-meal-thumb" loading="lazy">`).join('')}</div>`
+                ? `<div class="share-meal-photos">${groupPhotos.map(u => `<img src="${esc(resolveImg(u))}" alt="Meal photo" class="share-meal-thumb" loading="lazy">`).join('')}</div>`
                 : '';
             const mealTotal = catItems.reduce((s, l) => s + (parseFloat(l.calories) || 0), 0);
             const mealHasMacros = catItems.some(hasMacro);
