@@ -277,6 +277,7 @@ class CalorieTracker {
         this.lastSyncTime = null;
         this.syncInProgress = false;
         this.syncStatus = 'pending'; // 'pending', 'syncing', 'synced', 'error'
+        this._sessionExpiredShown = false; // Prevent duplicate "Session expired" notifications
         
         // Search debounce timers
         this.searchDebounceTimers = {
@@ -1659,7 +1660,14 @@ class CalorieTracker {
                     
                     // Show error notification
                     const errorMessage = this.getHttpErrorMessage(response.status, errorData);
-                    this.notifications.error(errorMessage);
+                    if (response.status === 401) {
+                        if (!this._sessionExpiredShown) {
+                            this._sessionExpiredShown = true;
+                            this.notifications.error(errorMessage);
+                        }
+                    } else {
+                        this.notifications.error(errorMessage);
+                    }
                 }
                 
                 // Create an error object with both message and full data
@@ -1942,6 +1950,7 @@ class CalorieTracker {
     }
 
     async handleLogin() {
+        this._sessionExpiredShown = false;
         try {
             // Validate inputs using Validators utility
             const username = Validators.validateUsername(
