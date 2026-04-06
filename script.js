@@ -587,6 +587,18 @@ class CalorieTracker {
                 this.handleEditFoodLogSubmit();
             });
         }
+
+        // Auto-recalculate kcal when quantity changes in the edit modal
+        const editFoodQuantity = document.getElementById('editFoodQuantity');
+        if (editFoodQuantity) {
+            editFoodQuantity.addEventListener('input', () => {
+                const qty = parseFloat(editFoodQuantity.value);
+                if (!isNaN(qty) && qty > 0 && this._editCaloriesPer100g != null) {
+                    document.getElementById('editFoodCalories').value =
+                        Math.round((this._editCaloriesPer100g / 100) * qty);
+                }
+            });
+        }
         
         // Promote Food form
         const promoteFoodForm = document.getElementById('promoteFoodForm');
@@ -4291,13 +4303,16 @@ class CalorieTracker {
     openAddFoodLogModal(date) {
         // Store current context
         this.currentEditContext = { date, logId: null, isNew: true };
+        this._editCaloriesPer100g = null;
         
         // Reset form
         document.getElementById('editFoodLogId').value = '';
         document.getElementById('editFoodName').value = '';
         document.getElementById('editFoodQuantity').value = '';
         document.getElementById('editFoodUnit').value = 'g';
-        document.getElementById('editFoodCalories').value = '';
+        const editCalInput = document.getElementById('editFoodCalories');
+        editCalInput.value = '';
+        editCalInput.removeAttribute('readonly');
         document.getElementById('editFoodDate').value = date;
         
         // Update modal title
@@ -4336,8 +4351,13 @@ class CalorieTracker {
             // Populate form with existing data
             document.getElementById('editFoodLogId').value = log.id;
             document.getElementById('editFoodName').value = log.food_name;
-            document.getElementById('editFoodQuantity').value = parseFloat(log.quantity);
-            document.getElementById('editFoodCalories').value = parseFloat(log.calories);
+            const editQty = parseFloat(log.quantity);
+            const editCal = parseFloat(log.calories);
+            this._editCaloriesPer100g = editQty > 0 ? (editCal / editQty) * 100 : 0;
+            document.getElementById('editFoodQuantity').value = editQty;
+            const editCalInput = document.getElementById('editFoodCalories');
+            editCalInput.value = editCal;
+            editCalInput.setAttribute('readonly', '');
             document.getElementById('editFoodDate').value = log.log_date.split('T')[0];
             document.getElementById('editMealCategory').value = log.meal_category || 'other';
             document.getElementById('editMealTime').value = log.meal_time ? log.meal_time.slice(0, 5) : '';
