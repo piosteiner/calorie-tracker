@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy · Calorie Tracker</title>
+    <meta name="description" content="Privacy statement of the Calorie Tracker: no tracking, your data stays on our server in Switzerland.">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>">
+    <script>try{var t=localStorage.getItem('calorie-tracker-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+    <style>
+        :root { --bg: #f4f2fb; --card: #ffffff; --ink: #2d2a3a; --muted: #6b6780; --rule: #e1e5e9; --accent: #5b5fc7; --code: #f0eef8; color-scheme: light; }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) { --bg: #16151d; --card: #22212c; --ink: #ecebf3; --muted: #a7a4b8; --rule: #38364a; --accent: #a3a6ff; --code: #2e2c3c; color-scheme: dark; }
+        }
+        :root[data-theme="dark"] { --bg: #16151d; --card: #22212c; --ink: #ecebf3; --muted: #a7a4b8; --rule: #38364a; --accent: #a3a6ff; --code: #2e2c3c; color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+        main { max-width: 720px; margin: 24px auto 48px; padding: 28px 20px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; }
+        @media (max-width: 760px) { main { margin: 0; border: 0; border-radius: 0; padding: 24px 16px 40px; } }
+        a { color: var(--accent); }
+        h1 { font-size: 28px; line-height: 1.2; margin: 16px 0 4px; }
+        h2 { font-size: 18px; margin: 28px 0 8px; }
+        p, ul { margin: 0 0 12px; }
+        ul { padding-left: 20px; }
+        code { font: 0.88em ui-monospace, Menlo, Consolas, monospace; background: var(--code); padding: 1px 4px; border-radius: 4px; }
+        .updated { font-size: 13px; color: var(--muted); }
+        .table-wrap { overflow-x: auto; margin: 0 0 12px; }
+        table { border-collapse: collapse; width: 100%; font-size: 14px; }
+        th, td { text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); min-width: 9em; }
+        th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    </style>
+</head>
+<body>
+    <!-- Privacy statement (Swiss FADP / nDSG Art. 19, Telecommunications Act Art. 45c). Keep it in step with reality:
+         when a service, a stored value or a retention period changes, update this page and its date. -->
+    <main>
+        <a href="/">← Calorie Tracker</a>
+        <h1>Privacy</h1>
+        <p class="updated">Last updated 17 October 2026</p>
+
+        <h2>In short</h2>
+        <p>No cookies, no analytics, no advertising, no tracking. The Calorie Tracker is for a small group of invited users.
+            What you log about your eating, your weight and your goals is stored on our own server in Switzerland, is only
+            visible to you (and to people you send a share link to), and is never sold or passed on.</p>
+
+        <h2>Who is responsible</h2>
+        <p>Pio Gino Steiner, Switzerland · <a href="mailto:info@piogino.ch">info@piogino.ch</a><br>
+            The Calorie Tracker is a private, non-commercial hobby project.</p>
+
+        <h2>What we store for your account</h2>
+        <ul>
+            <li>username, email address and password (stored only as a secure hash), your role and daily calorie goal</li>
+            <li>the foods and meals you log, with amounts, calories, times and day comments</li>
+            <li>weight entries, goals, streaks, points and rewards</li>
+            <li>meal photos you upload, or the address of a photo you link</li>
+            <li>if you turn on reminders: the push subscription of your browser</li>
+        </ul>
+        <p>Food, weight and goal entries can say something about your health, which Swiss law treats as sensitive personal
+            data. We process them only to show them back to you; nobody else can see them unless you share them. You
+            provide them voluntarily, and you can delete entries in the app at any time.</p>
+
+        <h2>How long we keep it</h2>
+        <p>Your account and entries are kept until you ask us to delete them. Uploaded photos are deleted automatically after
+            300 days. Share links stop working after 30 days at the latest.</p>
+
+        <h2>Services involved</h2>
+        <div class="table-wrap"><table>
+            <thead><tr><th>What</th><th>Provider and location</th><th>What it receives</th></tr></thead>
+            <tbody>
+                <tr><td>The app itself</td>
+                    <td>GitHub Pages: GitHub, Inc., USA (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">privacy statement</a>)</td>
+                    <td>Your IP address, the page requested, browser details. GitHub logs these for operation and security. None of your entries.</td></tr>
+                <tr><td>Your account and entries</td>
+                    <td>Our own server <code>api.calorie-tracker.piogino.ch</code> at Infomaniak, Switzerland</td>
+                    <td>Everything listed above, plus IP address, time and browser details of each request in the server
+                        log, which is deleted after 14 days.</td></tr>
+                <tr><td>Food search, if a food is not in our own database</td>
+                    <td>Open Food Facts, France (<a href="https://world.openfoodfacts.org/privacy" target="_blank" rel="noopener">privacy policy</a>)</td>
+                    <td>Your IP address and the search term. Nothing about your account.</td></tr>
+                <tr><td>Meal reminders, only if you turn them on</td>
+                    <td>The push service of your browser's maker (e.g. Google, Mozilla or Apple)</td>
+                    <td>An encrypted notification for your device. The push service can't read its content.</td></tr>
+                <tr><td>Linked photos</td>
+                    <td>The website the photo address points to</td>
+                    <td>Your IP address, when the photo is shown.</td></tr>
+            </tbody>
+        </table></div>
+
+        <h2>Sharing</h2>
+        <p>You can create a share link for chosen days. Anyone with that link can see the meals of those days, without
+            signing in, until the link expires or you revoke it. Only send it to people you trust.</p>
+
+        <h2>Stored in your browser</h2>
+        <p>The app sets <strong>no cookies</strong>. It keeps these values in your browser's local storage:</p>
+        <ul>
+            <li><code>authToken</code>: your sign-in, valid for 24 hours, so you stay logged in</li>
+            <li><code>appState</code>, <code>favoriteFoods</code>, <code>foodSearchCache</code>: a copy of your current
+                entries, favourite foods and recent searches, so the app is fast and works offline</li>
+            <li><code>calorie-tracker-theme</code>, <code>searchPreferences</code>, <code>databaseTogglePreferences</code>:
+                display and search settings</li>
+        </ul>
+        <p>They stay on your device, apart from the sign-in, which is sent with each request to our server. Logging out
+            removes the sign-in; clearing the site data in your browser's settings removes everything.</p>
+
+        <h2>Data abroad</h2>
+        <p>Your account and entries stay in Switzerland. Loading the app reaches GitHub in the USA; GitHub states that it
+            participates in the Swiss-U.S. Data Privacy Framework. Open Food Facts is in France, which Switzerland
+            recognises as providing adequate data protection. Push services are run by the browser makers, mostly from
+            the USA.</p>
+
+        <h2>Your rights</h2>
+        <p>Under the Swiss Federal Act on Data Protection (FADP) you can ask what personal data about you is processed, get a
+            copy of it, and have it corrected or deleted, including your whole account. Write to
+            <a href="mailto:info@piogino.ch">info@piogino.ch</a>. You can also contact the Federal Data Protection and
+            Information Commissioner (<a href="https://www.edoeb.admin.ch" target="_blank" rel="noopener">FDPIC</a>).</p>
+
+        <h2>Changes</h2>
+        <p>This statement is updated when the app changes; the date at the top shows the current version.</p>
+    </main>
+</body>
+</html>
