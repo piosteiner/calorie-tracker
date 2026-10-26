@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
 
-// Apply admin middleware to all routes
+// Apply auth + admin middleware to all routes. These are explicit here (not just relied on via
+// routes/admin.js's accidental mount-prefix fallthrough for /api/admin/*) so this router stays
+// correctly protected even if admin.js's routing or mount order changes later.
+router.use(authenticateToken);
 router.use(requireAdmin);
 
 // Get all tables
@@ -156,32 +160,73 @@ router.get('/tables/:tableName/data', async (req, res) => {
   }
 });
 
-// Execute safe SELECT query
+// Execute a restricted, read-only SELECT query (admin-only ad-hoc DB browser).
+const MAX_QUERY_ROWS = 1000;
+const QUERY_TIMEOUT_MS = 5000;
+// Beyond the leading-SELECT check: block statement separators (defense in depth against stacked
+// queries even though the pool has multipleStatements disabled), and functions/clauses that can read
+// or write files on the DB server regardless of the SELECT prefix.
+const FORBIDDEN_PATTERN = /;\s*\S|\binto\s+(outfile|dumpfile)\b|\bload_file\s*\(/i;
+// Matches MySQL's `LIMIT count`, `LIMIT offset, count`, and ANSI `LIMIT count OFFSET offset`.
+// The row cap must check the *count*, not the offset, so the two forms capture it differently.
+const LIMIT_PATTERN = /\blimit\s+(\d+)\s*(?:(,)\s*(\d+)|\boffset\s+\d+)?\s*;?\s*$/i;
+
+function extractRowLimit(sql) {
+  const m = sql.match(LIMIT_PATTERN);
+  if (!m) return null;
+  // Comma form "LIMIT offset, count": the count is the second number.
+  return m[2] ? parseInt(m[3], 10) : parseInt(m[1], 10);
+}
+
 router.post('/query', async (req, res) => {
   try {
     const { sql } = req.body;
-    
-    if (!sql) {
+
+    if (!sql || typeof sql !== 'string') {
       return res.status(400).json({
         success: false,
         message: 'SQL query is required'
       });
     }
-    
+
+    const trimmedSQL = sql.trim();
+
     // Only allow SELECT queries for security
-    const trimmedSQL = sql.trim().toUpperCase();
-    if (!trimmedSQL.startsWith('SELECT')) {
+    if (!/^SELECT\b/i.test(trimmedSQL)) {
       return res.status(400).json({
         success: false,
         message: 'Only SELECT queries are allowed'
       });
     }
-    
-    // Execute query with timeout
+
+    if (FORBIDDEN_PATTERN.test(trimmedSQL)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Query contains a disallowed clause (multiple statements, INTO OUTFILE/DUMPFILE, or LOAD_FILE)'
+      });
+    }
+
+    // Require an explicit LIMIT so a mistaken query can't dump an entire large table into memory.
+    const rowLimit = extractRowLimit(trimmedSQL);
+    if (rowLimit === null) {
+      return res.status(400).json({
+        success: false,
+        message: `Add a LIMIT clause (max ${MAX_QUERY_ROWS} rows) to this query`
+      });
+    }
+    if (rowLimit > MAX_QUERY_ROWS) {
+      return res.status(400).json({
+        success: false,
+        message: `LIMIT may not exceed ${MAX_QUERY_ROWS} rows`
+      });
+    }
+
     const startTime = Date.now();
-    const results = await db.query(sql);
+    // Use the pool directly (not db.query/execute) so we can set a client-side inactivity timeout;
+    // .query() (not .execute()) refuses multi-statement payloads since the pool has multipleStatements off.
+    const [results] = await db.pool.query({ sql: trimmedSQL, timeout: QUERY_TIMEOUT_MS });
     const executionTime = Date.now() - startTime;
-    
+
     res.json({
       success: true,
       results,
@@ -192,9 +237,10 @@ router.post('/query', async (req, res) => {
     });
   } catch (error) {
     console.error('Query execution error:', error);
-    res.status(400).json({
+    const timedOut = error.code === 'PROTOCOL_SEQUENCE_TIMEOUT';
+    res.status(timedOut ? 408 : 400).json({
       success: false,
-      message: error.message
+      message: timedOut ? `Query timed out after ${QUERY_TIMEOUT_MS}ms` : error.message
     });
   }
 });

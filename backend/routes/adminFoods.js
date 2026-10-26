@@ -1,9 +1,14 @@
 const express = require('express');
 const { body, query, param, validationResult } = require('express-validator');
 const adminFoodsController = require('../controllers/adminFoodsController');
+const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
 
 const router = express.Router();
+
+// Explicit here (not just relied on via routes/admin.js's accidental mount-prefix fallthrough for
+// /api/admin/*) so this router stays correctly protected even if admin.js's routing changes later.
+router.use(authenticateToken);
 
 // Get all foods with filtering and pagination
 router.get('/foods', [
