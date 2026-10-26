@@ -119,8 +119,9 @@ export class FoodSearchService {
      */
     searchFavorites(query) {
         const favorites = this.getFavorites();
+        const normalizedQuery = query.toLowerCase();
         const matches = favorites.filter(food => 
-            food.name.toLowerCase().includes(query)
+            food.name.toLowerCase().includes(normalizedQuery)
         );
         
         return matches.slice(0, 2).map(food => ({

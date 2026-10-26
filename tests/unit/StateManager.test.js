@@ -9,6 +9,10 @@ import { StateManager } from '../../modules/core/StateManager.js';
 jest.mock('../../logger.js', () => require('../mocks/logger.js'));
 jest.mock('../../config.js', () => require('../mocks/config.js'));
 
+// StateManager.js imports { logger } from '../../logger.js' (mocked above), which is a separate
+// object from the legacy global.logger set up in tests/setup.js - assert against this one.
+const { logger: mockLogger } = require('../../logger.js');
+
 describe('StateManager', () => {
     let stateManager;
 
@@ -114,7 +118,7 @@ describe('StateManager', () => {
             const callback = jest.fn();
             stateManager.subscribe('invalidKey', callback);
 
-            expect(global.logger.warn).toHaveBeenCalled();
+            expect(mockLogger.warn).toHaveBeenCalled();
         });
     });
 
@@ -340,6 +344,11 @@ describe('StateManager', () => {
         });
 
         test('should toggle food sort direction', () => {
+            // Default adminData already starts at { column: 'name', direction: 'asc' }; sort by a
+            // different column first so the next call is a genuine "new column" selection, not an
+            // accidental toggle because it happens to match the default state.
+            stateManager.setFoodSort('calories');
+
             stateManager.setFoodSort('name');
             expect(stateManager.adminData.foodsSortColumn).toBe('name');
             expect(stateManager.adminData.foodsSortDirection).toBe('asc');

@@ -7,11 +7,92 @@ import { logger } from '../../logger.js';
 
 export class ModalUI {
     constructor() {
-        this.activeModals = [];
+        this.activeModals = []; // { modal, overlay, resolve }
+        this._zBase = 1000;
+
+        // Escape closes the top-most modal. One listener for the component's lifetime; it is a
+        // no-op when nothing is open.
+        this._onKeydown = (event) => {
+            if (event.key !== 'Escape' || this.activeModals.length === 0) return;
+            this._closeEntry(this.activeModals[this.activeModals.length - 1], null);
+        };
+        document.addEventListener('keydown', this._onKeydown);
     }
 
     /**
-     * Show data sources info modal
+     * Build the shared, accessible modal shell (overlay + dialog) used by every modal type.
+     * @param {string} extraClasses - Additional class(es) for the modal element (e.g. 'custom')
+     * @param {string} title - Modal title, rendered in the header and used for aria-labelledby
+     * @param {string} bodyHTML - Modal body HTML
+     * @returns {{modal: HTMLElement, overlay: HTMLElement, entry: Object}}
+     */
+    _buildModal(extraClasses, title, bodyHTML) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay overlay-enter';
+
+        const modal = document.createElement('div');
+        modal.className = `modal modal-enter ${extraClasses || ''}`.trim();
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-live', 'polite');
+        const titleId = `modal-title-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+        modal.setAttribute('aria-labelledby', titleId);
+
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="${titleId}">${title || ''}</h3>
+                    <button type="button" class="modal-close" data-action="close-modal" aria-label="Close modal">&times;</button>
+                </div>
+                <div class="modal-body">${bodyHTML != null ? bodyHTML : ''}</div>
+            </div>
+        `;
+
+        const z = this._zBase + this.activeModals.length * 20;
+        overlay.style.zIndex = String(z);
+        modal.style.zIndex = String(z + 10);
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(modal);
+
+        const entry = { modal, overlay, resolve: null };
+        this.activeModals.push(entry);
+
+        // Default close affordances (header × and overlay click) resolve with null; callers that
+        // need a specific resolution value wire their own buttons separately.
+        modal.querySelector('[data-action="close-modal"]')
+            ?.addEventListener('click', () => this._closeEntry(entry, null));
+        overlay.addEventListener('click', () => this._closeEntry(entry, null));
+
+        // Move focus into the modal so keyboard/AT users land somewhere useful.
+        setTimeout(() => {
+            modal.querySelector('button, input, [tabindex]')?.focus();
+        }, 0);
+
+        return { modal, overlay, entry };
+    }
+
+    /**
+     * Close a modal entry: play the exit animation, remove it and its overlay, and resolve its
+     * promise (if it has one) with the given value.
+     */
+    _closeEntry(entry, resolveValue) {
+        if (!entry) return;
+        const { modal, overlay, resolve } = entry;
+        modal.classList.add('modal-exit');
+        if (modal.parentNode) modal.remove();
+        if (overlay && overlay.parentNode) overlay.remove();
+
+        const index = this.activeModals.indexOf(entry);
+        if (index > -1) this.activeModals.splice(index, 1);
+
+        if (resolve) resolve(resolveValue);
+        logger.debug('Modal closed');
+    }
+
+    /**
+     * Show data sources info modal (legacy, static/informational - used for the "Data Sources &
+     * Attribution" footer link).
      */
     showDataSourcesInfo() {
         const modal = document.createElement('div');
@@ -56,7 +137,8 @@ export class ModalUI {
     }
 
     /**
-     * Show database toggle info modal
+     * Show database toggle info modal (legacy, static/informational - explains the local vs
+     * enhanced search toggle).
      */
     showDatabaseToggleInfo() {
         const modal = document.createElement('div');
@@ -105,31 +187,102 @@ export class ModalUI {
     }
 
     /**
+     * Show an interactive modal letting the user pick which data source to search.
+     * @returns {Promise<string|null>} 'favorites' | 'database' | 'openfoodfacts', or null if cancelled
+     */
+    showDataSourcesModal() {
+        return new Promise((resolve) => {
+            const sources = [
+                { key: 'favorites', icon: '⭐', label: 'Favorites', description: 'Search your favorite foods' },
+                { key: 'database', icon: '🗂️', label: 'Database', description: 'Search the local database' },
+                { key: 'openfoodfacts', icon: '🌍', label: 'Open Food Facts', description: 'Search international food database' }
+            ];
+
+            const sourcesHTML = sources.map(source => `
+                <button type="button" class="source-option" data-source="${source.key}">
+                    <span class="source-icon">${source.icon}</span>
+                    <span class="source-label">${source.label}</span>
+                    <span class="source-description">${source.description}</span>
+                </button>
+            `).join('');
+
+            const bodyHTML = `
+                <p>Select Data Source</p>
+                <div class="data-source-options">${sourcesHTML}</div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+                </div>
+            `;
+
+            const { modal, entry } = this._buildModal('data-sources', 'Select Data Source', bodyHTML);
+            entry.resolve = resolve;
+
+            sources.forEach(source => {
+                modal.querySelector(`[data-source="${source.key}"]`)
+                    ?.addEventListener('click', () => this._closeEntry(entry, source.key));
+            });
+            modal.querySelector('[data-action="cancel"]')
+                ?.addEventListener('click', () => this._closeEntry(entry, null));
+
+            logger.debug('Data sources modal shown');
+        });
+    }
+
+    /**
+     * Show a summary modal for a database table (name, row count, columns).
+     * @param {{name: string, rowCount: number, columns: string[]}} tableInfo
+     */
+    showDatabaseInfoModal(tableInfo) {
+        const info = tableInfo || {};
+        const columns = Array.isArray(info.columns) ? info.columns : [];
+
+        const bodyHTML = `
+            <p><strong>Table:</strong> ${this.escapeHtml(info.name || '')}</p>
+            <p><strong>Rows:</strong> ${info.rowCount ?? 0}</p>
+            <p><strong>Columns:</strong></p>
+            <ul class="column-list">
+                ${columns.map(col => `<li>${this.escapeHtml(col)}</li>`).join('')}
+            </ul>
+            <div class="modal-buttons">
+                <button type="button" class="btn btn-primary" data-action="close">OK</button>
+            </div>
+        `;
+
+        const { modal, entry } = this._buildModal('database-info', `Table: ${this.escapeHtml(info.name || '')}`, bodyHTML);
+        modal.querySelector('[data-action="close"]')
+            ?.addEventListener('click', () => this._closeEntry(entry, null));
+
+        logger.debug('Database info modal shown:', info.name);
+    }
+
+    /**
+     * Escape a string for safe insertion into HTML (used by the newer, data-driven modals).
+     */
+    escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    /**
      * Close all modals
      */
     closeAllModals() {
-        this.activeModals.forEach(modal => {
-            if (modal.parentNode) {
-                modal.remove();
-            }
-        });
-        this.activeModals = [];
+        // Iterate a copy since _closeEntry mutates this.activeModals.
+        [...this.activeModals].forEach(entry => this._closeEntry(entry, null));
         logger.debug('All modals closed');
     }
 
     /**
-     * Close specific modal by element
-     * @param {HTMLElement} modalElement - Modal element to close
+     * Close a modal. With no argument, closes the most recently opened modal.
+     * @param {HTMLElement} [modalElement] - Modal element to close
      */
     closeModal(modalElement) {
-        if (modalElement && modalElement.parentNode) {
-            modalElement.remove();
-            const index = this.activeModals.indexOf(modalElement);
-            if (index > -1) {
-                this.activeModals.splice(index, 1);
-            }
-            logger.debug('Modal closed');
-        }
+        const entry = modalElement
+            ? this.activeModals.find(e => e.modal === modalElement)
+            : this.activeModals[this.activeModals.length - 1];
+        this._closeEntry(entry, null);
     }
 
     /**
@@ -137,59 +290,61 @@ export class ModalUI {
      * @param {string} title - Modal title
      * @param {string} content - Modal HTML content
      * @param {Array} buttons - Array of button objects {text, class, action}
-     * @returns {HTMLElement} Modal element
+     * @returns {Promise<string|null>} The clicked button's action, or null if closed without one
      */
     showCustomModal(title, content, buttons = []) {
-        const modal = document.createElement('div');
-        modal.className = 'data-sources-modal';
-        
-        const buttonsHTML = buttons.map(btn => 
-            `<button class="btn ${btn.class || 'btn-primary'}" data-custom-action="${btn.action}">${btn.text}</button>`
-        ).join('');
+        return new Promise((resolve) => {
+            const safeButtons = Array.isArray(buttons) ? buttons : [];
+            const buttonsHTML = safeButtons.length > 0
+                ? safeButtons.map((btn, i) =>
+                    `<button type="button" class="btn ${btn?.class || 'btn-primary'}" data-action="${btn?.action ?? `action-${i}`}">${btn?.text ?? ''}</button>`
+                ).join('')
+                : '<button type="button" class="btn btn-secondary" data-action="close" aria-label="Close">Close</button>';
 
-        modal.innerHTML = `
-            <div class="modal-overlay" data-action="close-modal"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>${title}</h3>
-                    <button class="modal-close" data-action="close-modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    ${content}
-                </div>
-                ${buttonsHTML ? `<div class="modal-buttons">${buttonsHTML}</div>` : ''}
-            </div>
-        `;
+            const bodyHTML = `
+                ${content != null ? content : ''}
+                <div class="modal-buttons">${buttonsHTML}</div>
+            `;
 
-        document.body.appendChild(modal);
-        this.activeModals.push(modal);
-        logger.debug('Custom modal shown:', title);
-        
-        return modal;
+            const { modal, entry } = this._buildModal('custom', title || '', bodyHTML);
+            entry.resolve = resolve;
+
+            const actionButtons = modal.querySelectorAll('.modal-buttons [data-action]');
+            actionButtons.forEach(btn => {
+                btn.addEventListener('click', () => this._closeEntry(entry, btn.dataset.action));
+            });
+
+            logger.debug('Custom modal shown:', title);
+        });
     }
 
     /**
      * Show table structure modal
      * @param {string} tableName - Table name
-     * @param {string} structureHTML - Structure HTML content
+     * @param {Array<{name: string, type: string, notnull: number, pk: number}>} structure - Column descriptors
      */
-    showTableStructureModal(tableName, structureHTML) {
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        overlay.innerHTML = structureHTML;
-        
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.remove();
-                const index = this.activeModals.indexOf(overlay);
-                if (index > -1) {
-                    this.activeModals.splice(index, 1);
-                }
-            }
-        });
+    showTableStructureModal(tableName, structure) {
+        const columns = Array.isArray(structure) ? structure : [];
 
-        document.body.appendChild(overlay);
-        this.activeModals.push(overlay);
+        const rowsHTML = columns.map(col => `
+            <tr>
+                <td>${this.escapeHtml(col?.name)}${col?.pk ? ' <span class="pk-badge">PK</span>' : ''}</td>
+                <td>${this.escapeHtml(col?.type)}</td>
+                <td>${col?.notnull ? 'NOT NULL' : 'NULL'}</td>
+            </tr>
+        `).join('');
+
+        const bodyHTML = `
+            <table>
+                <thead>
+                    <tr><th>Column</th><th>Type</th><th>Nullable</th></tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+            </table>
+        `;
+
+        this._buildModal('table-structure', `Table: ${this.escapeHtml(tableName)}`, bodyHTML);
+
         logger.debug('Table structure modal shown:', tableName);
     }
 
@@ -200,50 +355,78 @@ export class ModalUI {
      */
     showEditFoodModal(food) {
         return new Promise((resolve) => {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content edit-food-modal">
-                    <h3>Edit Food: ${food.name}</h3>
-                    <form id="editFoodForm">
-                        <div class="form-group">
-                            <label for="editFoodName">Food Name</label>
-                            <input type="text" id="editFoodName" value="${food.name}" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="editFoodCalories">Calories (per 100g)</label>
-                            <input type="number" id="editFoodCalories" value="${food.calories}" required>
-                        </div>
-                        <div class="modal-buttons">
-                            <button type="button" class="btn btn-secondary" data-action="cancel-edit">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
+            const safeFood = food || {};
+            const bodyHTML = `
+                <form id="editFoodForm">
+                    <div class="form-group">
+                        <label for="editFoodName">Food Name</label>
+                        <input type="text" id="editFoodName" name="name" value="${this.escapeHtml(safeFood.name ?? '')}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editFoodCalories">Calories (per 100g)</label>
+                        <input type="number" id="editFoodCalories" name="calories" value="${safeFood.calories ?? ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editFoodProtein">Protein (g)</label>
+                        <input type="number" id="editFoodProtein" name="protein" value="${safeFood.protein ?? ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editFoodCarbs">Carbs (g)</label>
+                        <input type="number" id="editFoodCarbs" name="carbs" value="${safeFood.carbs ?? ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editFoodFat">Fat (g)</label>
+                        <input type="number" id="editFoodFat" name="fat" value="${safeFood.fat ?? ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editFoodUnit">Unit</label>
+                        <input type="text" id="editFoodUnit" name="unit" value="${this.escapeHtml(safeFood.unit ?? '')}">
+                    </div>
+                    <div class="modal-buttons">
+                        <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary" data-action="save">Save Changes</button>
+                    </div>
+                </form>
             `;
 
+            const { modal, entry } = this._buildModal('edit-food', `Edit Food: ${this.escapeHtml(safeFood.name ?? '')}`, bodyHTML);
+            entry.resolve = resolve;
+
             const form = modal.querySelector('#editFoodForm');
-            const cancelBtn = modal.querySelector('[data-action="cancel-edit"]');
+            const nameInput = modal.querySelector('input[name="name"]');
+            const caloriesInput = modal.querySelector('input[name="calories"]');
+
+            const trySave = () => {
+                const name = nameInput.value.trim();
+                const calories = caloriesInput.value;
+                if (!name || calories === '') {
+                    // Required fields missing: keep the modal open rather than resolving.
+                    return;
+                }
+                this._closeEntry(entry, {
+                    id: safeFood.id,
+                    name,
+                    calories: parseFloat(calories),
+                    protein: parseFloat(modal.querySelector('input[name="protein"]').value) || 0,
+                    carbs: parseFloat(modal.querySelector('input[name="carbs"]').value) || 0,
+                    fat: parseFloat(modal.querySelector('input[name="fat"]').value) || 0,
+                    unit: modal.querySelector('input[name="unit"]').value
+                });
+            };
 
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const updatedFood = {
-                    id: food.id,
-                    name: document.getElementById('editFoodName').value.trim(),
-                    calories: parseInt(document.getElementById('editFoodCalories').value)
-                };
-                modal.remove();
-                resolve(updatedFood);
+                trySave();
+            });
+            modal.querySelector('[data-action="save"]').addEventListener('click', (e) => {
+                e.preventDefault();
+                trySave();
+            });
+            modal.querySelector('[data-action="cancel"]').addEventListener('click', () => {
+                this._closeEntry(entry, null);
             });
 
-            cancelBtn.addEventListener('click', () => {
-                modal.remove();
-                resolve(null);
-            });
-
-            document.body.appendChild(modal);
-            this.activeModals.push(modal);
-            logger.debug('Edit food modal shown:', food.name);
+            logger.debug('Edit food modal shown:', safeFood.name);
         });
     }
 }

@@ -9,29 +9,29 @@ import { FoodSearchService } from '../../modules/core/FoodSearchService.js';
 jest.mock('../../logger.js', () => require('../mocks/logger.js'));
 jest.mock('../../config.js', () => require('../mocks/config.js'));
 
-// Mock apiService
-const mockApiService = {
-    searchFoods: jest.fn()
-};
-
-// Mock stateManager
-const mockStateManager = {
-    getOnlineStatus: jest.fn(() => true),
-    getFromOpenFoodFactsCache: jest.fn(),
-    addToOpenFoodFactsCache: jest.fn(),
-    getFromEnhancedSearchCache: jest.fn(),
-    addToEnhancedSearchCache: jest.fn(),
-    loadCachedSearches: jest.fn(),
-    clearAllCaches: jest.fn()
-};
-
+// jest.mock() calls are hoisted above these imports/consts, so the mocked modules are required
+// (and their factories run) before a `const mockApiService = {...}` below them would have been
+// assigned - referencing it inside the factory throws "Cannot access before initialization". The
+// fix is to define the mock objects inline in the factory, then pull a reference back out via
+// require() (same singleton the real modules import) for the tests to configure/assert on.
 jest.mock('../../modules/api/ApiService.js', () => ({
-    apiService: mockApiService
+    apiService: { searchFoods: jest.fn() }
 }));
 
 jest.mock('../../modules/core/StateManager.js', () => ({
-    stateManager: mockStateManager
+    stateManager: {
+        getOnlineStatus: jest.fn(() => true),
+        getFromOpenFoodFactsCache: jest.fn(),
+        addToOpenFoodFactsCache: jest.fn(),
+        getFromEnhancedSearchCache: jest.fn(),
+        addToEnhancedSearchCache: jest.fn(),
+        loadCachedSearches: jest.fn(),
+        clearAllCaches: jest.fn()
+    }
 }));
+
+const { apiService: mockApiService } = require('../../modules/api/ApiService.js');
+const { stateManager: mockStateManager } = require('../../modules/core/StateManager.js');
 
 describe('FoodSearchService', () => {
     let foodSearchService;
