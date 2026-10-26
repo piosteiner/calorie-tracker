@@ -55,34 +55,31 @@ describe('NotificationUI', () => {
             expect(messageEl.className).toContain('info');
         });
 
-        test('should auto-dismiss message after timeout', (done) => {
+        test('should auto-dismiss message after timeout', () => {
             jest.useFakeTimers();
-            
+
             notificationUI.showMessage('Test message', 'success');
             expect(container.children.length).toBe(1);
 
+            // advanceTimersByTime runs synchronously, firing the message's internal dismiss
+            // timer immediately - no need to wrap the assertion in a further (fake-timer-caught)
+            // setTimeout, which would never fire without an explicit further advance.
             jest.advanceTimersByTime(3500);
 
-            setTimeout(() => {
-                expect(container.children.length).toBe(0);
-                jest.useRealTimers();
-                done();
-            }, 100);
+            expect(container.children.length).toBe(0);
+            jest.useRealTimers();
         });
 
-        test('should not auto-dismiss error messages', (done) => {
+        test('should not auto-dismiss error messages', () => {
             jest.useFakeTimers();
-            
+
             notificationUI.showMessage('Error message', 'error');
             expect(container.children.length).toBe(1);
 
             jest.advanceTimersByTime(5000);
 
-            setTimeout(() => {
-                expect(container.children.length).toBe(1);
-                jest.useRealTimers();
-                done();
-            }, 100);
+            expect(container.children.length).toBe(1);
+            jest.useRealTimers();
         });
 
         test('should allow manual dismissal with close button', () => {
@@ -123,19 +120,16 @@ describe('NotificationUI', () => {
             expect(toast.style.right).toBeTruthy();
         });
 
-        test('should auto-dismiss toast after duration', (done) => {
+        test('should auto-dismiss toast after duration', () => {
             jest.useFakeTimers();
-            
+
             notificationUI.showToast('Toast', 'top-right', 1000);
             expect(document.querySelectorAll('.toast').length).toBe(1);
 
             jest.advanceTimersByTime(1500);
 
-            setTimeout(() => {
-                expect(document.querySelectorAll('.toast').length).toBe(0);
-                jest.useRealTimers();
-                done();
-            }, 100);
+            expect(document.querySelectorAll('.toast').length).toBe(0);
+            jest.useRealTimers();
         });
 
         test('should stack multiple toasts', () => {

@@ -4,204 +4,179 @@
  */
 
 import { logger } from '../../logger.js';
-import { CONFIG } from '../../config.js';
 
 export class NotificationUI {
     constructor() {
-        this.currentMessage = null;
-        this.messageTimeout = null;
+        this._handleCounter = 0;
+    }
+
+    _nextHandle(prefix) {
+        this._handleCounter += 1;
+        return `${prefix}-${this._handleCounter}`;
     }
 
     /**
-     * Show a message notification
+     * Show a message notification. Messages stack in #message-container; error messages persist
+     * until manually dismissed, other types auto-dismiss after `duration`.
      * @param {string} message - Message text
      * @param {string} type - Message type: 'success', 'error', 'warning', 'info'
-     * @param {number} duration - Duration in ms (default: 3000)
+     * @param {number} duration - Duration in ms before auto-dismiss (default: 3000)
      */
     showMessage(message, type = 'info', duration = 3000) {
-        // Remove existing message
-        this.clearMessage();
+        const container = document.getElementById('message-container');
+        if (!container) {
+            logger.warn('No message container found for message display');
+            return;
+        }
 
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
+        messageDiv.setAttribute('role', 'alert');
+        messageDiv.setAttribute('aria-live', 'polite');
+        messageDiv.innerHTML = `
+            <span class="message-text">${message}</span>
+            <button type="button" class="close-message" aria-label="Dismiss message">&times;</button>
+        `;
 
-        // Add to appropriate container
-        const container = document.querySelector('.active .container');
-        if (container) {
-            container.insertBefore(messageDiv, container.firstChild);
-            this.currentMessage = messageDiv;
-            
-            // Auto-remove after duration
-            this.messageTimeout = setTimeout(() => {
-                this.clearMessage();
+        container.insertBefore(messageDiv, container.firstChild);
+
+        messageDiv.querySelector('.close-message').addEventListener('click', () => {
+            messageDiv.remove();
+        });
+
+        // Errors stay until the user dismisses them; everything else auto-dismisses.
+        if (type !== 'error') {
+            setTimeout(() => {
+                messageDiv.remove();
             }, duration);
-            
-            logger.debug(`Message shown: [${type}] ${message}`);
-        } else {
-            logger.warn('No active container found for message display');
-        }
-    }
-
-    /**
-     * Clear current message
-     */
-    clearMessage() {
-        if (this.messageTimeout) {
-            clearTimeout(this.messageTimeout);
-            this.messageTimeout = null;
         }
 
-        if (this.currentMessage && this.currentMessage.parentNode) {
-            this.currentMessage.remove();
-            this.currentMessage = null;
-        }
+        logger.debug(`Message shown: [${type}] ${message}`);
     }
 
     /**
      * Show confirmation modal
-     * @param {string} title - Modal title
      * @param {string} message - Modal message
      * @param {string} confirmText - Confirm button text
      * @param {string} cancelText - Cancel button text
      * @returns {Promise<boolean>} True if confirmed, false if cancelled
      */
-    showConfirmation(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
+    showConfirmation(message, confirmText = 'Confirm', cancelText = 'Cancel') {
         return new Promise((resolve) => {
-            // Remove existing modal
-            const existingModal = document.getElementById('confirmModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
 
             const modal = document.createElement('div');
-            modal.id = 'confirmModal';
-            modal.className = 'modal';
+            modal.className = 'modal confirmation-modal';
             modal.innerHTML = `
-                <div class="modal-content confirmation-modal">
-                    <h3>${title}</h3>
+                <div class="modal-content">
                     <p>${message}</p>
                     <div class="modal-buttons">
-                        <button class="btn btn-secondary" data-action="cancel-confirm">${cancelText}</button>
-                        <button class="btn btn-primary" data-action="execute-confirm">${confirmText}</button>
+                        <button type="button" class="btn btn-secondary" data-action="cancel">${cancelText}</button>
+                        <button type="button" class="btn btn-primary" data-action="confirm">${confirmText}</button>
                     </div>
                 </div>
             `;
 
-            // Handle confirm
-            const confirmBtn = modal.querySelector('[data-action="execute-confirm"]');
-            confirmBtn.addEventListener('click', () => {
+            const close = (result) => {
                 modal.remove();
+                overlay.remove();
+                resolve(result);
+            };
+
+            modal.querySelector('[data-action="confirm"]').addEventListener('click', () => {
                 logger.debug('Confirmation modal: confirmed');
-                resolve(true);
+                close(true);
             });
-
-            // Handle cancel
-            const cancelBtn = modal.querySelector('[data-action="cancel-confirm"]');
-            cancelBtn.addEventListener('click', () => {
-                modal.remove();
+            modal.querySelector('[data-action="cancel"]').addEventListener('click', () => {
                 logger.debug('Confirmation modal: cancelled');
-                resolve(false);
+                close(false);
+            });
+            overlay.addEventListener('click', () => {
+                logger.debug('Confirmation modal: cancelled (overlay click)');
+                close(false);
             });
 
-            // Click outside to cancel
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.remove();
-                    logger.debug('Confirmation modal: cancelled (outside click)');
-                    resolve(false);
-                }
-            });
-
+            document.body.appendChild(overlay);
             document.body.appendChild(modal);
-            logger.debug(`Confirmation modal shown: ${title}`);
+            logger.debug(`Confirmation modal shown: ${message}`);
         });
     }
 
     /**
      * Show input prompt modal
-     * @param {string} title - Modal title
      * @param {string} message - Modal message
      * @param {string} defaultValue - Default input value
      * @param {string} placeholder - Input placeholder
-     * @returns {Promise<string|null>} Input value or null if cancelled
+     * @returns {Promise<string|null>} Trimmed input value, or null if cancelled/empty
      */
-    showPrompt(title, message, defaultValue = '', placeholder = '') {
+    showPrompt(message, defaultValue = '', placeholder = '') {
         return new Promise((resolve) => {
-            // Remove existing modal
-            const existingModal = document.getElementById('promptModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
 
             const modal = document.createElement('div');
-            modal.id = 'promptModal';
-            modal.className = 'modal';
+            modal.className = 'modal prompt-modal';
             modal.innerHTML = `
-                <div class="modal-content prompt-modal">
-                    <h3>${title}</h3>
+                <div class="modal-content">
                     <p>${message}</p>
                     <input type="text" class="prompt-input" value="${defaultValue}" placeholder="${placeholder}" />
                     <div class="modal-buttons">
-                        <button class="btn btn-secondary" data-action="cancel-prompt">Cancel</button>
-                        <button class="btn btn-primary" data-action="submit-prompt">OK</button>
+                        <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+                        <button type="button" class="btn btn-primary" data-action="confirm">OK</button>
                     </div>
                 </div>
             `;
 
             const input = modal.querySelector('.prompt-input');
-            const submitBtn = modal.querySelector('[data-action="submit-prompt"]');
-            const cancelBtn = modal.querySelector('[data-action="cancel-prompt"]');
 
-            // Handle submit
-            const handleSubmit = () => {
-                const value = input.value.trim();
+            const close = (result) => {
                 modal.remove();
-                logger.debug('Prompt modal: submitted', value);
-                resolve(value || null);
+                overlay.remove();
+                resolve(result);
             };
 
-            submitBtn.addEventListener('click', handleSubmit);
+            const handleSubmit = () => {
+                const value = input.value.trim();
+                logger.debug('Prompt modal: submitted', value);
+                close(value || null);
+            };
+
+            modal.querySelector('[data-action="confirm"]').addEventListener('click', handleSubmit);
             input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    handleSubmit();
-                }
+                if (e.key === 'Enter') handleSubmit();
             });
-
-            // Handle cancel
-            cancelBtn.addEventListener('click', () => {
-                modal.remove();
+            modal.querySelector('[data-action="cancel"]').addEventListener('click', () => {
                 logger.debug('Prompt modal: cancelled');
-                resolve(null);
+                close(null);
+            });
+            overlay.addEventListener('click', () => {
+                logger.debug('Prompt modal: cancelled (overlay click)');
+                close(null);
             });
 
-            // Click outside to cancel
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.remove();
-                    logger.debug('Prompt modal: cancelled (outside click)');
-                    resolve(null);
-                }
-            });
-
+            document.body.appendChild(overlay);
             document.body.appendChild(modal);
-            input.focus();
-            input.select();
-            logger.debug(`Prompt modal shown: ${title}`);
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 0);
+            logger.debug(`Prompt modal shown: ${message}`);
         });
     }
 
     /**
-     * Show loading overlay
+     * Show a loading overlay. Multiple overlays can be shown at once; each is tracked by its own
+     * handle so callers can hide exactly the one they started.
      * @param {string} message - Loading message
+     * @returns {string} Handle to pass to hideLoading()
      */
     showLoading(message = 'Loading...') {
-        // Remove existing loader
-        this.hideLoading();
+        const handle = this._nextHandle('loading');
 
         const loader = document.createElement('div');
-        loader.id = 'loadingOverlay';
         loader.className = 'loading-overlay';
+        loader.dataset.handle = handle;
         loader.innerHTML = `
             <div class="loading-spinner">
                 <div class="spinner"></div>
@@ -210,32 +185,37 @@ export class NotificationUI {
         `;
 
         document.body.appendChild(loader);
-        logger.debug('Loading overlay shown:', message);
+        logger.debug('Loading overlay shown:', message, handle);
+        return handle;
     }
 
     /**
-     * Hide loading overlay
+     * Hide a loading overlay by its handle. No-op for an unknown/invalid handle.
+     * @param {string} handle - Handle returned by showLoading()
      */
-    hideLoading() {
-        const loader = document.getElementById('loadingOverlay');
+    hideLoading(handle) {
+        const loader = document.querySelector(`.loading-overlay[data-handle="${handle}"]`);
         if (loader) {
             loader.remove();
-            logger.debug('Loading overlay hidden');
+            logger.debug('Loading overlay hidden:', handle);
         }
     }
 
     /**
-     * Show toast notification (bottom right corner)
+     * Show toast notification
      * @param {string} message - Toast message
-     * @param {string} type - Toast type: 'success', 'error', 'warning', 'info'
-     * @param {number} duration - Duration in ms (default: 3000)
+     * @param {string} position - 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+     * @param {number} duration - Duration in ms before auto-dismiss (default: 3000)
      */
-    showToast(message, type = 'info', duration = 3000) {
+    showToast(message, position = 'top-right', duration = 3000) {
         const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
+        toast.className = 'toast';
         toast.textContent = message;
 
-        // Get or create toast container
+        const [vertical, horizontal] = position.split('-');
+        toast.style[vertical === 'bottom' ? 'bottom' : 'top'] = '20px';
+        toast.style[horizontal === 'left' ? 'left' : 'right'] = '20px';
+
         let container = document.getElementById('toastContainer');
         if (!container) {
             container = document.createElement('div');
@@ -243,75 +223,84 @@ export class NotificationUI {
             container.className = 'toast-container';
             document.body.appendChild(container);
         }
-
         container.appendChild(toast);
 
-        // Animate in
         setTimeout(() => {
             toast.classList.add('show');
         }, 10);
 
-        // Remove after duration
         setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                toast.remove();
-                // Remove container if empty
-                if (container.children.length === 0) {
-                    container.remove();
-                }
-            }, 300);
+            toast.remove();
+            if (container.children.length === 0) {
+                container.remove();
+            }
         }, duration);
 
-        logger.debug(`Toast shown: [${type}] ${message}`);
+        logger.debug(`Toast shown: ${message}`);
     }
 
     /**
-     * Show progress bar
-     * @param {string} containerId - Container element ID
-     * @param {number} progress - Progress percentage (0-100)
-     * @param {string} label - Progress label
+     * Show a progress overlay.
+     * @param {string} label - Progress label/message
+     * @param {number} progress - Initial progress percentage (0-100)
+     * @returns {string} Handle to pass to updateProgress()/hideProgress()
      */
-    showProgress(containerId, progress, label = '') {
-        const container = document.getElementById(containerId);
-        if (!container) {
-            logger.warn('Progress container not found:', containerId);
-            return;
-        }
+    showProgress(label, progress = 0) {
+        const handle = this._nextHandle('progress');
+        const clamped = Math.min(100, Math.max(0, progress));
 
-        let progressBar = container.querySelector('.progress-bar');
-        if (!progressBar) {
-            progressBar = document.createElement('div');
-            progressBar.className = 'progress-bar';
-            progressBar.innerHTML = `
-                <div class="progress-fill"></div>
-                <div class="progress-label"></div>
-            `;
-            container.appendChild(progressBar);
-        }
+        const overlay = document.createElement('div');
+        overlay.className = 'progress-overlay';
+        overlay.dataset.handle = handle;
+        overlay.innerHTML = `
+            <div class="progress-content">
+                <p class="progress-label">${label}</p>
+                <div class="progress-track">
+                    <div class="progress-bar" style="width: ${clamped}%"></div>
+                </div>
+            </div>
+        `;
 
-        const fill = progressBar.querySelector('.progress-fill');
-        const labelEl = progressBar.querySelector('.progress-label');
-
-        fill.style.width = `${Math.min(100, Math.max(0, progress))}%`;
-        labelEl.textContent = label;
-
-        logger.debug(`Progress updated: ${progress}% - ${label}`);
+        document.body.appendChild(overlay);
+        logger.debug('Progress overlay shown:', label, clamped);
+        return handle;
     }
 
     /**
-     * Hide progress bar
-     * @param {string} containerId - Container element ID
+     * Update an existing progress overlay. No-op for an unknown/invalid handle.
+     * @param {string} handle - Handle returned by showProgress()
+     * @param {number} progress - Progress percentage (clamped to 0-100)
      */
-    hideProgress(containerId) {
-        const container = document.getElementById(containerId);
-        if (container) {
-            const progressBar = container.querySelector('.progress-bar');
-            if (progressBar) {
-                progressBar.remove();
-                logger.debug('Progress bar hidden');
-            }
+    updateProgress(handle, progress) {
+        const overlay = document.querySelector(`.progress-overlay[data-handle="${handle}"]`);
+        if (!overlay) return;
+        const bar = overlay.querySelector('.progress-bar');
+        const clamped = Math.min(100, Math.max(0, progress));
+        bar.style.width = `${clamped}%`;
+        logger.debug('Progress updated:', handle, clamped);
+    }
+
+    /**
+     * Hide a progress overlay by its handle. No-op for an unknown/invalid handle.
+     * @param {string} handle - Handle returned by showProgress()
+     */
+    hideProgress(handle) {
+        const overlay = document.querySelector(`.progress-overlay[data-handle="${handle}"]`);
+        if (overlay) {
+            overlay.remove();
+            logger.debug('Progress overlay hidden:', handle);
         }
+    }
+
+    /**
+     * Clear all stacked messages and toasts. Deliberately leaves modals (confirmation/prompt)
+     * open - those have their own explicit confirm/cancel flow.
+     */
+    clearAllNotifications() {
+        document.getElementById('message-container')?.replaceChildren();
+        document.querySelectorAll('.toast').forEach(toast => toast.remove());
+        document.getElementById('toastContainer')?.remove();
+        logger.debug('All notifications cleared');
     }
 }
 
