@@ -15,10 +15,29 @@ A modern, responsive web application for tracking daily calorie intake with user
 ## Live Demo
 
 🌐 **Frontend**: [https://calorie-tracker.piogino.ch](https://calorie-tracker.piogino.ch)
+🔌 **Backend API**: [https://api.calorie-tracker.piogino.ch](https://api.calorie-tracker.piogino.ch)
 
 **Demo Credentials**:
 - Username: `demo`
 - Password: `demo123`
+
+## Repository layout
+
+| Part | Where | Hosting |
+|---|---|---|
+| Frontend | repo root (`index.html`, `script.js`, `styles.css`, ...) | GitHub Pages → https://calorie-tracker.piogino.ch |
+| Backend API | [`backend/`](backend/) | VPS, `/var/www/calorie-tracker/backend` → https://api.calorie-tracker.piogino.ch |
+
+## Working on the backend (on the VPS)
+
+The server checkout at `/var/www/calorie-tracker` **is** this repository; the `calorie-tracker-api` pm2
+process runs straight out of `backend/` (`cwd: /var/www/calorie-tracker/backend`).
+
+- `scripts/save.sh "message"` — commit, rebase on GitHub, push (the backup).
+- **Secrets never go in this repo** (it is public). On the server they live in
+  `~/.config/calorie-tracker/backend.env`, outside the checkout. Pre-commit and pre-push hooks block
+  secret files, credential-looking lines, and any real value from that file.
+- After cloning elsewhere, enable the hooks: `git config core.hooksPath scripts/githooks`.
 
 ## Architecture
 
@@ -55,8 +74,9 @@ python -m http.server 8000
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# Edit .env with your database credentials
+mkdir -p ~/.config/calorie-tracker
+cp .env.example ~/.config/calorie-tracker/backend.env
+# Edit ~/.config/calorie-tracker/backend.env with your database credentials
 npm start
 ```
 
@@ -97,19 +117,22 @@ See `DEPLOYMENT_GUIDE.md` for detailed instructions.
 ## File Structure
 
 ```
-calories-tracker/
+calorie-tracker/
 ├── index.html              # Main HTML file
-├── styles.css              # CSS styling  
+├── styles.css              # CSS styling
 ├── script.js               # Frontend JavaScript
 ├── config.js               # Configuration settings
 ├── CNAME                   # GitHub Pages domain
 ├── README.md               # This file
-├── DATABASE_SCHEMA.md      # Database design
-├── DEPLOYMENT_GUIDE.md     # Deployment instructions
-└── backend/                # Backend API (deploy to cloud server)
+├── docs/                   # Frontend documentation
+├── scripts/                # save.sh + git hooks (secret scanning)
+└── backend/                # Backend API (runs on the VPS via pm2)
     ├── server.js           # Main server file
     ├── database.js         # Database connection
+    ├── ecosystem.config.js # pm2 process definition
+    ├── .env.example        # Template; real values live outside the repo
     ├── package.json        # Dependencies
+    ├── docs/                # Backend documentation
     └── routes/             # API endpoints
         ├── auth.js         # Authentication
         ├── foods.js        # Food database

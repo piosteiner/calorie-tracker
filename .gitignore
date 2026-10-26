@@ -122,9 +122,6 @@ optimized/
 # Session files
 sessions/
 
-# PM2 ecosystem files (keep template)
-ecosystem.config.js
-
 # Backup files
 backups/
 *.backup
