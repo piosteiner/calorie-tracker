@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.calorie-tracker.piogino.ch https://world.openfoodfacts.org; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calorie Tracker</title>
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>">
@@ -1582,7 +1583,7 @@
                     <hr class="share-divider">
                     <label class="share-link-label">Share link:</label>
                     <div class="share-link-row">
-                        <button type="button" class="btn btn-primary" id="visitShareLinkBtn" onclick="const u=document.getElementById('shareLinkInput').value; if(u) window.open(u,'_blank','noopener,noreferrer');">🔗 Visit</button>
+                        <button type="button" class="btn btn-primary" id="visitShareLinkBtn" >🔗 Visit</button>
                         <input type="text" id="shareLinkInput" class="share-link-input" readonly style="display:none">
                         <button type="button" class="btn btn-primary" data-action="copy-share-link">📋 Copy</button>
                     </div>
@@ -1606,12 +1607,6 @@
     <script src="realtimeSync.js"></script>
     <script src="pushManager.js"></script>
     <script src="script.js?v=20260403-2"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js').catch(function () {});
-            });
-        }
-    </script>
+    <script src="page-extras.js"></script>
 </body>
 </html>

@@ -7,8 +7,8 @@
  *   3. Serve a minimal offline fallback so the install prompt works.
  */
 
-const CACHE_NAME = 'caltracker-v1';
-const OFFLINE_URLS = ['/', '/index.html', '/styles.css', '/script.js', '/config.js', '/logger.js', '/validators.js', '/themeToggle.js', '/realtimeSync.js'];
+const CACHE_NAME = 'caltracker-v2';
+const OFFLINE_URLS = ['/', '/index.html', '/styles.css', '/script.js', '/config.js', '/logger.js', '/validators.js', '/themeToggle.js', '/realtimeSync.js', '/page-extras.js'];
 
 // ── Install: pre-cache shell assets ─────────────────────────────────────────
 self.addEventListener('install', (event) => {

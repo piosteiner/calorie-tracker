@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.calorie-tracker.piogino.ch https://world.openfoodfacts.org; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy · Calorie Tracker</title>
     <meta name="description" content="Privacy statement of the Calorie Tracker: no tracking, your data stays on our server in Switzerland.">
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>">
-    <script>try{var t=localStorage.getItem('calorie-tracker-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+    <script src="/theme-init.js"></script>
     <style>
         :root { --bg: #f4f2fb; --card: #ffffff; --ink: #2d2a3a; --muted: #6b6780; --rule: #e1e5e9; --accent: #5b5fc7; --code: #f0eef8; color-scheme: light; }
         @media (prefers-color-scheme: dark) {
