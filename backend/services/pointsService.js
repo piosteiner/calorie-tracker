@@ -238,24 +238,20 @@ class PointsService {
     static async awardDailyLogin(userId) {
         try {
             const today = new Date().toISOString().split('T')[0];
-            
-            // Check if already claimed today
-            const [lastReward] = await db.query(
-                'SELECT last_daily_reward_date FROM user_points WHERE user_id = ?',
-                [userId]
-            );
 
-            if (lastReward[0] && lastReward[0].last_daily_reward_date === today) {
+            // Claim today's reward in one step: the row only changes if it was not claimed today yet.
+            // (Before, the check compared a Date object with a string and never matched, so it could be claimed again and again.)
+            const claim = await db.query(`
+                UPDATE user_points
+                SET last_activity_date = CURDATE(),
+                    last_daily_reward_date = CURDATE()
+                WHERE user_id = ?
+                  AND (last_daily_reward_date IS NULL OR last_daily_reward_date < CURDATE())
+            `, [userId]);
+
+            if (!claim.affectedRows) {
                 return { alreadyClaimed: true, message: 'Daily reward already claimed today' };
             }
-
-            // Update last daily reward date and activity
-            await db.query(`
-                UPDATE user_points 
-                SET last_activity_date = ?,
-                    last_daily_reward_date = ?
-                WHERE user_id = ?
-            `, [today, today, userId]);
 
             // Award points
             const result = await this.awardPoints(
@@ -512,7 +508,7 @@ class PointsService {
     static async awardAchievement(userId, achievementCode, name, description, icon = '🏆', pointsAwarded = 0) {
         try {
             // Check if already awarded
-            const [existing] = await db.query(
+            const existing = await db.query(
                 'SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = ?',
                 [userId, achievementCode]
             );
@@ -550,6 +546,17 @@ class PointsService {
     /**
      * Get user's current points and stats
      */
+    /**
+     * Whether today's daily reward can still be claimed
+     */
+    static async isDailyRewardAvailable(userId) {
+        const rows = await db.query(
+            'SELECT (last_daily_reward_date IS NULL OR last_daily_reward_date < CURDATE()) AS available FROM user_points WHERE user_id = ?',
+            [userId]
+        );
+        return rows.length ? !!rows[0].available : true;
+    }
+
     static async getUserPoints(userId) {
         try {
             const points = await db.query(`

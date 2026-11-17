@@ -106,7 +106,7 @@ router.post('/log', [
                 });
 
                 // Check for first weight log achievement
-                const [weightLogCount] = await db.query(
+                const weightLogCount = await db.query(
                     'SELECT COUNT(*) as count FROM weight_logs WHERE user_id = ?',
                     [req.user.id]
                 );

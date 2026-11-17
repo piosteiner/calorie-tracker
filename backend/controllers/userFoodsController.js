@@ -110,7 +110,8 @@ class UserFoodsController {
                 SELECT 
                     COUNT(DISTINCT f.id) as total_contributions,
                     COUNT(DISTINCT f.created_by) as unique_contributors,
-                    COALESCE(SUM(log_counts.times_logged), 0) as total_usage
+                    COALESCE(SUM(log_counts.times_logged), 0) as total_usage,
+                    COALESCE(SUM(log_counts.times_logged >= 5), 0) as popular_foods
                 FROM foods f
                 LEFT JOIN (
                     SELECT food_id, COUNT(*) as times_logged
@@ -153,6 +154,7 @@ class UserFoodsController {
                     total_user_foods: stats[0].total_contributions,
                     total_contributors: stats[0].unique_contributors,
                     total_logs_of_user_foods: stats[0].total_usage,
+                    popular_foods_count: Number(stats[0].popular_foods),   // logged 5 times or more
                     avg_usage_per_food: stats[0].total_contributions > 0 
                         ? parseFloat((stats[0].total_usage / stats[0].total_contributions).toFixed(1))
                         : 0

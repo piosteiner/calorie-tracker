@@ -52,6 +52,7 @@ class RewardsController {
                         lastActivityDate: newPoints.last_activity_date,
                         achievementsCount: newPoints.achievements_count,
                         itemsOwned: newPoints.items_owned,
+                        dailyRewardAvailable: await PointsService.isDailyRewardAvailable(req.user.id),
                         foodMilestone: foodMilestone ? {
                             level: foodMilestone.milestone_level,
                             multiplier: parseFloat(foodMilestone.points_multiplier),
@@ -103,6 +104,7 @@ class RewardsController {
                     lastActivityDate: points.last_activity_date,
                     achievementsCount: points.achievements_count,
                     itemsOwned: points.items_owned,
+                    dailyRewardAvailable: await PointsService.isDailyRewardAvailable(req.user.id),
                     foodMilestone: foodMilestone ? {
                         level: foodMilestone.milestone_level,
                         multiplier: parseFloat(foodMilestone.points_multiplier),
@@ -143,7 +145,7 @@ class RewardsController {
 
             const transactions = await PointsService.getTransactionHistory(req.user.id, limit, offset);
 
-            const [total] = await db.query(
+            const total = await db.query(
                 'SELECT COUNT(*) as total FROM point_transactions WHERE user_id = ?',
                 [req.user.id]
             );
@@ -282,7 +284,7 @@ class RewardsController {
             const { itemId } = req.params;
 
             // Get item details
-            const [item] = await db.query(
+            const item = await db.query(
                 'SELECT * FROM reward_items WHERE id = ? AND is_active = TRUE',
                 [itemId]
             );
@@ -294,7 +296,7 @@ class RewardsController {
             const rewardItem = item[0];
 
             // Check if user already owns it (for single-purchase items)
-            const [existingPurchase] = await db.query(
+            const existingPurchase = await db.query(
                 'SELECT COUNT(*) as count FROM user_purchases WHERE user_id = ? AND item_id = ?',
                 [req.user.id, itemId]
             );
@@ -422,7 +424,7 @@ class RewardsController {
             const { purchaseId } = req.params;
 
             // Verify ownership
-            const [purchase] = await db.query(`
+            const purchase = await db.query(`
                 SELECT up.*, ri.category
                 FROM user_purchases up
                 JOIN reward_items ri ON up.item_id = ri.id

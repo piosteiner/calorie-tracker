@@ -21,7 +21,8 @@ router.get('/users', async (req, res) => {
         created_at, 
         is_active,
         (SELECT COUNT(*) FROM food_logs WHERE user_id = users.id) as total_logs,
-        (SELECT SUM(calories) FROM food_logs WHERE user_id = users.id) as total_calories
+        (SELECT SUM(calories) FROM food_logs WHERE user_id = users.id) as total_calories,
+        (SELECT MAX(created_at) FROM sessions WHERE user_id = users.id) as last_login
       FROM users 
       ORDER BY created_at DESC
     `);
@@ -621,6 +622,8 @@ router.get('/stats', async (req, res) => {
         (SELECT COUNT(*) FROM foods) as total_local_foods,
         (SELECT COUNT(*) FROM food_logs) as total_logs,
         (SELECT COUNT(*) FROM sessions WHERE is_active = TRUE AND expires_at > NOW()) as active_sessions,
+        (SELECT COUNT(DISTINCT user_id) FROM food_logs WHERE log_date >= CURDATE() - INTERVAL 7 DAY) as active_users,
+        (SELECT COUNT(*) FROM food_logs WHERE log_date = CURDATE()) as todays_logs,
         (SELECT AVG(daily_calorie_goal) FROM users WHERE is_active = TRUE) as avg_calorie_goal
     `);
     
@@ -823,7 +826,7 @@ router.get('/shop/:itemId', async (req, res) => {
   try {
     const { itemId } = req.params;
 
-    const [item] = await db.query(`
+    const item = await db.query(`
       SELECT 
         ri.*,
         (SELECT COUNT(*) FROM user_purchases WHERE item_id = ri.id) as total_purchases,
@@ -975,7 +978,7 @@ router.put('/shop/:itemId', async (req, res) => {
     } = req.body;
 
     // Check if item exists
-    const [existing] = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
+    const existing = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
     if (!existing[0]) {
       return res.status(404).json({
         success: false,
@@ -1087,7 +1090,7 @@ router.patch('/shop/:itemId/toggle', async (req, res) => {
     const { itemId } = req.params;
 
     // Get current status
-    const [item] = await db.query('SELECT id, name, is_active FROM reward_items WHERE id = ?', [itemId]);
+    const item = await db.query('SELECT id, name, is_active FROM reward_items WHERE id = ?', [itemId]);
     
     if (!item[0]) {
       return res.status(404).json({
@@ -1133,7 +1136,7 @@ router.patch('/shop/:itemId/stock', async (req, res) => {
     }
 
     // Check if item exists
-    const [item] = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
+    const item = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
     
     if (!item[0]) {
       return res.status(404).json({
@@ -1168,7 +1171,7 @@ router.delete('/shop/:itemId', async (req, res) => {
     const { itemId } = req.params;
 
     // Check if item exists
-    const [item] = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
+    const item = await db.query('SELECT id, name FROM reward_items WHERE id = ?', [itemId]);
     
     if (!item[0]) {
       return res.status(404).json({
@@ -1178,7 +1181,7 @@ router.delete('/shop/:itemId', async (req, res) => {
     }
 
     // Check if item has been purchased
-    const [purchases] = await db.query('SELECT COUNT(*) as count FROM user_purchases WHERE item_id = ?', [itemId]);
+    const purchases = await db.query('SELECT COUNT(*) as count FROM user_purchases WHERE item_id = ?', [itemId]);
     
     if (purchases[0].count > 0) {
       return res.status(400).json({

@@ -5327,7 +5327,15 @@ class CalorieTracker {
         // For real admin users in production
         try {
             const response = await this.apiCall('/admin/stats');
-            this.adminData.stats = response;
+            // the API sends { stats: { total_users, ... } } in snake_case; the tiles use these names
+            const s = response.stats || {};
+            this.adminData.stats = {
+                totalUsers: s.total_users,
+                totalFoods: s.total_local_foods,
+                totalLogs: s.total_logs,
+                todaysLogs: s.todays_logs,
+                activeUsers: s.active_users
+            };
             this.updateAdminStatsDisplay();
         } catch (error) {
             this.showMessage('Failed to load admin statistics', 'error');
@@ -5338,11 +5346,12 @@ class CalorieTracker {
     updateAdminStatsDisplay() {
         const stats = this.adminData.stats;
         
-        document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
-        document.getElementById('totalFoods').textContent = stats.totalFoods || 0;
-        document.getElementById('totalLogs').textContent = stats.totalLogs || 0;
-        document.getElementById('todaysLogs').textContent = stats.todaysLogs || 0;
-        document.getElementById('activeUsers').textContent = stats.activeUsers || 0;
+        const n = (v) => Number(v || 0).toLocaleString();
+        document.getElementById('totalUsers').textContent = n(stats.totalUsers);
+        document.getElementById('totalFoods').textContent = n(stats.totalFoods);
+        document.getElementById('totalLogs').textContent = n(stats.totalLogs);
+        document.getElementById('todaysLogs').textContent = n(stats.todaysLogs);
+        document.getElementById('activeUsers').textContent = n(stats.activeUsers);
     }
 
     // Load users for management
@@ -5373,16 +5382,19 @@ class CalorieTracker {
         const usersList = document.getElementById('adminUsersList');
         if (!usersList) return;
 
+        // the API sends snake_case (total_logs, last_login); empty values show as a dash
+        const dash = '<span class="muted">—</span>';
+        const when = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : dash;
         usersList.innerHTML = this.adminData.users.map(user => `
             <tr>
-                <td>${user.username}</td>
-                <td>${user.email || 'null'}</td>
-                <td>${user.role}</td>
-                <td>${user.totalLogs || 'undefined'}</td>
-                <td>${user.lastLogin || 'undefined'}</td>
-                <td>
+                <td><strong>${this.escapeHtml(user.username)}</strong></td>
+                <td>${user.email ? this.escapeHtml(user.email) : dash}</td>
+                <td><span class="role-pill role-${user.role}">${user.role}</span></td>
+                <td class="num">${(user.total_logs ?? user.totalLogs ?? 0).toLocaleString()}</td>
+                <td class="nowrap">${when(user.last_login ?? user.lastLogin)}</td>
+                <td class="table-actions">
                     <button class="btn btn-small" data-action="edit-user" data-user-id="${user.id}">Edit</button>
-                    <button class="btn btn-small" data-action="admin-change-password" data-user-id="${user.id}">Change Password</button>
+                    <button class="btn btn-small" data-action="admin-change-password" data-user-id="${user.id}">Password</button>
                     <button class="btn btn-small btn-danger" data-action="delete-user" data-user-id="${user.id}">Delete</button>
                 </td>
             </tr>
@@ -6413,13 +6425,9 @@ class CalorieTracker {
                 <td>${(table.row_count || 0).toLocaleString()}</td>
                 <td>${this.formatBytes(table.size_bytes || 0)}</td>
                 <td>${table.created_at ? new Date(table.created_at).toLocaleDateString() : 'N/A'}</td>
-                <td>
-                    <button data-action="browse-table" data-table-name="${table.table_name}" class="btn btn-sm btn-info">
-                        👁️ Browse
-                    </button>
-                    <button data-action="show-table-structure" data-table-name="${table.table_name}" class="btn btn-sm btn-secondary">
-                        🏗️ Structure
-                    </button>
+                <td class="table-actions">
+                    <button data-action="browse-table" data-table-name="${table.table_name}" class="btn btn-sm btn-info">Browse</button>
+                    <button data-action="show-table-structure" data-table-name="${table.table_name}" class="btn btn-sm btn-secondary">Structure</button>
                 </td>
             </tr>
         `).join('');
@@ -7068,7 +7076,7 @@ class CalorieTracker {
         document.getElementById('totalContributors').textContent = stats.total_contributors || 0;
         document.getElementById('popularFoodsCount').textContent = stats.popular_foods_count || 0;
         document.getElementById('avgUsagePerFood').textContent = 
-            stats.avg_usage_per_food ? stats.avg_usage_per_food.toFixed(1) : '0.0';
+            stats.avg_usage_per_food ? Number(stats.avg_usage_per_food).toFixed(1) : '0.0';
     }
 
     /**

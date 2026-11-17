@@ -250,7 +250,11 @@
         document.addEventListener('click', (e) => {
             const t = e.target.closest('.app-tab, [data-tab-link]');
             if (t) showTab(t.dataset.tab || t.dataset.tabLink);
+            // the admin sections: mark the one that is open
+            const a = e.target.closest('.admin-nav [data-action="show-admin-section"]');
+            if (a) document.querySelectorAll('.admin-nav .btn-admin').forEach((b) => b.classList.toggle('active', b === a));
         });
+        document.querySelector('.admin-nav .btn-admin')?.classList.add('active');
         // script.js creates `app` on DOMContentLoaded; this listener was added after it, so it runs after
         const ready = () => {
             hookApp();
