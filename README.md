@@ -25,7 +25,7 @@ A modern, responsive web application for tracking daily calorie intake with user
 
 | Part | Where | Hosting |
 |---|---|---|
-| Frontend | repo root (`index.html`, `script.js`, `styles.css`, ...) | GitHub Pages → https://calorie-tracker.piogino.ch |
+| Frontend | [`web/`](web/) — everything in it is published, nothing else | GitHub Pages (domain in `web/CNAME`) |
 | Backend API | [`backend/`](backend/) | VPS, `/var/www/calorie-tracker/backend` → https://api.calorie-tracker.piogino.ch |
 
 ## Working on the backend (on the VPS)
@@ -66,7 +66,7 @@ process runs straight out of `backend/` (`cwd: /var/www/calorie-tracker/backend`
 #### Frontend Testing
 ```bash
 # Use local server
-python -m http.server 8000
+cd web && python3 -m http.server 8000
 # Visit http://localhost:8000
 ```
 
@@ -82,22 +82,23 @@ npm start
 
 ## Configuration
 
-Update `config.js` to point to your backend API:
+Update `web/config.js` to point to your backend API:
 
-```javascript
 ```javascript
 const CONFIG = {
     API_BASE_URL: 'https://api.calorie-tracker.piogino.ch/api',
     DEVELOPMENT_MODE: false // Set to true for offline testing
 };
+```
 
 ## Deployment
 
 ### Frontend (GitHub Pages)
-Already configured with custom domain: `calorie-tracker.piogino.ch`
+Every push to `main` that changes `web/` is published by `.github/workflows/pages.yml`
+(it runs `scripts/build-site.sh`, which copies `web/` and checks that every referenced file exists).
 
 ### Backend (Cloud Server)
-See `DEPLOYMENT_GUIDE.md` for detailed instructions.
+See [`docs/deployment.md`](docs/deployment.md). After backend changes: `pm2 restart calorie-tracker-api`.
 
 ## Technologies Used
 
@@ -118,26 +119,24 @@ See `DEPLOYMENT_GUIDE.md` for detailed instructions.
 
 ```
 calorie-tracker/
-├── index.html              # Main HTML file
-├── styles.css              # CSS styling
-├── script.js               # Frontend JavaScript
-├── config.js               # Configuration settings
-├── CNAME                   # GitHub Pages domain
-├── README.md               # This file
-├── docs/                   # Frontend documentation
-├── scripts/                # save.sh + git hooks (secret scanning)
-└── backend/                # Backend API (runs on the VPS via pm2)
-    ├── server.js           # Main server file
-    ├── database.js         # Database connection
-    ├── ecosystem.config.js # pm2 process definition
-    ├── .env.example        # Template; real values live outside the repo
-    ├── package.json        # Dependencies
-    ├── docs/                # Backend documentation
-    └── routes/             # API endpoints
-        ├── auth.js         # Authentication
-        ├── foods.js        # Food database
-        ├── logs.js         # Food logging
-        └── user.js         # User management
+├── web/                    # The website (published to GitHub Pages as is)
+│   ├── index.html          # The app; privacy.html, share.html are the other pages
+│   ├── script.js           # Main app logic (CalorieTracker)
+│   ├── app-ui.js, app.css  # Tabs, quick add, redesign styles
+│   ├── styles.css          # Older base styles
+│   ├── feedback.js         # Feedback button + admin feedback list
+│   ├── config.js           # API address and settings
+│   ├── sw.js               # Service worker
+│   └── vendor/             # Chart.js
+├── backend/                # API (runs on the VPS via pm2)
+│   ├── server.js, database.js, ecosystem.config.js
+│   ├── routes/, controllers/, services/, middleware/, jobs/
+│   ├── migrations/         # SQL migrations
+│   └── scripts/            # Manual test scripts for the API
+├── docs/                   # API reference, database schema, deployment, rewards
+├── modules/                # Unfinished split of script.js — not loaded by the site, only by tests/
+├── tests/                  # Jest unit tests for modules/
+└── scripts/                # build-site.sh, save.sh, git hooks (secret scanning)
 ```
 
 ---

@@ -3,7 +3,7 @@
  * Handles modal dialog creation and display
  */
 
-import { logger } from '../../logger.js';
+import { logger } from '../../web/logger.js';
 
 export class ModalUI {
     constructor() {

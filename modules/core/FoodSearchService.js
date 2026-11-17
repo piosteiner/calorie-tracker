@@ -3,8 +3,8 @@
  * Handles food search logic including local DB, enhanced API search, caching, and debouncing
  */
 
-import { logger } from '../../logger.js';
-import { CONFIG } from '../../config.js';
+import { logger } from '../../web/logger.js';
+import { CONFIG } from '../../web/config.js';
 import { apiService } from '../api/ApiService.js';
 import { stateManager } from './StateManager.js';
 

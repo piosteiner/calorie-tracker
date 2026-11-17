@@ -3,7 +3,7 @@
  * Handles admin panel rendering and displays
  */
 
-import { logger } from '../../logger.js';
+import { logger } from '../../web/logger.js';
 
 export class AdminUI {
     constructor() {

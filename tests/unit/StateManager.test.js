@@ -6,12 +6,12 @@
 import { StateManager } from '../../modules/core/StateManager.js';
 
 // Mock dependencies
-jest.mock('../../logger.js', () => require('../mocks/logger.js'));
-jest.mock('../../config.js', () => require('../mocks/config.js'));
+jest.mock('../../web/logger.js', () => require('../mocks/logger.js'));
+jest.mock('../../web/config.js', () => require('../mocks/config.js'));
 
-// StateManager.js imports { logger } from '../../logger.js' (mocked above), which is a separate
+// StateManager.js imports { logger } from '../../web/logger.js' (mocked above), which is a separate
 // object from the legacy global.logger set up in tests/setup.js - assert against this one.
-const { logger: mockLogger } = require('../../logger.js');
+const { logger: mockLogger } = require('../../web/logger.js');
 
 describe('StateManager', () => {
     let stateManager;

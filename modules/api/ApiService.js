@@ -4,8 +4,8 @@
  * Handles authentication, error handling, and request formatting
  */
 
-import { logger } from '../../logger.js';
-import { CONFIG } from '../../config.js';
+import { logger } from '../../web/logger.js';
+import { CONFIG } from '../../web/config.js';
 
 export class ApiService {
     constructor() {

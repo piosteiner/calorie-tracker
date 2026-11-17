@@ -6,8 +6,8 @@
 import { NotificationUI } from '../../modules/ui/NotificationUI.js';
 
 // Mock dependencies
-jest.mock('../../logger.js', () => require('../mocks/logger.js'));
-jest.mock('../../config.js', () => require('../mocks/config.js'));
+jest.mock('../../web/logger.js', () => require('../mocks/logger.js'));
+jest.mock('../../web/config.js', () => require('../mocks/config.js'));
 
 describe('NotificationUI', () => {
     let notificationUI;

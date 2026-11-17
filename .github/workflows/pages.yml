@@ -1,5 +1,5 @@
 # Publishes the frontend to GitHub Pages (the domain is in CNAME).
-# Only the files listed in scripts/build-site.sh go out; backend/, docs/, tests/ and modules/ do not.
+# Only web/ goes out (scripts/build-site.sh); backend/, docs/, tests/ and modules/ do not.
 # Requires Settings → Pages → Source: "GitHub Actions".
 # The backend is not deployed here: it runs on the server from backend/ under pm2 (calorie-tracker-api).
 name: Frontend → GitHub Pages
@@ -7,8 +7,8 @@ name: Frontend → GitHub Pages
 on:
   push:
     branches: [main]
-    # backend, docs and test changes don't touch the site, so they don't redeploy it
-    paths-ignore: ['backend/**', 'docs/**', 'tests/**', 'modules/**', '**.md']
+    # only changes to the site or its build redeploy it
+    paths: ['web/**', 'scripts/build-site.sh', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

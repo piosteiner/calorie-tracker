@@ -3,7 +3,7 @@
  * Handles all notification and message displays
  */
 
-import { logger } from '../../logger.js';
+import { logger } from '../../web/logger.js';
 
 export class NotificationUI {
     constructor() {

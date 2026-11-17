@@ -3,7 +3,7 @@
  * Handles food log rendering and display
  */
 
-import { logger } from '../../logger.js';
+import { logger } from '../../web/logger.js';
 
 export class FoodLogUI {
     constructor() {

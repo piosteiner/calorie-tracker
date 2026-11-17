@@ -6,8 +6,8 @@
 import { FoodSearchService } from '../../modules/core/FoodSearchService.js';
 
 // Mock dependencies
-jest.mock('../../logger.js', () => require('../mocks/logger.js'));
-jest.mock('../../config.js', () => require('../mocks/config.js'));
+jest.mock('../../web/logger.js', () => require('../mocks/logger.js'));
+jest.mock('../../web/config.js', () => require('../mocks/config.js'));
 
 // jest.mock() calls are hoisted above these imports/consts, so the mocked modules are required
 // (and their factories run) before a `const mockApiService = {...}` below them would have been

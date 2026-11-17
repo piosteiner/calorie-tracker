@@ -4,8 +4,8 @@
  * Manages all application state and notifies subscribers of changes
  */
 
-import { logger } from '../../logger.js';
-import { CONFIG } from '../../config.js';
+import { logger } from '../../web/logger.js';
+import { CONFIG } from '../../web/config.js';
 
 export class StateManager {
     constructor() {
