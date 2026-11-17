@@ -9,6 +9,6 @@
 | [api-meals-and-weight.md](api-meals-and-weight.md) | Meal categories, weight tracking |
 | [api-admin-users.md](api-admin-users.md) | Admin user management |
 | [user-foods.md](user-foods.md) | Foods added by users |
-| [rewards.md](rewards.md) | Points, levels, shop |
+| [rewards.md](rewards.md) | Points per day, levels, badges |
 
 Older status reports and fix notes were removed in the cleanup; they are in the git history.

@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
+const ProgressService = require('../services/progressService');
 
 const router = express.Router();
 
@@ -148,10 +149,15 @@ router.put('/goal', [
             [dailyCalorieGoal, req.user.id]
         );
 
+        // "on target" for today depends on the goal (days with their own goal keep it)
+        const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
+        const progress = await ProgressService.refreshDays(req.user.id, [today]);
+
         res.json({
             success: true,
             message: 'Daily calorie goal updated',
-            dailyCalorieGoal
+            dailyCalorieGoal,
+            progress
         });
     } catch (error) {
         console.error('Update calorie goal error:', error);
@@ -187,8 +193,12 @@ router.post('/daily-goal', [
                 updated_at = CURRENT_TIMESTAMP
         `, [userId, date, goal]);
 
+        // "on target" for that day depends on its goal
+        const progress = await ProgressService.refreshDays(userId, [date.toISOString().split('T')[0]]);
+
         res.json({
             success: true,
+            progress,
             message: `Daily goal for ${date} saved successfully`,
             goal,
             date

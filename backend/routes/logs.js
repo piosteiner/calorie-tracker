@@ -2,7 +2,15 @@ const express = require('express');
 const { body, query, param, validationResult } = require('express-validator');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
-const PointsService = require('../services/pointsService');
+const ProgressService = require('../services/progressService');
+
+// the day a log is on, as YYYY-MM-DD (null if the log is not this user's)
+async function logDay(id, userId) {
+    const rows = await db.query("SELECT DATE_FORMAT(log_date, '%Y-%m-%d') AS day FROM food_logs WHERE id = ? AND user_id = ?", [id, userId]);
+    return rows[0]?.day || null;
+}
+// latest date allowed: the date somewhere on earth right now (UTC+14), so a Zürich log just after midnight is fine
+const latestDate = () => new Date(Date.now() + 14 * 3600e3).toISOString().split('T')[0];
 const sseManager = require('../services/sseManager');
 
 const router = express.Router();
@@ -115,15 +123,11 @@ router.post('/', [
         const logDate = req.body.logDate || new Date().toISOString().split('T')[0];
         
         // Validate log_date is not in the future
-        const today = new Date().toISOString().split('T')[0];
-        if (logDate > today) {
+        if (logDate > latestDate()) {
             return res.status(400).json({
                 error: 'Cannot log food for future dates'
             });
         }
-        
-        // Check if this is a same-day log (for point rewards)
-        const isSameDayLog = (logDate === today);
 
         const mealCategory = meal_category || 'other';
         const mealTime = meal_time || null;
@@ -178,129 +182,9 @@ router.post('/', [
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [req.user.id, finalFoodId, foodName, quantity, unit, calories, logDate, mealCategory, mealTime, image_id || null]);
         
-        // Award points for logging food (only for same-day logs)
-        let pointsAwarded = 0;
-        let pointsDetails = [];
-        try {
-            if (isSameDayLog) {
-                // Get current food milestone to apply multiplier
-                const foodMilestone = await PointsService.getFoodMilestone(req.user.id);
-                
-                if (!foodMilestone) {
-                    throw new Error('Food milestone not found');
-                }
-                
-                const basePoints = PointsService.POINT_REWARDS.FOOD_LOG;
-                const multipliedPoints = Math.round(basePoints * foodMilestone.points_multiplier);
+        // Points for the day are recalculated from its logs
+        const progress = await ProgressService.refreshDays(req.user.id, [logDate]);
 
-                // Base points for food logging (with multiplier applied)
-                const foodLogReward = await PointsService.awardPoints(
-                    req.user.id,
-                    multipliedPoints,
-                    'food_log',
-                    `Logged ${foodName} (${foodMilestone.points_multiplier}x multiplier)`,
-                    'food_log',
-                    result.insertId,
-                    { multiplier: foodMilestone.points_multiplier, basePoints: basePoints }
-                );
-                pointsAwarded += multipliedPoints;
-                pointsDetails.push({ 
-                    reason: 'food_log', 
-                    points: multipliedPoints,
-                    basePoints: basePoints,
-                    multiplier: foodMilestone.points_multiplier
-                });
-
-                pointsDetails.push({ 
-                    reason: 'food_log', 
-                    points: multipliedPoints,
-                    basePoints: basePoints,
-                    multiplier: foodMilestone.points_multiplier
-                });
-
-                // Check for first food log achievement
-                const foodLogCountResult = await db.query(
-                    'SELECT COUNT(*) as count FROM food_logs WHERE user_id = ?',
-                    [req.user.id]
-                );
-                
-                if (foodLogCountResult[0] && foodLogCountResult[0].count === 1) {
-                    await PointsService.awardAchievement(
-                        req.user.id,
-                        'FIRST_FOOD_LOG',
-                        'First Steps',
-                        'Logged your first meal',
-                        '🏆',
-                        PointsService.POINT_REWARDS.FIRST_FOOD_LOG
-                    );
-                    pointsAwarded += PointsService.POINT_REWARDS.FIRST_FOOD_LOG;
-                    pointsDetails.push({ reason: 'first_food_log', points: PointsService.POINT_REWARDS.FIRST_FOOD_LOG });
-                }
-
-                // Check for food milestone level up
-                const milestoneResult = await PointsService.checkFoodMilestone(req.user.id);
-                if (milestoneResult.leveledUp) {
-                    pointsAwarded += milestoneResult.bonus;
-                    pointsDetails.push({ 
-                        reason: 'milestone_level_up', 
-                        points: milestoneResult.bonus,
-                        newLevel: milestoneResult.milestone_level,
-                        newMultiplier: milestoneResult.multiplier
-                    });
-                }
-
-                // Early bird bonus (if breakfast before 10am)
-                if (mealCategory === 'breakfast' && mealTime) {
-                    const hour = parseInt(mealTime.split(':')[0]);
-                    if (hour < 10) {
-                        await PointsService.awardPoints(
-                            req.user.id,
-                            PointsService.POINT_REWARDS.EARLY_BIRD,
-                            'early_bird',
-                            'Logged breakfast before 10am',
-                            'food_log',
-                            result.insertId
-                        );
-                        pointsAwarded += PointsService.POINT_REWARDS.EARLY_BIRD;
-                        pointsDetails.push({ reason: 'early_bird', points: PointsService.POINT_REWARDS.EARLY_BIRD });
-                    }
-                }
-
-                // Check for complete day (breakfast, lunch, dinner all logged)
-                const dayLogsResult = await db.query(`
-                    SELECT COUNT(DISTINCT meal_category) as meal_count
-                    FROM food_logs
-                    WHERE user_id = ? AND log_date = ? AND meal_category IN ('breakfast', 'lunch', 'dinner')
-                `, [req.user.id, logDate]);
-                
-                if (dayLogsResult[0] && dayLogsResult[0].meal_count === 3) {
-                    // Check if already awarded today
-                    const alreadyAwardedResult = await db.query(`
-                        SELECT COUNT(*) as count
-                        FROM point_transactions
-                        WHERE user_id = ? AND reason = 'complete_day' AND DATE(created_at) = ?
-                    `, [req.user.id, logDate]);
-                    
-                    if (alreadyAwardedResult[0] && alreadyAwardedResult[0].count === 0) {
-                        await PointsService.awardPoints(
-                            req.user.id,
-                            PointsService.POINT_REWARDS.COMPLETE_DAY,
-                            'complete_day',
-                            'Logged all 3 main meals',
-                            'food_log',
-                            null,
-                            { date: logDate }
-                        );
-                        pointsAwarded += PointsService.POINT_REWARDS.COMPLETE_DAY;
-                        pointsDetails.push({ reason: 'complete_day', points: PointsService.POINT_REWARDS.COMPLETE_DAY });
-                    }
-                }
-            }
-        } catch (pointsError) {
-            console.error('Error awarding points:', pointsError);
-            // Don't fail the food log if points fail
-        }
-        
         // Notify other connected clients of this user that data changed
         sseManager.notifyUser(req.user.id, { action: 'created', logDate });
 
@@ -318,8 +202,7 @@ router.post('/', [
                 meal_category: mealCategory,
                 meal_time: mealTime
             },
-            pointsAwarded: pointsAwarded,
-            pointsDetails: pointsDetails
+            progress
         });
     } catch (error) {
         console.error('Create food log error:', error);
@@ -410,8 +293,7 @@ router.put('/:id', [
 
         if (logDate !== undefined) {
             // Validate log_date is not in the future
-            const today = new Date().toISOString().split('T')[0];
-            if (logDate > today) {
+            if (logDate > latestDate()) {
                 return res.status(400).json({
                     error: 'Cannot log food for future dates'
                 });
@@ -446,8 +328,11 @@ router.put('/:id', [
         values.push(id);
         values.push(req.user.id);
 
+        const dayBefore = await logDay(id, req.user.id);
         const sql = `UPDATE food_logs SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`;
         await db.query(sql, values);
+        // a changed amount, meal or date changes the points of the day(s) involved
+        const progress = await ProgressService.refreshDays(req.user.id, [dayBefore, await logDay(id, req.user.id)]);
 
         // Fetch and return updated log
         const updatedLog = await db.query(
@@ -460,7 +345,8 @@ router.put('/:id', [
         res.json({
             success: true,
             message: `Successfully updated ${updatedLog[0].food_name || 'food entry'}`,
-            log: updatedLog[0]
+            log: updatedLog[0],
+            progress
         });
     } catch (error) {
         console.error('Update food log error:', error);
@@ -484,6 +370,7 @@ router.delete('/:id', [
         }
 
         const { id } = req.params;
+        const day = await logDay(id, req.user.id);
         const result = await db.deleteFoodLog(id, req.user.id);
         
         if (result.affectedRows === 0) {
@@ -492,11 +379,14 @@ router.delete('/:id', [
             });
         }
 
+        // deleting takes back what the log earned
+        const progress = await ProgressService.refreshDays(req.user.id, [day]);
         sseManager.notifyUser(req.user.id, { action: 'deleted', logId: Number(id) });
 
         res.json({
             success: true,
-            message: 'Food log entry deleted'
+            message: 'Food log entry deleted',
+            progress
         });
     } catch (error) {
         console.error('Delete food log error:', error);

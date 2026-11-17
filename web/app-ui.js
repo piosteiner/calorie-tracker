@@ -32,6 +32,7 @@
         document.querySelectorAll('.tab-panel').forEach((p) => { p.hidden = p.dataset.panel !== name; });
         window.scrollTo({ top: 0 });
         loadTab(name);
+        if (name === 'progress') window.Progress?.load();   // fresh every time: today's checklist changes as you log
     }
 
     // The sections used to open with a "Show …" button; in a tab they open (and load) on first view.
@@ -44,9 +45,6 @@
                 if (!app.calendarState?.isExpanded) app.toggleCalendar();
             } else if (name === 'weight') {
                 if ($('weightContent')?.style.display === 'none') app.toggleWeightTracking();
-            } else if (name === 'progress') {
-                const d = $('rewardsDetails');
-                if (d && (d.style.display === 'none' || !d.style.display)) app.toggleRewardsDetails();
             }
         } catch (err) {
             opened.delete(name);

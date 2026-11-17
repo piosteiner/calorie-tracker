@@ -2,7 +2,7 @@ const express = require('express');
 const { body, query, param, validationResult } = require('express-validator');
 const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
-const PointsService = require('../services/pointsService');
+const ProgressService = require('../services/progressService');
 
 const router = express.Router();
 
@@ -29,16 +29,14 @@ router.post('/log', [
         const logDate = req.body.log_date || new Date().toISOString().split('T')[0];
 
         // Validate log_date is not in the future
-        const today = new Date().toISOString().split('T')[0];
-        if (logDate > today) {
+        // latest date allowed: the date somewhere on earth right now (UTC+14), so a log just after midnight is fine
+        if (logDate > new Date(Date.now() + 14 * 3600e3).toISOString().split('T')[0]) {
             return res.status(400).json({
                 success: false,
                 error: 'Cannot log weight for future dates'
             });
         }
         
-        // Check if this is a same-day log (for point rewards)
-        const isSameDayLog = (logDate === today);
 
         // Check if weight already logged for this date
         const existing = await db.query(
@@ -69,76 +67,8 @@ router.post('/log', [
             [req.user.id, weight_kg, logDate, notes || null]
         );
 
-        // Award points for logging weight (only for same-day logs)
-        let pointsAwarded = 0;
-        let pointsDetails = [];
-        try {
-            if (isSameDayLog) {
-                // Get current weight milestone to apply multiplier
-                console.log('🎯 Getting weight milestone for user:', req.user.id);
-                const weightMilestone = await PointsService.getWeightMilestone(req.user.id);
-                console.log('🎯 Weight milestone received:', weightMilestone);
-                
-                if (!weightMilestone) {
-                    console.error('❌ Weight milestone is undefined for user:', req.user.id);
-                    throw new Error('Weight milestone not found');
-                }
-                
-                const basePoints = PointsService.POINT_REWARDS.WEIGHT_LOG;
-                const multipliedPoints = Math.round(basePoints * weightMilestone.points_multiplier);
-
-                // Base points for weight logging (with multiplier applied)
-                await PointsService.awardPoints(
-                    req.user.id,
-                    multipliedPoints,
-                    'weight_log',
-                    `Logged weight (${weightMilestone.points_multiplier}x multiplier)`,
-                    'weight_log',
-                    result.insertId,
-                    { multiplier: weightMilestone.points_multiplier, basePoints: basePoints }
-                );
-                pointsAwarded += multipliedPoints;
-                pointsDetails.push({ 
-                    reason: 'weight_log', 
-                    points: multipliedPoints,
-                    basePoints: basePoints,
-                    multiplier: weightMilestone.points_multiplier
-                });
-
-                // Check for first weight log achievement
-                const weightLogCount = await db.query(
-                    'SELECT COUNT(*) as count FROM weight_logs WHERE user_id = ?',
-                    [req.user.id]
-                );
-                if (weightLogCount[0].count === 1) {
-                    await PointsService.awardAchievement(
-                        req.user.id,
-                        'FIRST_WEIGHT_LOG',
-                        'Weight Tracker',
-                        'Logged your first weight',
-                        '⚖️',
-                        PointsService.POINT_REWARDS.FIRST_WEIGHT_LOG
-                    );
-                    pointsAwarded += PointsService.POINT_REWARDS.FIRST_WEIGHT_LOG;
-                    pointsDetails.push({ reason: 'first_weight_log', points: PointsService.POINT_REWARDS.FIRST_WEIGHT_LOG });
-                }
-
-                // Check for weight milestone level up
-                const milestoneResult = await PointsService.checkWeightMilestone(req.user.id);
-                if (milestoneResult.leveledUp) {
-                    pointsAwarded += milestoneResult.bonus;
-                    pointsDetails.push({ 
-                        reason: 'milestone_level_up', 
-                        points: milestoneResult.bonus,
-                        newLevel: milestoneResult.milestone_level,
-                        newMultiplier: milestoneResult.multiplier
-                    });
-                }
-            }
-        } catch (pointsError) {
-            console.error('Error awarding points:', pointsError);
-            // Don't fail the weight log if points fail
-        }
+        // Points for the day are recalculated from its logs
+        const progress = await ProgressService.refreshDays(req.user.id, [logDate]);
 
         res.status(201).json({
             success: true,
@@ -149,8 +79,7 @@ router.post('/log', [
                 notes: notes || null,
                 change_from_previous: changeFromPrevious
             },
-            pointsAwarded: pointsAwarded,
-            pointsDetails: pointsDetails
+            progress
         });
     } catch (error) {
         console.error('Log weight error:', error);
@@ -360,6 +289,8 @@ router.delete('/:id', [
 
         const { id } = req.params;
 
+        const dayRows = await db.query("SELECT DATE_FORMAT(log_date, '%Y-%m-%d') AS day FROM weight_logs WHERE id = ? AND user_id = ?", [id, req.user.id]);
+
         // Delete the weight log
         const result = await db.query(
             'DELETE FROM weight_logs WHERE id = ? AND user_id = ?',
@@ -373,9 +304,13 @@ router.delete('/:id', [
             });
         }
 
+        // deleting takes back what the weigh-in earned
+        const progress = await ProgressService.refreshDays(req.user.id, [dayRows[0]?.day]);
+
         res.json({
             success: true,
-            message: 'Weight log deleted successfully'
+            message: 'Weight log deleted successfully',
+            progress
         });
     } catch (error) {
         console.error('Delete weight log error:', error);
