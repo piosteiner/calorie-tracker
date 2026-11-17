@@ -9,7 +9,8 @@
   const KINDS = [['bug', 'Bug'], ['idea', 'Idea'], ['content', 'Content'], ['other', 'Other']];
   const MAX_ELEMENTS = 20;
   const API = () => (window.CONFIG?.API_BASE_URL || (typeof CONFIG !== 'undefined' ? CONFIG.API_BASE_URL : '')) + '/feedback';
-  const authToken = () => { try { return localStorage.getItem('authToken') || ''; } catch { return ''; } };
+  // the login token, under the key script.js saves it with (config.js: CONFIG.TOKEN_STORAGE_KEY)
+  const authToken = () => { try { return localStorage.getItem((typeof CONFIG !== 'undefined' && CONFIG.TOKEN_STORAGE_KEY) || 'calorieTrackerToken') || ''; } catch { return ''; } };
 
   function el(tag, attrs = {}, ...children) {
     const n = document.createElement(tag);

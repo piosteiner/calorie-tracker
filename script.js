@@ -6750,12 +6750,12 @@ class CalorieTracker {
                 </div>
                 <div class="modal-body">
                     <div class="data-source">
-                        <h4>� Pios Food DB</h4>
+                        <h4>Pios Food DB</h4>
                         <p><strong>Primary nutrition database</strong> - A curated database of food products with accurate nutrition information.</p>
                         <ul>
-                            <li>� <strong>Personalized</strong>: Foods specific to your preferences</li>
+                            <li><strong>Personalized</strong>: Foods specific to your preferences</li>
                             <li>📊 <strong>Accurate data</strong>: Verified calories and macros</li>
-                            <li>� <strong>Editable</strong>: Can be customized by administrators</li>
+                            <li><strong>Editable</strong>: Can be customized by administrators</li>
                             <li>🔗 <strong>Backend sync</strong>: Synchronized across your devices</li>
                         </ul>
                     </div>
@@ -9149,7 +9149,7 @@ class CalorieTracker {
 
     // ── Auth token helper ───────────────────────────────────────────────────
     getAuthToken() {
-        return localStorage.getItem('authToken') || '';
+        try { return localStorage.getItem(CONFIG.TOKEN_STORAGE_KEY) || ''; } catch { return ''; }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
