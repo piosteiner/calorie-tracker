@@ -241,7 +241,25 @@
         return true;
     }
 
+    // On phones the tabs are a bar fixed to the bottom of the screen. Left inside the sticky top bar,
+    // mobile Safari moves that bar with the top bar while scrolling and it stutters; so on phones it sits
+    // directly in the dashboard, on wider screens back in the top bar between the title and the menu.
+    function placeTabs() {
+        const nav = document.querySelector('.app-tabs');
+        const bar = document.querySelector('.app-bar-inner');
+        const dash = $('dashboardSection');
+        if (!nav || !bar || !dash) return;
+        const phone = window.matchMedia('(max-width: 640px)');
+        const place = () => {
+            if (phone.matches) { if (nav.parentElement !== dash) dash.append(nav); }
+            else if (nav.parentElement !== bar) bar.insertBefore(nav, bar.querySelector('.user-info'));
+        };
+        place();
+        phone.addEventListener('change', place);
+    }
+
     function start() {
+        placeTabs();
         setTodayLabel();
         setupMenu();
         setupQuickAdd();
