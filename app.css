@@ -1,0 +1,491 @@
+/* =============================================================================
+   app.css — 2026-11 redesign: a calmer, denser dashboard built for quick logging.
+   Loaded after styles.css and wins over it; uses its theme variables, so dark mode follows.
+   ============================================================================= */
+
+[hidden] { display: none !important; }
+
+.visually-hidden {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+#dashboardSection {
+    --ui-radius: 12px;
+    --ui-border: var(--border-primary);
+    --ui-gap: 12px;
+    background: var(--bg-secondary);
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+#dashboardSection .app-bar {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    padding: 0;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--ui-border);
+    box-shadow: none;
+}
+#dashboardSection .app-bar-inner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    min-height: 56px;
+    text-align: left;
+}
+.app-bar-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+.app-logo { font-size: 1.3rem; line-height: 1; }
+.today-date { font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
+
+.app-tabs {
+    display: flex;
+    gap: 2px;
+    margin: 0 auto;
+}
+.app-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.app-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.app-tab.active { background: var(--bg-secondary); color: var(--accent-primary); }
+.app-tab:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+.app-tab-icon { font-size: 1rem; line-height: 1; }
+
+#dashboardSection .user-info {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+}
+#dashboardSection .rewards-display { margin: 0; gap: 6px; }
+#dashboardSection .points-badge {
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+#dashboardSection .points-badge:hover { transform: none; box-shadow: none; border-color: var(--accent-primary); }
+
+/* Menu */
+.app-menu { position: relative; }
+.app-menu-btn {
+    width: 38px; height: 38px;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+.app-menu-btn:hover { border-color: var(--accent-primary); }
+.app-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 220px;
+    padding: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    box-shadow: 0 10px 30px var(--shadow-medium);
+    display: flex;
+    flex-direction: column;
+    z-index: 1001;
+}
+.app-menu-user {
+    padding: 8px 10px 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--ui-border);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+.app-menu-item,
+#dashboardSection .app-menu .theme-toggle {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: auto;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.92rem;
+    text-align: left;
+    cursor: pointer;
+    transform: none;
+    justify-content: flex-start;
+}
+.app-menu-item:hover,
+#dashboardSection .app-menu .theme-toggle:hover { background: var(--bg-hover); transform: none; }
+/* themeToggle.js writes only the icon: name the action next to it */
+#dashboardSection .app-menu .theme-toggle::after { content: 'Dark mode'; }
+[data-theme="dark"] #dashboardSection .app-menu .theme-toggle::after { content: 'Light mode'; }
+.app-menu-logout { color: var(--accent-danger); }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+#dashboardSection .main { padding: 16px 0 32px; }
+#dashboardSection .main > .container { max-width: 760px; }
+#dashboardSection .main > .container:has(> .tab-panel[data-panel="admin"]:not([hidden])) { max-width: 1200px; }
+
+#dashboardSection .summary-card,
+#dashboardSection .add-food-card,
+#dashboardSection .food-log-card,
+#dashboardSection .history-card,
+#dashboardSection .weight-tracking-card,
+#dashboardSection .rewards-card {
+    padding: 16px;
+    margin-bottom: var(--ui-gap);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    box-shadow: none;
+}
+#dashboardSection .tab-panel h3 { font-size: 1rem; margin-bottom: 10px; }
+#dashboardSection .card-header-with-action { cursor: default; margin-bottom: 4px; }
+
+/* ── Today: summary ──────────────────────────────────────────────────────── */
+.day-summary-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.day-summary-main { display: flex; align-items: baseline; gap: 6px; }
+#dashboardSection .today-summary .stat-value { font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
+#dashboardSection .today-summary #totalCalories { color: var(--text-primary); }
+#dashboardSection .today-summary #calorieGoal {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0 2px;
+    border-bottom: 1px dashed var(--text-light);
+    border-radius: 0;
+}
+#dashboardSection .today-summary .goal-input {
+    width: 96px;
+    margin: 0;
+    padding: 2px 8px;
+    font-size: 1.05rem;
+    box-shadow: none;
+    transform: none;
+}
+.day-summary-of, .day-summary-unit { color: var(--text-secondary); font-weight: 600; }
+.day-summary-left { color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+#dashboardSection .day-summary-left .stat-value { font-size: 1.15rem; }
+#dashboardSection .today-summary .progress-bar { height: 8px; border-radius: 4px; }
+#dashboardSection .today-summary .progress-fill { background: var(--accent-primary); border-radius: 4px; }
+
+#dashboardSection .macro-stats {
+    display: flex;
+    gap: 18px;
+    margin-top: 10px;
+    padding: 0;
+    background: none;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+#dashboardSection .macro-stat { display: inline; padding: 0; background: none; text-align: left; }
+#dashboardSection .macro-value { font-size: inherit; font-weight: 700; color: var(--text-primary); }
+#dashboardSection .macro-label { font-size: inherit; color: var(--text-secondary); text-transform: none; letter-spacing: 0; }
+#dashboardSection .macro-unit { font-size: inherit; }
+
+/* ── Today: quick add ────────────────────────────────────────────────────── */
+.qa-row { display: flex; gap: 8px; align-items: center; }
+.qa-row-options { flex-wrap: wrap; justify-content: space-between; margin-top: 10px; row-gap: 8px; }
+#dashboardSection .quick-add .input-group { margin: 0; }
+.qa-search { flex: 1; min-width: 0; }
+#dashboardSection .quick-add .input-group input,
+#dashboardSection .quick-add .input-group select {
+    padding: 10px 12px;
+    border-width: 1px;
+    border-radius: 10px;
+    font-size: 16px;   /* 16px stops iOS from zooming in */
+}
+#dashboardSection .quick-add #foodName { padding-left: 12px; }
+.qa-amount { width: 96px; flex: none; position: relative; }
+#dashboardSection .qa-amount input { padding-right: 26px; text-align: right; }
+.qa-unit {
+    position: absolute;
+    right: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+#dashboardSection .quick-add .btn-add-food {
+    width: auto;
+    flex: none;
+    margin: 0;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+#dashboardSection .quick-add .btn-add-food:hover { transform: none; }
+
+.qa-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.qa-chip {
+    padding: 5px 11px;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.3;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.qa-chip:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+.qa-chip.active { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+.qa-chip:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+
+.qa-frequent {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ui-border);
+}
+.qa-frequent-label {
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+}
+.qa-frequent-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.qa-freq { background: var(--bg-secondary); color: var(--text-primary); }
+.qa-freq-qty { color: var(--text-secondary); font-weight: 500; }
+.qa-freq.active .qa-freq-qty { color: inherit; }
+.qa-frequent-list.busy .qa-freq { pointer-events: none; opacity: 0.6; }
+.qa-frequent-list.busy .qa-freq.active { opacity: 1; }
+
+#dashboardSection .qa-more { margin: 10px 0 0; border: 0; background: none; padding: 0; }
+#dashboardSection .qa-more summary {
+    display: inline-block;
+    padding: 2px 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: none;
+    cursor: pointer;
+}
+#dashboardSection .qa-more summary::before { content: '＋ '; }
+#dashboardSection .qa-more[open] summary::before { content: '－ '; }
+.qa-more-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+#dashboardSection .qa-more-grid label { font-size: 0.78rem; margin-bottom: 2px; }
+#dashboardSection .qa-more .search-controls-compact { margin-top: 8px; padding: 0; background: none; border: 0; }
+
+/* Search results: compact rows under the field */
+#dashboardSection .quick-add .suggestions {
+    top: calc(100% + 4px);
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    max-height: 340px;
+}
+#dashboardSection .quick-add .suggestion-item.enhanced { padding: 9px 12px; gap: 2px; border-left: 3px solid transparent; }
+#dashboardSection .quick-add .suggestion-item.enhanced:hover,
+#dashboardSection .quick-add .suggestion-item.enhanced.keyboard-selected { border-left-color: var(--accent-primary); background: var(--bg-hover); }
+
+/* ── Today: the log ──────────────────────────────────────────────────────── */
+#dashboardSection .food-log-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+#dashboardSection .food-log-header h3 { margin: 0; }
+.btn-link {
+    border: 0;
+    background: none;
+    color: var(--accent-primary);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+.btn-link:hover { background: var(--bg-hover); }
+
+#foodLog .meal-group { margin-bottom: 10px; }
+#foodLog .meal-group-header {
+    gap: 8px;
+    padding: 6px 0 4px;
+    margin: 0;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--ui-border);
+    border-radius: 0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+}
+#foodLog .meal-group-label { flex: 1; white-space: nowrap; }
+#foodLog .meal-group-right { flex-direction: row; align-items: baseline; gap: 8px; }
+#foodLog .meal-group-total { font-size: 0.8rem; opacity: 1; color: var(--text-primary); }
+#foodLog .meal-group-macros { text-transform: none; letter-spacing: 0; }
+#foodLog .btn-meal-photo { margin: 0; }
+.meal-add-btn {
+    width: 26px; height: 26px;
+    border: 1px solid var(--ui-border);
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--accent-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+.meal-add-btn:hover { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+
+#foodLog .food-item {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 2px;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid var(--border-secondary);
+    border-radius: 0;
+    background: none;
+    cursor: pointer;
+}
+#foodLog .food-item:last-of-type { border-bottom: 0; }
+#foodLog .food-item:hover { background: var(--bg-hover); }
+#foodLog .food-info { min-width: 0; }
+#foodLog .food-name { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+#foodLog .food-qty { font-weight: 500; color: var(--text-secondary); font-size: 0.85rem; }
+#foodLog .food-details { font-size: 0.78rem; margin: 0; color: var(--text-secondary); }
+#foodLog .food-details:empty { display: none; }
+#foodLog .food-macros { color: var(--text-light); }
+#foodLog .food-brand, #foodLog .food-dist { margin-right: 6px; }
+#foodLog .food-calories {
+    align-self: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+#foodLog .food-item-actions { width: auto; margin-left: 0; gap: 2px; }
+#foodLog .edit-btn,
+#foodLog .delete-btn {
+    width: 30px; height: 30px;
+    padding: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    opacity: 0.55;
+}
+#foodLog .delete-btn { font-size: 1.15rem; }
+#foodLog .food-item:hover .edit-btn,
+#foodLog .food-item:hover .delete-btn { opacity: 1; }
+#foodLog .edit-btn:hover { background: var(--bg-secondary); }
+#foodLog .delete-btn:hover { background: var(--accent-danger); color: #fff; }
+/* on a desktop the row itself opens the editor; the pencil only shows on hover */
+@media (hover: hover) {
+    #foodLog .edit-btn { opacity: 0; }
+}
+#foodLog .empty-message { padding: 18px 0 8px; font-size: 0.9rem; }
+
+/* ── Other tabs ──────────────────────────────────────────────────────────── */
+#dashboardSection .tab-panel .history-content,
+#dashboardSection .tab-panel .weight-content { margin-top: 4px; }
+#dashboardSection .tab-panel .weight-chart-container { box-shadow: none; border: 1px solid var(--ui-border); }
+#dashboardSection .tab-panel .btn-primary:hover { transform: none; }
+
+/* ── Phones ──────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    #dashboardSection .container { padding: 0 12px; }
+    #dashboardSection .app-bar-inner { min-height: 52px; gap: 8px; }
+    .today-date { display: none; }
+
+    /* Tabs become a bottom bar */
+    .app-tabs {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 950;
+        margin: 0;
+        gap: 0;
+        padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+        background: var(--bg-card);
+        border-top: 1px solid var(--ui-border);
+    }
+    .app-tab {
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 2px;
+        font-size: 0.7rem;
+    }
+    .app-tab.active { background: none; }
+    .app-tab-icon { font-size: 1.25rem; }
+    #dashboardSection .user-info { margin-left: auto; }
+    #dashboardSection .main { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+    #dashboardSection .app-footer { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+
+    #dashboardSection .summary-card,
+    #dashboardSection .add-food-card,
+    #dashboardSection .food-log-card { padding: 12px; }
+    #dashboardSection .today-summary .stat-value { font-size: 1.45rem; }
+
+    /* Search on its own line, then amount + Add */
+    .qa-row-main { flex-wrap: wrap; }
+    .qa-search { flex-basis: 100%; }
+    .qa-amount { flex: 1; width: auto; }
+    #dashboardSection .quick-add .btn-add-food { flex: 1; }
+    .qa-row-options { justify-content: flex-start; }
+    .qa-frequent { flex-direction: column; gap: 6px; }
+    .qa-more-grid { grid-template-columns: 1fr 1fr; }
+
+    #foodLog .food-item { flex-direction: row; align-items: center; gap: 8px; }
+    #foodLog .food-calories { align-self: center; }
+    #foodLog .edit-btn { display: none; }   /* tap the row to edit */
+    #foodLog .meal-group-macros { display: none; }   /* per-item macros stay; the header keeps to one line */
+
+    /* the floating Support button would cover the log: on phones it lives in the menu */
+    body:has(#dashboardSection.active) .contact-button { display: none; }
+}

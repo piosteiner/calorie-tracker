@@ -1497,7 +1497,7 @@ class CalorieTracker {
         const suggestionsDiv = document.getElementById('foodSuggestions');
         const suggestions = suggestionsDiv.querySelectorAll('.suggestion-item.enhanced');
         
-        if (suggestions.length === 0) return;
+        if (suggestions.length === 0 || suggestionsDiv.style.display === 'none') return;
 
         switch (e.key) {
             case 'ArrowDown':
@@ -1514,9 +1514,7 @@ class CalorieTracker {
                 
             case 'Enter':
                 e.preventDefault();
-                if (this.selectedSuggestionIndex >= 0 && suggestions[this.selectedSuggestionIndex]) {
-                    suggestions[this.selectedSuggestionIndex].click();
-                }
+                (suggestions[this.selectedSuggestionIndex] || suggestions[0]).click();
                 break;
                 
             case 'Escape':
@@ -2881,7 +2879,7 @@ class CalorieTracker {
         const today = new Date().toISOString().split('T')[0];
         
         if (this.foodLog.length === 0) {
-            foodLogDiv.innerHTML = '<p class="empty-message">No food logged yet today. Start by adding your first meal!</p>';
+            foodLogDiv.innerHTML = '<p class="empty-message">Nothing logged yet today.</p>';
             this.updateTodayComment();
             return;
         }
@@ -2937,27 +2935,26 @@ class CalorieTracker {
                         ${groupMacroHtml}
                     </div>
                     ${photoBtn}
+                    <button type="button" class="meal-add-btn" data-meal-add="${cat}" title="Add to ${MEAL_LABELS[cat].replace(/^\S+\s/, '')}" aria-label="Add to ${MEAL_LABELS[cat].replace(/^\S+\s/, '')}">+</button>
                 </div>`;
             items.forEach(food => {
                 const escapedName = this.escapeHtml(this.capitalizeFirst(food.name));
                 const brandText = food.brand ? ` <span class="food-brand">by ${this.escapeHtml(food.brand)}</span>` : '';
                 const distText  = food.distributor ? ` <span class="food-dist">@ ${this.escapeHtml(food.distributor)}</span>` : '';
-                const timeText  = food.meal_time ? ` • ${food.meal_time}` : '';
                 const macroHtml = (food.protein != null || food.carbs != null || food.fat != null)
                     ? (() => {
                         const qty = parseFloat(food.quantity) || 0;
                         const p = food.protein != null ? Math.round((food.protein / 100) * qty) + 'g P' : null;
                         const c = food.carbs   != null ? Math.round((food.carbs   / 100) * qty) + 'g C' : null;
                         const f = food.fat     != null ? Math.round((food.fat     / 100) * qty) + 'g F' : null;
-                        return `<div class="food-macros">${[p,c,f].filter(Boolean).join(' · ')}</div>`;
+                        return ` <span class="food-macros">${[p,c,f].filter(Boolean).join(' · ')}</span>`;
                     })()
                     : '';
                 html += `
-                <div class="food-item">
+                <div class="food-item" data-log-id="${food.id}">
                     <div class="food-info">
-                        <div class="food-name">${escapedName}${brandText}${distText}${food.offline ? ' <span class="badge-offline">(Offline)</span>' : ''}</div>
-                        <div class="food-details">${Math.round(parseFloat(food.quantity))} ${food.unit}${timeText}</div>
-                        ${macroHtml}
+                        <div class="food-name">${escapedName} <span class="food-qty">${Math.round(parseFloat(food.quantity))} ${food.unit}</span>${food.offline ? ' <span class="badge-offline">(Offline)</span>' : ''}</div>
+                        <div class="food-details">${brandText}${distText}${macroHtml}</div>
                     </div>
                     <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
                     <div class="food-item-actions">

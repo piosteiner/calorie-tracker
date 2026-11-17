@@ -10,6 +10,7 @@
     <meta name="keywords" content="calorie tracker, nutrition, diet, health, food logging">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="app.css">
 </head>
 <body>
     <!-- Login Section -->
@@ -47,130 +48,135 @@
 
     <!-- Main Dashboard -->
     <div id="dashboardSection" class="section">
-        <header class="header">
-            <div class="container">
-                <h1>🍎 Calorie Tracker</h1>
+        <header class="header app-bar">
+            <div class="container app-bar-inner">
+                <div class="app-bar-title">
+                    <span class="app-logo" aria-hidden="true">🍎</span>
+                    <span id="todayLabel" class="today-label">Today</span>
+                </div>
+                <nav class="app-tabs" role="tablist" aria-label="Sections">
+                    <button type="button" class="app-tab active" role="tab" aria-selected="true" data-tab="today"><span class="app-tab-icon" aria-hidden="true">🍽️</span><span>Today</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="history"><span class="app-tab-icon" aria-hidden="true">📅</span><span>History</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="weight"><span class="app-tab-icon" aria-hidden="true">⚖️</span><span>Weight</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="progress"><span class="app-tab-icon" aria-hidden="true">🎮</span><span>Progress</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="admin" id="adminTabBtn" hidden><span class="app-tab-icon" aria-hidden="true">🛡️</span><span>Admin</span></button>
+                </nav>
                 <div class="user-info">
-                    <span id="welcomeUser">Welcome!</span>
-                    <!-- Rewards Display -->
+                    <!-- Rewards: only the points show here; levels live in the Progress tab -->
                     <div id="rewardsDisplay" class="rewards-display" style="display: none;">
-                        <div class="points-badge" title="Current Points">
+                        <button type="button" class="points-badge" data-tab-link="progress" title="Your points (open Progress)">
                             <span class="points-icon">⭐</span>
                             <span id="userPoints">0</span>
-                        </div>
-                        <div class="milestone-badge food-milestone" title="Food Logging Level">
-                            <span class="milestone-icon">🍽️</span>
+                        </button>
+                        <div class="milestone-badge food-milestone" hidden>
                             <span id="foodMilestoneLevel">Lv1</span>
                             <span class="multiplier" id="foodMultiplier">1.0x</span>
                         </div>
-                        <div class="milestone-badge weight-milestone" title="Weight Logging Level">
-                            <span class="milestone-icon">⚖️</span>
+                        <div class="milestone-badge weight-milestone" hidden>
                             <span id="weightMilestoneLevel">Lv1</span>
                             <span class="multiplier" id="weightMultiplier">1.0x</span>
                         </div>
                     </div>
-                    <!-- Sync indicator commented out - not providing relevant information currently -->
-                    <!-- <div id="syncIndicator" class="sync-indicator">⏳ Pending sync</div> -->
-                    <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
-                    <button class="btn btn-outline" data-action="show-change-password-modal" title="Change Password">🔒</button>
-                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                    <div class="app-menu">
+                        <button type="button" class="app-menu-btn" id="appMenuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="appMenuPanel" title="Menu">☰</button>
+                        <div class="app-menu-panel" id="appMenuPanel" hidden>
+                            <div id="welcomeUser" class="app-menu-user">Welcome!</div>
+                            <button type="button" id="themeToggle" class="app-menu-item theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
+                            <button type="button" class="app-menu-item" data-action="show-change-password-modal">🔒 Account &amp; password</button>
+                            <button type="button" class="app-menu-item" data-action="show-data-sources">ℹ️ Food data sources</button>
+                            <a class="app-menu-item" href="mailto:support-piogino@pm.me?subject=Calorie%20Tracker%20Support%20Request&body=Please%20describe%20your%20issue%20or%20question%20here...">✉️ Support</a>
+                            <button type="button" id="logoutBtn" class="app-menu-item app-menu-logout">Log out</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
 
         <main class="main">
             <div class="container">
+                <!-- ===================== TODAY ===================== -->
+                <section class="tab-panel" data-panel="today" role="tabpanel">
                 <!-- Daily Summary -->
-                <div class="summary-card">
-                    <h2>Today's Summary</h2>
-                    <div class="stats-grid">
-                        <div class="stat">
-                            <div class="stat-value" id="totalCalories">0</div>
-                            <div class="stat-label">kcal Consumed</div>
+                <div class="summary-card today-summary">
+                    <div class="day-summary-row">
+                        <div class="day-summary-main">
+                            <span class="stat-value" id="totalCalories">0</span>
+                            <span class="day-summary-of">/</span>
+                            <span class="stat-value editable-goal" id="calorieGoal" title="Click to edit your daily goal">2000</span>
+                            <input type="number" id="calorieGoalInput" class="goal-input" style="display: none;" min="500" max="10000" step="50" aria-label="Daily goal in kcal">
+                            <span class="day-summary-unit">kcal</span>
                         </div>
-                        <div class="stat">
-                            <div class="stat-value" id="remainingCalories">2000</div>
-                            <div class="stat-label">kcal Remaining</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value editable-goal" id="calorieGoal" title="Click to edit daily goal">2000</div>
-                            <input type="number" id="calorieGoalInput" class="goal-input" style="display: none;" min="500" max="10000" step="50">
-                            <div class="stat-label">Daily Goal</div>
-                        </div>
+                        <div class="day-summary-left"><span class="stat-value" id="remainingCalories">2000</span> left</div>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="calorieProgress"></div>
                     </div>
                     <div class="macro-stats" id="macroStats" style="display:none">
-                        <div class="macro-stat">
-                            <span class="macro-value" id="totalProtein">0</span><span class="macro-unit">g</span>
-                            <span class="macro-label">Protein</span>
-                        </div>
-                        <div class="macro-stat">
-                            <span class="macro-value" id="totalCarbs">0</span><span class="macro-unit">g</span>
-                            <span class="macro-label">Carbs</span>
-                        </div>
-                        <div class="macro-stat">
-                            <span class="macro-value" id="totalFat">0</span><span class="macro-unit">g</span>
-                            <span class="macro-label">Fat</span>
-                        </div>
+                        <span class="macro-stat"><span class="macro-label">Protein</span> <span class="macro-value" id="totalProtein">0</span><span class="macro-unit">g</span></span>
+                        <span class="macro-stat"><span class="macro-label">Carbs</span> <span class="macro-value" id="totalCarbs">0</span><span class="macro-unit">g</span></span>
+                        <span class="macro-stat"><span class="macro-label">Fat</span> <span class="macro-value" id="totalFat">0</span><span class="macro-unit">g</span></span>
                     </div>
                 </div>
 
-                <!-- Add Food Section -->
-                <div class="add-food-card">
-                    <div class="card-header-with-info">
-                        <h3>Log Food</h3>
-                        <button type="button" class="info-button" data-action="show-data-sources" title="Learn about our food databases">
-                            <span class="info-icon">ℹ️</span>
-                            <span class="info-text">Data Sources</span>
-                        </button>
-                    </div>
-                    <form id="foodForm">
-                        <!-- Food Entry Grid -->
-                        <div class="food-entry-grid">
-                            <div class="input-group">
-                                <label for="foodName">Food Item</label>
-                                <input type="text" id="foodName" name="foodName" placeholder="e.g., Apple, Chicken Breast" required>
+                <!-- Quick add -->
+                <div class="add-food-card quick-add">
+                    <form id="foodForm" autocomplete="off">
+                        <div class="qa-row qa-row-main">
+                            <div class="input-group qa-search">
+                                <label for="foodName" class="visually-hidden">Food</label>
+                                <input type="text" id="foodName" name="foodName" placeholder="🔍 Add food — e.g. apple, oatmeal" required>
                                 <div id="foodSuggestions" class="suggestions"></div>
                             </div>
-                            
-                            <div class="input-group">
-                                <label for="quantity">Grams</label>
-                                <input type="number" id="quantity" name="quantity" min="1" value="100" required>
+                            <div class="input-group qa-amount">
+                                <label for="quantity" class="visually-hidden">Grams</label>
+                                <input type="number" id="quantity" name="quantity" min="1" value="100" inputmode="decimal" required>
+                                <span class="qa-unit" aria-hidden="true">g</span>
                             </div>
-                            
-                            <div class="input-group">
-                                <label for="mealCategory">Meal</label>
-                                <select id="mealCategory" name="mealCategory" required data-action="meal-category-change">
-                                    <option value="breakfast">🌅 Breakfast</option>
-                                    <option value="lunch">☀️ Lunch</option>
-                                    <option value="dinner">🌙 Dinner</option>
-                                    <option value="snack">🍿 Snack</option>
-                                    <option value="other">📝 Other</option>
-                                </select>
+                            <button type="submit" class="btn btn-primary btn-add-food">Add</button>
+                        </div>
+                        <div class="qa-row qa-row-options">
+                            <div class="qa-chips qa-meals" role="radiogroup" aria-label="Meal">
+                                <button type="button" class="qa-chip" role="radio" data-meal="breakfast">Breakfast</button>
+                                <button type="button" class="qa-chip" role="radio" data-meal="lunch">Lunch</button>
+                                <button type="button" class="qa-chip" role="radio" data-meal="dinner">Dinner</button>
+                                <button type="button" class="qa-chip" role="radio" data-meal="snack">Snack</button>
+                                <button type="button" class="qa-chip" role="radio" data-meal="other">Other</button>
                             </div>
-                            
-                            <div class="input-group">
-                                <label for="mealTime">Time</label>
-                                <input type="time" id="mealTime" name="mealTime">
-                            </div>
-
-                            <div class="input-group">
-                                <label for="logDate">Date</label>
-                                <input type="date" id="logDate" name="logDate" required>
+                            <div class="qa-chips qa-grams" aria-label="Amount">
+                                <button type="button" class="qa-chip" data-grams="50">50 g</button>
+                                <button type="button" class="qa-chip" data-grams="100">100 g</button>
+                                <button type="button" class="qa-chip" data-grams="150">150 g</button>
+                                <button type="button" class="qa-chip" data-grams="200">200 g</button>
                             </div>
                         </div>
-                        
-                        <!-- Collapsible Optional Details -->
-                        <details class="optional-details">
-                            <summary>+ Optional Details</summary>
-                            <div class="form-row">
+                        <select id="mealCategory" name="mealCategory" required data-action="meal-category-change" hidden>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                            <option value="snack">Snack</option>
+                            <option value="other">Other</option>
+                        </select>
+
+                        <div id="frequentFoods" class="qa-frequent" hidden>
+                            <span class="qa-frequent-label">Log again</span>
+                            <div id="frequentFoodsList" class="qa-frequent-list"></div>
+                        </div>
+
+                        <details class="optional-details qa-more">
+                            <summary>Time, date, brand</summary>
+                            <div class="qa-more-grid">
+                                <div class="input-group">
+                                    <label for="mealTime">Time</label>
+                                    <input type="time" id="mealTime" name="mealTime">
+                                </div>
+                                <div class="input-group">
+                                    <label for="logDate">Date</label>
+                                    <input type="date" id="logDate" name="logDate" required>
+                                </div>
                                 <div class="input-group">
                                     <label for="foodBrand">Brand</label>
-                                    <input type="text" id="foodBrand" name="foodBrand" placeholder="e.g., Lindt, Migros Bio" maxlength="100">
+                                    <input type="text" id="foodBrand" name="foodBrand" placeholder="e.g. Lindt, Migros Bio" maxlength="100">
                                 </div>
-                                
                                 <div class="input-group">
                                     <label for="foodDistributor">Store</label>
                                     <select id="foodDistributor" name="foodDistributor">
@@ -186,8 +192,6 @@
                                     </select>
                                 </div>
                             </div>
-                            
-                            <!-- Database Search Toggles -->
                             <div class="search-controls-compact">
                                 <span class="search-label">Search in:</span>
                                 <label class="toggle-compact">
@@ -199,23 +203,18 @@
                                     <span>🏠 Pios DB</span>
                                 </label>
                             </div>
-
                         </details>
-                        
-                        <button type="submit" class="btn btn-primary btn-add-food">+ Add Food</button>
                     </form>
                 </div>
 
                 <!-- Food Log -->
                 <div class="food-log-card">
                     <div class="food-log-header">
-                        <h3>Today's Food Log</h3>
-                        <button class="btn btn-secondary" data-action="open-share-modal" title="Share meals">
-                            🔗 Share
-                        </button>
+                        <h3>Today</h3>
+                        <button class="btn-link" data-action="open-share-modal" title="Share meals">🔗 Share</button>
                     </div>
                     <div id="foodLog" class="food-log">
-                        <p class="empty-message">No food logged yet today. Start by adding your first meal!</p>
+                        <p class="empty-message">Nothing logged yet today.</p>
                     </div>
                     <div id="todayComment"></div>
 
@@ -250,12 +249,15 @@
                     </div>
                     <input type="hidden" id="pendingImageId">
                 </div>
+                </section>
 
+                <!-- ===================== HISTORY ===================== -->
+                <section class="tab-panel" data-panel="history" role="tabpanel" hidden>
                 <!-- Last 30 Days -->
                 <div class="history-card">
-                    <div class="card-header-with-action" data-action="toggle-history">
+                    <div class="card-header-with-action">
                         <h3>📅 Last 30 Days</h3>
-                        <button id="toggleHistoryBtn" class="btn btn-secondary" data-action="toggle-history">
+                        <button id="toggleHistoryBtn" class="btn btn-secondary" data-action="toggle-history" hidden>
                             <span id="historyBtnText">Show History</span>
                         </button>
                     </div>
@@ -303,9 +305,9 @@
 
                 <!-- All Time Calendar -->
                 <div class="weight-tracking-card">
-                    <div class="card-header-with-action" data-action="toggle-calendar">
+                    <div class="card-header-with-action">
                         <h3>📅 All Time Calendar</h3>
-                        <button class="btn btn-secondary" data-action="toggle-calendar">
+                        <button class="btn btn-secondary" data-action="toggle-calendar" hidden>
                             <span id="calendarBtnText">Show Calendar</span>
                         </button>
                     </div>
@@ -335,11 +337,15 @@
                     </div>
                 </div>
 
+                </section>
+
+                <!-- ===================== WEIGHT ===================== -->
+                <section class="tab-panel" data-panel="weight" role="tabpanel" hidden>
                 <!-- Weight Tracking Section -->
                 <div class="weight-tracking-card">
-                    <div class="card-header-with-action" data-action="toggle-weight-tracking">
+                    <div class="card-header-with-action">
                         <h3>⚖️ Weight Tracking</h3>
-                        <button id="toggleWeightBtn" class="btn btn-secondary" data-action="toggle-weight-tracking">
+                        <button id="toggleWeightBtn" class="btn btn-secondary" data-action="toggle-weight-tracking" hidden>
                             <span id="weightBtnText">Show Weight Tracker</span>
                         </button>
                     </div>
@@ -406,11 +412,15 @@
                     </div>
                 </div>
 
+                </section>
+
+                <!-- ===================== PROGRESS ===================== -->
+                <section class="tab-panel" data-panel="progress" role="tabpanel" hidden>
                 <!-- Rewards Dashboard Card -->
                 <div id="rewardsCard" class="rewards-card" style="display: none;">
-                    <div class="card-header-with-action" data-action="toggle-rewards">
+                    <div class="card-header-with-action">
                         <h3>🎮 Your Progress</h3>
-                        <button id="toggleRewardsBtn" class="btn btn-secondary-small" data-action="toggle-rewards">
+                        <button id="toggleRewardsBtn" class="btn btn-secondary-small" data-action="toggle-rewards" hidden>
                             <span id="rewardsBtnText">Show Details</span>
                         </button>
                     </div>
@@ -501,6 +511,8 @@
                         </div>
                     </div>
                 </div>
+
+                </section>
 
                 <!-- Edit Food Log Modal -->
                 <div id="editFoodLogModal" class="modal-overlay" style="display: none;">
@@ -823,6 +835,8 @@
                     </div>
                 </div>
 
+                <!-- ===================== ADMIN (admins only) ===================== -->
+                <section class="tab-panel" data-panel="admin" role="tabpanel" hidden>
                 <!-- Admin Panel -->
                 <div id="adminPanel" class="admin-panel" style="display: none;">
                     <div class="admin-card">
@@ -1150,6 +1164,7 @@
                         </div>
                     </div>
                 </div>
+                </section>
             </div>
         </main>
         
@@ -1607,7 +1622,8 @@
     <script src="themeToggle.js"></script>
     <script src="realtimeSync.js"></script>
     <script src="pushManager.js"></script>
-    <script src="script.js?v=20260403-2"></script>
+    <script src="script.js?v=20261117-1"></script>
     <script src="page-extras.js"></script>
+    <script src="app-ui.js"></script>
 </body>
 </html>
