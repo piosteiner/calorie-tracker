@@ -150,3 +150,5 @@ Desktop.ini
 # Temporary files
 tmp/
 temp/
+# GitHub Pages build output (scripts/build-site.sh)
+_site/

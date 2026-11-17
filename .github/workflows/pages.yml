@@ -1,0 +1,50 @@
+# Publishes the frontend to GitHub Pages (the domain is in CNAME).
+# Only the files listed in scripts/build-site.sh go out; backend/, docs/, tests/ and modules/ do not.
+# Requires Settings → Pages → Source: "GitHub Actions".
+# The backend is not deployed here: it runs on the server from backend/ under pm2 (calorie-tracker-api).
+name: Frontend → GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    # backend, docs and test changes don't touch the site, so they don't redeploy it
+    paths-ignore: ['backend/**', 'docs/**', 'tests/**', 'modules/**', '**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# one deploy at a time, a newer one cancels the older
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # "Re-run" on an old run would publish that old commit over the current site: only the newest commit deploys
+      - name: Only deploy the newest commit on main
+        run: |
+          git fetch --depth=1 origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo "::error::This run is for an older commit ($(git rev-parse --short HEAD)); main is at $(git rev-parse --short FETCH_HEAD). Use 'Run workflow' instead of re-running an old run."
+            exit 1
+          fi
+      - run: scripts/build-site.sh _site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

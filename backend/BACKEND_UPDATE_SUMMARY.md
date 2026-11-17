@@ -77,20 +77,9 @@ backend/
 
 ## 🚀 Ready to Update?
 
-Run this command to sync your enhanced backend:
-
-```bash
-cd /var/www/calorie-tracker-api
-chmod +x sync-to-github.sh
-./sync-to-github.sh
-```
-
-This will:
-1. ✅ Clone your existing repository
-2. ✅ Replace old backend files with enhanced version
-3. ✅ Preserve your frontend and other files
-4. ✅ Add comprehensive documentation
-5. ✅ Push to GitHub with proper commit message
+*Obsolete:* the `sync-to-github.sh` step that used to be here is gone. The backend now lives in this
+repository as `backend/` (commit `39b1ba8`), and the pm2 process `calorie-tracker-api` runs from
+`/var/www/calorie-tracker/backend`. The old `/var/www/calorie-tracker-api` folder was removed.
 
 ## 🎉 Result
 
