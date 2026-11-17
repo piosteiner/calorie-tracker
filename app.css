@@ -5,6 +5,46 @@
 
 [hidden] { display: none !important; }
 
+/* Dark theme: deeper background, cards that stand apart, brighter text, a clearer accent
+   (the styles.css dark palette was grey on grey). Applies to the whole app, login and dialogs too. */
+[data-theme="dark"] {
+    --bg-primary: #0f1218;
+    --bg-secondary: #0f1218;
+    --bg-gradient: linear-gradient(135deg, #1b1f3b 0%, #0f1218 100%);
+    --bg-card: #181c25;
+    --bg-input: #11141b;
+    --bg-hover: #222836;
+
+    --text-primary: #eef1f6;
+    --text-secondary: #a7afbf;
+    --text-muted: #9099ab;
+    --text-light: #6f788a;
+
+    --border-primary: #2a3040;
+    --border-secondary: #232937;
+    --border-focus: #7c83ff;
+
+    --accent-primary: #6f76ff;
+    --accent-primary-hover: #5d64f5;
+    --accent-secondary: #a26bf5;
+    --accent-danger: #f26d7d;
+    --accent-success: #3fcf7f;
+    --accent-warning: #f5b84a;
+    --accent-info: #38bdf8;
+
+    --suggestion-bg: #181c25;
+    --suggestion-hover: #222836;
+    --suggestion-selected: #2b3350;
+    --suggestion-border: #2a3040;
+
+    --modal-bg: #181c25;
+}
+/* links and the active tab: a lighter shade reads better on the dark background */
+[data-theme="dark"] .app-tab.active,
+[data-theme="dark"] .btn-link,
+[data-theme="dark"] .meal-add-btn { color: #a5aaff; }
+[data-theme="dark"] .meal-add-btn:hover { color: #fff; }
+
 .visually-hidden {
     position: absolute !important;
     width: 1px; height: 1px;
@@ -237,7 +277,10 @@
 }
 #dashboardSection .quick-add #foodName { padding-left: 12px; }
 .qa-amount { width: 96px; flex: none; position: relative; }
-#dashboardSection .qa-amount input { padding-right: 26px; text-align: right; }
+#dashboardSection .quick-add .qa-amount input { padding-right: 28px; text-align: right; -moz-appearance: textfield; appearance: textfield; }
+/* no up/down arrows: the gram chips do that, and the arrows sat on the "g" */
+#dashboardSection .qa-amount input::-webkit-inner-spin-button,
+#dashboardSection .qa-amount input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .qa-unit {
     position: absolute;
     right: 11px; top: 50%;
@@ -277,8 +320,9 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
     border-top: 1px solid var(--ui-border);
 }
 .qa-frequent-label {
@@ -289,7 +333,21 @@
     letter-spacing: 0.04em;
     color: var(--text-secondary);
 }
-.qa-frequent-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.qa-frequent-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px 0;
+    /* fade at the right edge: there is more to scroll to */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+.qa-frequent-list::-webkit-scrollbar { display: none; }
+.qa-frequent-list .qa-chip { flex: none; }
+.qa-frequent-list .qa-chip:last-child { margin-right: 24px; }
 .qa-freq { background: var(--bg-secondary); color: var(--text-primary); }
 .qa-freq-qty { color: var(--text-secondary); font-weight: 500; }
 .qa-freq.active .qa-freq-qty { color: inherit; }
@@ -478,7 +536,6 @@
     .qa-amount { flex: 1; width: auto; }
     #dashboardSection .quick-add .btn-add-food { flex: 1; }
     .qa-row-options { justify-content: flex-start; }
-    .qa-frequent { flex-direction: column; gap: 6px; }
     .qa-more-grid { grid-template-columns: 1fr 1fr; }
 
     #foodLog .food-item { flex-direction: row; align-items: center; gap: 8px; }

@@ -8,7 +8,7 @@
     'use strict';
 
     const LAST_QTY_KEY = 'calorieTrackerLastQty';   // { "food name": grams } — the last amount logged per food
-    const MAX_FREQUENT = 8;
+    const MAX_FREQUENT = 15;   // one row that scrolls sideways
 
     const $ = (id) => document.getElementById(id);
     const store = {
@@ -162,7 +162,15 @@
     // ── Log again: the most-used foods, one tap each ────────────────────────
     function frequentFoods() {
         const favs = (app?.getFavorites?.() || []).filter((f) => f && f.name && Number.isFinite(parseFloat(f.calories)));
-        return favs
+        // the same food can be saved once per source: keep one per name, with the uses added up
+        const byName = new Map();
+        for (const f of favs) {
+            const k = qtyKey(f.name), seen = byName.get(k);
+            if (!seen) { byName.set(k, { ...f, usageCount: f.usageCount || 0 }); continue; }
+            seen.usageCount += f.usageCount || 0;
+            seen.lastUsed = Math.max(seen.lastUsed || 0, f.lastUsed || 0);
+        }
+        return [...byName.values()]
             .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0) || (b.lastUsed || b.addedAt || 0) - (a.lastUsed || a.addedAt || 0))
             .slice(0, MAX_FREQUENT);
     }
