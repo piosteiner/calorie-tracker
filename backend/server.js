@@ -30,6 +30,7 @@ const shareRoutes = require('./routes/share');
 const commentsRoutes = require('./routes/comments');
 const syncRoutes = require('./routes/sync');
 const pushRoutes = require('./routes/push');
+const feedbackRoutes = require('./routes/feedback');
 const db = require('./database');
 const imageCleanup = require('./jobs/imageCleanup');
 const mealReminders = require('./jobs/mealReminders');
@@ -115,6 +116,7 @@ app.use('/api/share', shareRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -5,45 +5,116 @@
 
 [hidden] { display: none !important; }
 
-/* Dark theme: deeper background, cards that stand apart, brighter text, a clearer accent
-   (the styles.css dark palette was grey on grey). Applies to the whole app, login and dialogs too. */
-[data-theme="dark"] {
-    --bg-primary: #0f1218;
-    --bg-secondary: #0f1218;
-    --bg-gradient: linear-gradient(135deg, #1b1f3b 0%, #0f1218 100%);
-    --bg-card: #181c25;
-    --bg-input: #11141b;
-    --bg-hover: #222836;
+/* =============================================================================
+   Palette: greens and blues, flat, with strong contrast (replaces the old purple gradients).
+   Green = actions and progress, blue = links and information. Applies to the whole app.
+   Text on --bg-card: --text-primary ≈ 16:1, --text-secondary ≥ 7:1 (light) / 8:1 (dark).
+   ============================================================================= */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f2f6f5;
+    --bg-gradient: #f2f6f5;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --bg-hover: #eaf2ef;
 
-    --text-primary: #eef1f6;
-    --text-secondary: #a7afbf;
-    --text-muted: #9099ab;
-    --text-light: #6f788a;
+    --text-primary: #0f1f1b;
+    --text-secondary: #46594f;
+    --text-muted: #46594f;
+    --text-light: #6c7f78;
 
-    --border-primary: #2a3040;
-    --border-secondary: #232937;
-    --border-focus: #7c83ff;
+    --border-primary: #d5e0dc;
+    --border-secondary: #e3ebe8;
+    --border-focus: #0b7a55;
 
-    --accent-primary: #6f76ff;
-    --accent-primary-hover: #5d64f5;
-    --accent-secondary: #a26bf5;
-    --accent-danger: #f26d7d;
-    --accent-success: #3fcf7f;
-    --accent-warning: #f5b84a;
-    --accent-info: #38bdf8;
+    --accent-primary: #0b7a55;          /* green: buttons, active, progress */
+    --accent-primary-hover: #086445;
+    --accent-rgb: 11, 122, 85;
+    --on-accent: #ffffff;
+    --accent-secondary: #1c5fb8;        /* blue: links, info */
+    --accent-blue: #1c5fb8;
+    --accent-danger: #c0343e;
+    --accent-success: #11804a;
+    --accent-warning: #a96a06;
+    --accent-info: #1c5fb8;
 
-    --suggestion-bg: #181c25;
-    --suggestion-hover: #222836;
-    --suggestion-selected: #2b3350;
-    --suggestion-border: #2a3040;
+    --shadow-light: rgba(15, 31, 27, 0.06);
+    --shadow-medium: rgba(15, 31, 27, 0.14);
+    --shadow-heavy: rgba(15, 31, 27, 0.22);
 
-    --modal-bg: #181c25;
+    --suggestion-bg: #ffffff;
+    --suggestion-hover: #eaf2ef;
+    --suggestion-selected: #dcefe7;
+    --suggestion-border: #e3ebe8;
+
+    --modal-overlay: rgba(10, 22, 19, 0.55);
+    --modal-bg: #ffffff;
+    --modal-header-gradient: #ffffff;
+    --modal-calorie-gradient: #ffffff;
 }
-/* links and the active tab: a lighter shade reads better on the dark background */
-[data-theme="dark"] .app-tab.active,
-[data-theme="dark"] .btn-link,
-[data-theme="dark"] .meal-add-btn { color: #a5aaff; }
-[data-theme="dark"] .meal-add-btn:hover { color: #fff; }
+[data-theme="dark"] {
+    --bg-primary: #0b1311;
+    --bg-secondary: #0b1311;
+    --bg-gradient: #0b1311;
+    --bg-card: #121d1a;
+    --bg-input: #0e1715;
+    --bg-hover: #1a2925;
+
+    --text-primary: #e9f2ef;
+    --text-secondary: #a5b9b2;
+    --text-muted: #a5b9b2;
+    --text-light: #6f857e;
+
+    --border-primary: #22352f;
+    --border-secondary: #1b2b27;
+    --border-focus: #3ccf96;
+
+    --accent-primary: #3ccf96;
+    --accent-primary-hover: #5ddcab;
+    --accent-rgb: 60, 207, 150;
+    --on-accent: #062a1d;               /* dark text on the bright green */
+    --accent-secondary: #6aa9ff;
+    --accent-blue: #6aa9ff;
+    --accent-danger: #f07178;
+    --accent-success: #3ccf96;
+    --accent-warning: #f0b450;
+    --accent-info: #6aa9ff;
+
+    --shadow-light: rgba(0, 0, 0, 0.35);
+    --shadow-medium: rgba(0, 0, 0, 0.5);
+    --shadow-heavy: rgba(0, 0, 0, 0.65);
+
+    --suggestion-bg: #121d1a;
+    --suggestion-hover: #1a2925;
+    --suggestion-selected: #17362b;
+    --suggestion-border: #22352f;
+
+    --modal-overlay: rgba(0, 0, 0, 0.65);
+    --modal-bg: #121d1a;
+    --modal-header-gradient: #121d1a;
+    --modal-calorie-gradient: #121d1a;
+}
+
+/* ── Calm, flat basics everywhere (login, dialogs, admin too) ───────────── */
+body { background: var(--bg-secondary); }
+.btn { border-radius: 8px; }
+.btn-primary { background: var(--accent-primary); color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-primary-hover); transform: none; }
+.btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary); }
+.btn-secondary:hover { background: var(--bg-hover); }
+a { color: var(--accent-blue); }
+.login-card { box-shadow: none; border: 1px solid var(--border-primary); }
+/* dialog headers were purple gradients: now plain, with a rule underneath */
+.modal-header { background: var(--modal-bg) !important; color: var(--text-primary) !important; border-bottom: 1px solid var(--border-primary); }
+.modal-header h2, .modal-header h3 { color: var(--text-primary) !important; }
+.modal-header .close-btn, .modal-header .btn-close, .modal-header button { color: var(--text-secondary); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18); }
+
+/* active chips, tab and Add use the accent; text on it follows the theme */
+.qa-chip.active, #dashboardSection .quick-add .btn-add-food { color: var(--on-accent); }
+.app-tab.active { color: var(--accent-primary); }
+.btn-link, .meal-add-btn { color: var(--accent-blue); }
+.meal-add-btn:hover { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--on-accent); }
 
 .visually-hidden {
     position: absolute !important;
@@ -313,7 +384,7 @@
     white-space: nowrap;
 }
 .qa-chip:hover { border-color: var(--accent-primary); color: var(--text-primary); }
-.qa-chip.active { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+.qa-chip.active { background: var(--accent-primary); border-color: var(--accent-primary); }
 .qa-chip:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 
 .qa-frequent {
@@ -437,7 +508,6 @@
     line-height: 1;
     cursor: pointer;
 }
-.meal-add-btn:hover { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
 
 #foodLog .food-item {
     flex-direction: row;
@@ -546,3 +616,122 @@
     /* the floating Support button would cover the log: on phones it lives in the menu */
     body:has(#dashboardSection.active) .contact-button { display: none; }
 }
+
+/* ── Icons (line icons instead of emoji) ─────────────────────────────────── */
+.app-logo { flex: none; display: block; }
+.app-tab-icon svg {
+    display: block;
+    width: 20px; height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+@media (min-width: 641px) { .app-tab-icon svg { width: 18px; height: 18px; } }
+.btn-meal-photo svg { display: block; }
+#foodLog .btn-meal-photo { color: var(--text-secondary); opacity: 0.8; }
+.points-unit { color: var(--text-secondary); font-weight: 500; }
+.milestone-icon { display: none; }
+
+/* ── Feedback: the "F" button and its panel (same as the other piogino sites) ── */
+.fb-button {
+    position: fixed; z-index: 960; right: 16px; bottom: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 40px; min-width: 40px; padding: 0 14px;
+    border: 0; border-radius: 20px;
+    background: var(--text-primary); color: var(--bg-card);
+    font: 600 0.95rem/1 inherit; font-family: inherit;
+    cursor: pointer; box-shadow: 0 4px 14px var(--shadow-medium);
+}
+.fb-button .fb-word { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width 0.2s; }
+.fb-button:hover .fb-word, .fb-button:focus-visible .fb-word, .fb-button[aria-expanded="true"] .fb-word { max-width: 80px; }
+.fb-button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.fb-panel {
+    position: fixed; z-index: 961; right: 16px; bottom: 66px;
+    width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 90px); overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px 16px; border-radius: 12px;
+    background: var(--bg-card); color: var(--text-primary);
+    border: 1px solid var(--border-primary); box-shadow: 0 20px 60px var(--shadow-heavy);
+    font-size: 0.92rem;
+}
+.fb-head { display: flex; justify-content: space-between; align-items: center; }
+.fb-close { border: 0; background: none; color: var(--text-secondary); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.fb-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.fb-kinds label { cursor: pointer; position: relative; }
+.fb-kinds input { position: absolute; opacity: 0; pointer-events: none; }
+.fb-kinds span { display: inline-block; padding: 4px 11px; border-radius: 999px; background: var(--bg-secondary); border: 1px solid var(--border-primary); font-size: 0.82rem; font-weight: 600; }
+.fb-kinds input:checked + span { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--on-accent); }
+.fb-kinds input:focus-visible + span { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.fb-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
+.fb-field textarea, .fb-field input {
+    width: 100%; padding: 8px 10px;
+    border: 1px solid var(--border-primary); border-radius: 8px;
+    background: var(--bg-input); color: var(--text-primary);
+    font: inherit; font-size: 16px; resize: vertical;
+}
+.fb-pick-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fb-hint { font-size: 0.78rem; color: var(--text-secondary); }
+.fb-picked { list-style: none; margin: 0; padding: 0; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px; }
+.fb-picked:empty { display: none; }
+.fb-picked li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 6px; background: var(--bg-secondary); }
+.fb-remove { border: 0; background: none; color: var(--text-secondary); cursor: pointer; font-size: 1rem; }
+.fb-btn {
+    padding: 7px 14px; border: 1px solid var(--accent-primary); border-radius: 8px;
+    background: var(--accent-primary); color: var(--on-accent);
+    font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+}
+.fb-btn:hover { background: var(--accent-primary-hover); }
+.fb-btn:disabled { opacity: 0.6; cursor: default; }
+.fb-ghost { background: none; color: var(--accent-primary); border-color: var(--border-primary); }
+.fb-ghost:hover { background: var(--bg-hover); }
+.fb-danger { color: var(--accent-danger); }
+.fb-actions { display: flex; justify-content: flex-end; }
+.fb-msg { margin: 0; font-size: 0.85rem; color: var(--text-secondary); }
+.fb-msg:empty { display: none; }
+.fb-msg.ok { color: var(--accent-success); }
+.fb-msg.bad { color: var(--accent-danger); }
+.fb-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.fb-bar {
+    position: fixed; z-index: 962; left: 50%; bottom: 16px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px; border-radius: 12px;
+    background: var(--text-primary); color: var(--bg-card); font-size: 0.88rem; box-shadow: 0 4px 14px var(--shadow-medium);
+}
+.fb-picking .fb-button { display: none; }
+.fb-picking * { cursor: crosshair !important; }
+.fb-hover { outline: 2px dashed var(--accent-primary) !important; outline-offset: 2px; }
+.fb-shown { outline: 3px solid var(--accent-danger) !important; outline-offset: 3px; }
+@media (max-width: 640px) {
+    .fb-button { right: 12px; bottom: 12px; height: 36px; min-width: 36px; padding: 0 12px; }
+    .fb-panel { right: 12px; bottom: 58px; }
+    /* above the bottom tabs */
+    body:has(#dashboardSection.active) .fb-button { bottom: calc(72px + env(safe-area-inset-bottom)); }
+    body:has(#dashboardSection.active) .fb-panel { bottom: calc(118px + env(safe-area-inset-bottom)); max-height: calc(100vh - 140px); }
+    body:has(#dashboardSection.active) .fb-bar { bottom: calc(72px + env(safe-area-inset-bottom)); }
+}
+
+/* Admin → Feedback */
+.fb-count { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-left: 6px; }
+.fb-list { display: flex; flex-direction: column; gap: 10px; }
+.fb-empty { color: var(--text-secondary); }
+.fb-item { padding: 12px 14px; border: 1px solid var(--border-primary); border-radius: 10px; background: var(--bg-card); }
+.fb-item.done { opacity: 0.6; }
+.fb-item-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fb-kind { padding: 2px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: var(--bg-secondary); border: 1px solid var(--border-primary); }
+.fb-kind-bug { color: var(--accent-danger); }
+.fb-kind-idea { color: var(--accent-primary); }
+.fb-kind-content { color: var(--accent-blue); }
+.fb-item-meta { font-size: 0.8rem; color: var(--text-secondary); flex: 1; }
+.fb-item-actions { display: flex; gap: 6px; }
+.fb-item-actions .fb-btn { padding: 4px 10px; font-size: 0.8rem; }
+.fb-item-text { margin: 8px 0 0; white-space: pre-wrap; color: var(--text-primary); }
+.fb-item-elements { margin: 6px 0 0 18px; font-size: 0.82rem; color: var(--text-secondary); }
+.fb-item-foot { display: flex; gap: 14px; margin-top: 8px; font-size: 0.85rem; }
+.fb-item-foot:empty { display: none; }
+
+/* links are blue, actions green */
+.btn-link, [data-theme="dark"] .btn-link { color: var(--accent-blue); }
+.app-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
+.login-header h1 { font-size: 1.7rem; line-height: 1.2; text-align: left; }
+.login-card p { margin-bottom: 22px; text-align: left; }

@@ -14,7 +14,7 @@ files=(
   CNAME .nojekyll manifest.json styles.css
   config.js logger.js validators.js themeToggle.js theme-init.js
   realtimeSync.js pushManager.js script.js page-extras.js share.js sw.js
-  app.css app-ui.js
+  app.css app-ui.js feedback.js
   vendor
 )
 cp -r "${files[@]}" "$out"/

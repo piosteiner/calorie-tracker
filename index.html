@@ -18,7 +18,7 @@
         <div class="container">
             <div class="login-card">
                 <div class="login-header">
-                    <h1>🍎 Calorie Tracker</h1>
+                    <h1>Calorie Tracker</h1>
                     <button id="themeToggleLogin" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
                 </div>
                 <p>Track your daily nutrition intake</p>
@@ -43,7 +43,7 @@
 
     <!-- Offline indicator -->
     <div id="offlineIndicator" class="offline-indicator">
-        📱 Offline Mode
+        Offline mode
     </div>
 
     <!-- Main Dashboard -->
@@ -51,22 +51,21 @@
         <header class="header app-bar">
             <div class="container app-bar-inner">
                 <div class="app-bar-title">
-                    <span class="app-logo" aria-hidden="true">🍎</span>
+                    <svg class="app-logo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-primary)"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="var(--on-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <span id="todayLabel" class="today-label">Today</span>
                 </div>
                 <nav class="app-tabs" role="tablist" aria-label="Sections">
-                    <button type="button" class="app-tab active" role="tab" aria-selected="true" data-tab="today"><span class="app-tab-icon" aria-hidden="true">🍽️</span><span>Today</span></button>
-                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="history"><span class="app-tab-icon" aria-hidden="true">📅</span><span>History</span></button>
-                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="weight"><span class="app-tab-icon" aria-hidden="true">⚖️</span><span>Weight</span></button>
-                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="progress"><span class="app-tab-icon" aria-hidden="true">🎮</span><span>Progress</span></button>
-                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="admin" id="adminTabBtn" hidden><span class="app-tab-icon" aria-hidden="true">🛡️</span><span>Admin</span></button>
+                    <button type="button" class="app-tab active" role="tab" aria-selected="true" data-tab="today"><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16M6 11V8a6 6 0 0 1 12 0v3M5 11l1.2 7.2A2 2 0 0 0 8.2 20h7.6a2 2 0 0 0 2-1.8L19 11"/></svg></span><span>Today</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="history"><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><span>History</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="weight"><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 10a3 3 0 0 1 6 0M12 10l1.5-2"/></svg></span><span>Weight</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="progress"><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-4M12 16V8M17 16v-7"/></svg></span><span>Progress</span></button>
+                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="admin" id="adminTabBtn" hidden><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg></span><span>Admin</span></button>
                 </nav>
                 <div class="user-info">
                     <!-- Rewards: only the points show here; levels live in the Progress tab -->
                     <div id="rewardsDisplay" class="rewards-display" style="display: none;">
                         <button type="button" class="points-badge" data-tab-link="progress" title="Your points (open Progress)">
-                            <span class="points-icon">⭐</span>
-                            <span id="userPoints">0</span>
+                            <span id="userPoints">0</span> <span class="points-unit">pts</span>
                         </button>
                         <div class="milestone-badge food-milestone" hidden>
                             <span id="foodMilestoneLevel">Lv1</span>
@@ -78,13 +77,12 @@
                         </div>
                     </div>
                     <div class="app-menu">
-                        <button type="button" class="app-menu-btn" id="appMenuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="appMenuPanel" title="Menu">☰</button>
+                        <button type="button" class="app-menu-btn" id="appMenuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="appMenuPanel" title="Menu"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
                         <div class="app-menu-panel" id="appMenuPanel" hidden>
                             <div id="welcomeUser" class="app-menu-user">Welcome!</div>
                             <button type="button" id="themeToggle" class="app-menu-item theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
-                            <button type="button" class="app-menu-item" data-action="show-change-password-modal">🔒 Account &amp; password</button>
-                            <button type="button" class="app-menu-item" data-action="show-data-sources">ℹ️ Food data sources</button>
-                            <a class="app-menu-item" href="mailto:support-piogino@pm.me?subject=Calorie%20Tracker%20Support%20Request&body=Please%20describe%20your%20issue%20or%20question%20here...">✉️ Support</a>
+                            <button type="button" class="app-menu-item" data-action="show-change-password-modal">Account &amp; password</button>
+                            <button type="button" class="app-menu-item" data-action="show-data-sources">Food data sources</button>
                             <button type="button" id="logoutBtn" class="app-menu-item app-menu-logout">Log out</button>
                         </div>
                     </div>
@@ -124,7 +122,7 @@
                         <div class="qa-row qa-row-main">
                             <div class="input-group qa-search">
                                 <label for="foodName" class="visually-hidden">Food</label>
-                                <input type="text" id="foodName" name="foodName" placeholder="🔍 Add food — e.g. apple, oatmeal" required>
+                                <input type="text" id="foodName" name="foodName" placeholder="Add food — e.g. apple, oatmeal" required>
                                 <div id="foodSuggestions" class="suggestions"></div>
                             </div>
                             <div class="input-group qa-amount">
@@ -191,11 +189,11 @@
                                 <span class="search-label">Search in:</span>
                                 <label class="toggle-compact">
                                     <input type="checkbox" id="toggleFavorites" checked>
-                                    <span>⭐ Favorites</span>
+                                    <span>Favorites</span>
                                 </label>
                                 <label class="toggle-compact">
                                     <input type="checkbox" id="toggleLocalFoods" checked>
-                                    <span>🏠 Pios DB</span>
+                                    <span>Pios DB</span>
                                 </label>
                             </div>
                         </details>
@@ -206,7 +204,7 @@
                 <div class="food-log-card">
                     <div class="food-log-header">
                         <h3>Today</h3>
-                        <button class="btn-link" data-action="open-share-modal" title="Share meals">🔗 Share</button>
+                        <button class="btn-link" data-action="open-share-modal" title="Share meals">Share</button>
                     </div>
                     <div id="foodLog" class="food-log">
                         <p class="empty-message">Nothing logged yet today.</p>
@@ -241,8 +239,8 @@
                         <div id="imagePreviewWrap" style="display:none">
                             <img id="imagePreview" class="image-preview-thumb" alt="Preview">
                             <div class="meal-photo-actions">
-                                <button type="button" class="btn-remove-image" data-action="remove-image-attach">✕ Remove</button>
-                                <button type="button" class="btn btn-primary btn-sm" data-action="attach-meal-photo">✓ Attach Photo</button>
+                                <button type="button" class="btn-remove-image" data-action="remove-image-attach">Remove</button>
+                                <button type="button" class="btn btn-primary btn-sm" data-action="attach-meal-photo">Attach Photo</button>
                             </div>
                         </div>
                     </div>
@@ -255,7 +253,7 @@
                 <!-- Last 30 Days -->
                 <div class="history-card">
                     <div class="card-header-with-action">
-                        <h3>📅 Last 30 Days</h3>
+                        <h3>Last 30 Days</h3>
                         <button id="toggleHistoryBtn" class="btn btn-secondary" data-action="toggle-history" hidden>
                             <span id="historyBtnText">Show History</span>
                         </button>
@@ -265,7 +263,7 @@
 
                         <!-- 30-Day Stats & Weekly Breakdown (loaded when history opens) -->
                         <div id="statsSection" class="stats-section" style="display: none;">
-                            <h4 class="stats-heading">📊 Last 30 Days</h4>
+                            <h4 class="stats-heading">Last 30 Days</h4>
                             <div class="stats-summary-grid">
                                 <div class="stat-summary-item">
                                     <div class="stat-summary-value" id="statsAvgCalories">—</div>
@@ -281,7 +279,7 @@
                                 </div>
                             </div>
 
-                            <h4 class="stats-heading">📆 This Week</h4>
+                            <h4 class="stats-heading">This Week</h4>
                             <div id="weeklyBreakdown" class="weekly-breakdown"></div>
 
                             <hr class="stats-divider">
@@ -305,7 +303,7 @@
                 <!-- All Time Calendar -->
                 <div class="weight-tracking-card">
                     <div class="card-header-with-action">
-                        <h3>📅 All Time Calendar</h3>
+                        <h3>All Time Calendar</h3>
                         <button class="btn btn-secondary" data-action="toggle-calendar" hidden>
                             <span id="calendarBtnText">Show Calendar</span>
                         </button>
@@ -343,7 +341,7 @@
                 <!-- Weight Tracking Section -->
                 <div class="weight-tracking-card">
                     <div class="card-header-with-action">
-                        <h3>⚖️ Weight Tracking</h3>
+                        <h3>Weight Tracking</h3>
                         <button id="toggleWeightBtn" class="btn btn-secondary" data-action="toggle-weight-tracking" hidden>
                             <span id="weightBtnText">Show Weight Tracker</span>
                         </button>
@@ -352,7 +350,7 @@
                     <div id="weightContent" class="weight-content" style="display: none;">
                         <!-- Weight Logging Form -->
                         <div class="weight-log-form">
-                            <h4>📝 Log Your Weight</h4>
+                            <h4>Log Your Weight</h4>
                             <form id="weightForm">
                                 <!-- Compact grid layout -->
                                 <div class="weight-entry-grid">
@@ -403,7 +401,7 @@
 
                         <!-- Weight History Table -->
                         <div class="weight-history">
-                            <h4>📊 Weight History</h4>
+                            <h4>Weight History</h4>
                             <div id="weightHistoryList" class="weight-history-list">
                                 <p class="loading">Loading weight history...</p>
                             </div>
@@ -418,7 +416,7 @@
                 <!-- Rewards Dashboard Card -->
                 <div id="rewardsCard" class="rewards-card" style="display: none;">
                     <div class="card-header-with-action">
-                        <h3>🎮 Your Progress</h3>
+                        <h3>Your Progress</h3>
                         <button id="toggleRewardsBtn" class="btn btn-secondary-small" data-action="toggle-rewards" hidden>
                             <span id="rewardsBtnText">Show Details</span>
                         </button>
@@ -441,14 +439,14 @@
                         </div>
                         
                         <button id="claimDailyRewardBtn" class="btn btn-reward" data-action="claim-daily-reward">
-                            🎁 Claim Daily Reward (+100 pts)
+                            Claim Daily Reward (+100 pts)
                         </button>
                     </div>
 
                     <div id="rewardsDetails" class="rewards-details" style="display: none;">
                         <!-- Milestone Progress -->
                         <div class="milestone-progress-section">
-                            <h4>📊 Milestone Progress</h4>
+                            <h4>Milestone Progress</h4>
                             
                             <div class="milestone-card">
                                 <div class="milestone-header">
@@ -496,15 +494,15 @@
                         <!-- Quick Links -->
                         <div class="rewards-quick-links">
                             <button class="btn btn-outline coming-soon-btn" data-action="show-rewards-shop" title="Coming Soon">
-                                🛍️ Rewards Shop
+                                Rewards Shop
                                 <span class="coming-soon-badge">Soon</span>
                             </button>
                             <button class="btn btn-outline coming-soon-btn" data-action="show-leaderboard" title="Under Development">
-                                🏆 Leaderboard
+                                Leaderboard
                                 <span class="coming-soon-badge">Soon</span>
                             </button>
                             <button class="btn btn-outline coming-soon-btn" data-action="show-achievements" title="Coming Soon">
-                                🏅 Achievements
+                                Achievements
                                 <span class="coming-soon-badge">Soon</span>
                             </button>
                         </div>
@@ -547,11 +545,11 @@
                                 <div class="form-group">
                                     <label for="editMealCategory">Meal:</label>
                                     <select id="editMealCategory">
-                                        <option value="breakfast">🌅 Breakfast</option>
-                                        <option value="lunch">☀️ Lunch</option>
-                                        <option value="dinner">🌙 Dinner</option>
-                                        <option value="snack">🍿 Snack</option>
-                                        <option value="other">📝 Other</option>
+                                        <option value="breakfast">Breakfast</option>
+                                        <option value="lunch">Lunch</option>
+                                        <option value="dinner">Dinner</option>
+                                        <option value="snack">Snack</option>
+                                        <option value="other">Other</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -569,7 +567,7 @@
                                 <button type="button" class="btn-remove-image" data-action="remove-edit-image">× Remove photo</button>
                             </div>
                             <button type="button" class="btn btn-image-attach" data-action="toggle-edit-image-panel">
-                                📷 <span id="editImageBtnLabel">Add Photo</span>
+                                <span id="editImageBtnLabel">Add Photo</span>
                             </button>
                             <div id="editImagePanel" class="image-attach-panel" style="display:none">
                                 <label class="image-tab-label">
@@ -605,7 +603,7 @@
                 <div id="deleteFoodLogModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content-confirm">
                         <div class="modal-header">
-                            <h3>⚠️ Confirm Deletion</h3>
+                            <h3>Confirm Deletion</h3>
                             <button class="btn-close" data-action="close-delete-modal" title="Close">&times;</button>
                         </div>
                         <div class="modal-body">
@@ -623,7 +621,7 @@
                 <div id="deletePhotoModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content-confirm">
                         <div class="modal-header">
-                            <h3>⚠️ Remove Photo</h3>
+                            <h3>Remove Photo</h3>
                             <button class="btn-close" data-action="close-delete-photo-modal" title="Close">&times;</button>
                         </div>
                         <div class="modal-body">
@@ -641,7 +639,7 @@
                 <div id="promoteFoodModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content-edit promote-modal">
                         <div class="modal-header">
-                            <h3>✅ Promote to Pios Food DB</h3>
+                            <h3>Promote to Pios Food DB</h3>
                             <button class="btn-close" data-action="close-promote-modal" title="Close">&times;</button>
                         </div>
                         <form id="promoteFoodForm" class="modal-body">
@@ -745,7 +743,7 @@
 
                             <div class="modal-actions">
                                 <button type="button" class="btn btn-secondary" data-action="close-promote-modal">Cancel</button>
-                                <button type="submit" class="btn btn-success">✅ Promote to Pios DB</button>
+                                <button type="submit" class="btn btn-success">Promote to Pios DB</button>
                             </div>
                         </form>
                     </div>
@@ -755,7 +753,7 @@
                 <div id="rewardsShopModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content-large">
                         <div class="modal-header">
-                            <h3>🛍️ Rewards Shop</h3>
+                            <h3>Rewards Shop</h3>
                             <button class="btn-close" data-action="close-rewards-shop" title="Close">&times;</button>
                         </div>
                         <div class="modal-body">
@@ -782,7 +780,7 @@
                 <div id="leaderboardModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content-large">
                         <div class="modal-header">
-                            <h3>🏆 Leaderboard</h3>
+                            <h3>Leaderboard</h3>
                             <button class="btn-close" data-action="close-leaderboard" title="Close">&times;</button>
                         </div>
                         <div class="modal-body">
@@ -797,7 +795,7 @@
                 <div id="achievementsModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content-large">
                         <div class="modal-header">
-                            <h3>🏅 Achievements</h3>
+                            <h3>Achievements</h3>
                             <button class="btn-close" data-action="close-achievements" title="Close">&times;</button>
                         </div>
                         <div class="modal-body">
@@ -812,7 +810,7 @@
                 <div id="purchaseConfirmModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content-confirm">
                         <div class="modal-header">
-                            <h3>🛒 Confirm Purchase</h3>
+                            <h3>Confirm Purchase</h3>
                             <button class="btn-close" data-action="close-purchase-confirm" title="Close">&times;</button>
                         </div>
                         <div class="modal-body">
@@ -839,13 +837,14 @@
                 <!-- Admin Panel -->
                 <div id="adminPanel" class="admin-panel" style="display: none;">
                     <div class="admin-card">
-                        <h2>🛡️ Admin Panel</h2>
+                        <h2>Admin Panel</h2>
                         <nav class="admin-nav">
-                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Stats">📊 Statistics</button>
-                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Users">👥 Users</button>
-                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Foods">🥗 Pios Food DB</button>
-                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Contributions">🎁 User Contributions</button>
-                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Database">🗄️ Database</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Stats">Statistics</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Users">Users</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Foods">Pios Food DB</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Contributions">User Contributions</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Database">Database</button>
+                            <button class="btn btn-admin" data-action="show-admin-section" data-section="Feedback">Feedback</button>
                         </nav>
 
                         <!-- Admin Statistics -->
@@ -879,7 +878,7 @@
                         <div id="adminUsers" class="admin-section">
                             <div class="admin-section-header">
                                 <h3>User Management</h3>
-                                <button class="btn btn-primary" data-action="show-create-user-modal">➕ Create New User</button>
+                                <button class="btn btn-primary" data-action="show-create-user-modal">Create New User</button>
                             </div>
                             <div class="admin-table-container">
                                 <table class="admin-table">
@@ -937,8 +936,8 @@
                             <!-- Search and Filter Controls -->
                             <div class="search-filter-controls">
                                 <div class="search-box">
-                                    <input type="text" id="foodDbSearchInput" placeholder="🔍 Search foods by name, brand, or store..." data-action="search-food-db">
-                                    <button id="clearFoodDbSearch" class="btn-clear-search" data-action="clear-food-db-search" style="display: none;" title="Clear search">✕</button>
+                                    <input type="text" id="foodDbSearchInput" placeholder="Search foods by name, brand, or store..." data-action="search-food-db">
+                                    <button id="clearFoodDbSearch" class="btn-clear-search" data-action="clear-food-db-search" style="display: none;" title="Clear search">×</button>
                                 </div>
                             </div>
 
@@ -946,7 +945,7 @@
                             <div id="bulkActionsToolbar" class="bulk-actions-toolbar" style="display: none;">
                                 <span id="selectedCount" class="selected-count">0 items selected</span>
                                 <button id="bulkDeleteBtn" class="btn btn-danger" data-action="bulk-delete-foods">
-                                    🗑️ Delete Selected
+                                    Delete Selected
                                 </button>
                             </div>
 
@@ -994,7 +993,7 @@
 
                         <!-- User Contributions Management -->
                         <div id="adminContributions" class="admin-section">
-                            <h3>🎁 User Contributions Dashboard</h3>
+                            <h3>User Contributions Dashboard</h3>
                             
                             <!-- Contributions Statistics -->
                             <div class="contributions-stats">
@@ -1021,7 +1020,7 @@
 
                             <!-- Top Contributors -->
                             <div class="top-contributors">
-                                <h4>🏆 Top Contributors</h4>
+                                <h4>Top Contributors</h4>
                                 <div id="topContributorsList" class="contributors-list">
                                     <p class="loading">Loading contributors...</p>
                                 </div>
@@ -1031,8 +1030,8 @@
                             <div class="contributions-controls">
                                 <!-- Search Box -->
                                 <div class="search-box">
-                                    <input type="text" id="contributionsSearchInput" placeholder="🔍 Search contributions by food name, brand, or contributor..." data-action="search-contributions">
-                                    <button id="clearContributionsSearch" class="btn-clear-search" data-action="clear-contributions-search" style="display: none;" title="Clear search">✕</button>
+                                    <input type="text" id="contributionsSearchInput" placeholder="Search contributions by food name, brand, or contributor..." data-action="search-contributions">
+                                    <button id="clearContributionsSearch" class="btn-clear-search" data-action="clear-contributions-search" style="display: none;" title="Clear search">×</button>
                                 </div>
                                 
                                 <!-- Filter Controls -->
@@ -1050,9 +1049,9 @@
                                         <input type="number" id="minUsageFilter" min="0" value="0" data-action="change-min-usage" placeholder="0">
                                     </div>
                                     <div class="filter-group">
-                                        <button class="btn btn-secondary" data-action="filter-popular-foods">⭐ Show Popular (5+)</button>
+                                        <button class="btn btn-secondary" data-action="filter-popular-foods">Show Popular (5+)</button>
                                         <button class="btn btn-secondary" data-action="filter-recent-foods">🆕 Show Recent</button>
-                                        <button class="btn btn-secondary" data-action="filter-all-foods">📋 Show All</button>
+                                        <button class="btn btn-secondary" data-action="filter-all-foods">Show All</button>
                                     </div>
                                 </div>
                             </div>
@@ -1074,6 +1073,14 @@
                         </div>
 
                         <!-- Admin Database Management -->
+                        <div id="adminFeedback" class="admin-section">
+                            <div class="admin-section-header">
+                                <h3>Feedback <span id="adminFeedbackCount" class="fb-count"></span></h3>
+                                <button type="button" id="adminFeedbackReload" class="btn btn-secondary">Reload</button>
+                            </div>
+                            <div id="adminFeedbackList" class="fb-list"></div>
+                        </div>
+
                         <div id="adminDatabase" class="admin-section">
                             <h3>Database Management</h3>
                             
@@ -1107,7 +1114,7 @@
                                     <textarea id="sqlQuery" placeholder="SELECT * FROM users LIMIT 10;" rows="4"></textarea>
                                     <div class="query-buttons">
                                         <button data-action="execute-sql-query" class="btn btn-primary">▶️ Execute Query</button>
-                                        <button data-action="clear-query" class="btn btn-secondary">🗑️ Clear</button>
+                                        <button data-action="clear-query" class="btn btn-secondary">Clear</button>
                                     </div>
                                 </div>
                                 <div id="queryResults" class="query-results"></div>
@@ -1213,7 +1220,7 @@
     <div id="createUserModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>👤 Create New User</h3>
+                <h3>Create New User</h3>
                 <button class="btn-close" data-action="close-create-user-modal" title="Close">&times;</button>
             </div>
             <form id="createUserForm" class="modal-body">
@@ -1327,7 +1334,7 @@
 
                 <!-- Profile Info -->
                 <div class="profile-section">
-                    <h4 class="section-subtitle">📧 Email Address</h4>
+                    <h4 class="section-subtitle">Email Address</h4>
                     <div class="email-input-row">
                         <input type="email" id="profileEmail" placeholder="your@email.com" autocomplete="email">
                         <button type="button" class="btn btn-outline btn-sm" data-action="update-email">Save</button>
@@ -1339,13 +1346,13 @@
 
                 <!-- Push Notification Settings -->
                 <div class="profile-section" id="pushNotificationSection">
-                    <h4 class="section-subtitle">🔔 Push Notifications</h4>
+                    <h4 class="section-subtitle">Push Notifications</h4>
                     <p class="profile-meta" id="pushStatusText">Loading…</p>
                     <button type="button" class="btn btn-outline btn-sm" id="pushToggleBtn" data-action="toggle-push-notifications" style="display:none;">Enable Notifications</button>
                 </div>
 
                 <hr class="modal-divider">
-                <h4 class="section-subtitle">🔒 Change Password</h4>
+                <h4 class="section-subtitle">Change Password</h4>
                 <p class="modal-description">Update your password to keep your account secure</p>
 
                 <!-- Current Password -->
@@ -1437,7 +1444,7 @@
     <div id="adminChangePasswordModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>🔒 Change User Password</h3>
+                <h3>Change User Password</h3>
                 <button class="btn-close" data-action="close-admin-change-password-modal" title="Close">&times;</button>
             </div>
             <form id="adminChangePasswordForm" class="modal-body">
@@ -1511,7 +1518,7 @@
     <div id="editUserModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>✏️ Edit User</h3>
+                <h3>Edit User</h3>
                 <button class="btn-close" data-action="close-edit-user-modal" title="Close">&times;</button>
             </div>
             <form id="editUserForm" class="modal-body">
@@ -1575,7 +1582,7 @@
         <div id="shareModal" class="modal-overlay" style="display:none">
             <div class="modal-content-edit">
                 <div class="modal-header">
-                    <h3>🔗 Share Meals</h3>
+                    <h3>Share Meals</h3>
                     <button class="btn-close" data-action="close-share-modal">&times;</button>
                 </div>
                 <p class="share-hint">Choose a date range to generate a public link for all logged meals in that period.</p>
@@ -1596,22 +1603,15 @@
                     <hr class="share-divider">
                     <label class="share-link-label">Share link:</label>
                     <div class="share-link-row">
-                        <button type="button" class="btn btn-primary" id="visitShareLinkBtn" >🔗 Visit</button>
+                        <button type="button" class="btn btn-primary" id="visitShareLinkBtn" >Visit</button>
                         <input type="text" id="shareLinkInput" class="share-link-input" readonly style="display:none">
-                        <button type="button" class="btn btn-primary" data-action="copy-share-link">📋 Copy</button>
+                        <button type="button" class="btn btn-primary" data-action="copy-share-link">Copy</button>
                     </div>
                     <p class="share-note">ℹ️ Anyone with this link can view these meals without logging in.</p>
                 </div>
             </div>
         </div>
 
-    <!-- Contact/Support Button -->
-    <a href="mailto:support-piogino@pm.me?subject=Calorie%20Tracker%20Support%20Request&body=Please%20describe%20your%20issue%20or%20question%20here..." 
-       class="contact-button" 
-       title="Contact Support">
-        <span class="contact-icon">💬</span>
-        <span class="contact-text">Support</span>
-    </a>
 
     <!-- Chart.js down here with the other scripts, so its 200 KB no longer hold up the first paint -->
     <script src="vendor/chart.umd.min.js"></script>
@@ -1621,8 +1621,9 @@
     <script src="themeToggle.js"></script>
     <script src="realtimeSync.js"></script>
     <script src="pushManager.js"></script>
-    <script src="script.js?v=20261117-1"></script>
+    <script src="script.js?v=20261117-2"></script>
     <script src="page-extras.js"></script>
     <script src="app-ui.js"></script>
+    <script src="feedback.js"></script>
 </body>
 </html>

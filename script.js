@@ -2886,11 +2886,11 @@ class CalorieTracker {
 
         const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
         const MEAL_LABELS = {
-            breakfast: '🌅 Breakfast',
-            lunch:     '☀️ Lunch',
-            dinner:    '🌙 Dinner',
-            snack:     '🍿 Snack',
-            other:     '📝 Other'
+            breakfast: 'Breakfast',
+            lunch:     'Lunch',
+            dinner:    'Dinner',
+            snack:     'Snack',
+            other:     'Other'
         };
 
         // Group by meal_category
@@ -2924,8 +2924,8 @@ class CalorieTracker {
                 : '';
 
             const photoBtn = allHavePhotos
-                ? `<button class="btn-meal-photo btn-meal-photo--full" disabled title="Every item in this meal already has a photo. Edit an item to replace its photo.">📷</button>`
-                : `<button class="btn-meal-photo" data-action="open-meal-photo" data-meal-cat="${cat}" data-target-id="${targetId}" title="Add photo to ${MEAL_LABELS[cat]}">📷</button>`;
+                ? `<button class="btn-meal-photo btn-meal-photo--full" disabled title="Every item in this meal already has a photo. Edit an item to replace its photo." aria-label="Add a photo"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>`
+                : `<button class="btn-meal-photo" data-action="open-meal-photo" data-meal-cat="${cat}" data-target-id="${targetId}" title="Add photo to ${MEAL_LABELS[cat]}" aria-label="Add a photo"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>`;
 
             html += `<div class="meal-group">
                 <div class="meal-group-header">
@@ -2935,7 +2935,7 @@ class CalorieTracker {
                         ${groupMacroHtml}
                     </div>
                     ${photoBtn}
-                    <button type="button" class="meal-add-btn" data-meal-add="${cat}" title="Add to ${MEAL_LABELS[cat].replace(/^\S+\s/, '')}" aria-label="Add to ${MEAL_LABELS[cat].replace(/^\S+\s/, '')}">+</button>
+                    <button type="button" class="meal-add-btn" data-meal-add="${cat}" title="Add to ${MEAL_LABELS[cat]}" aria-label="Add to ${MEAL_LABELS[cat]}">+</button>
                 </div>`;
             items.forEach(food => {
                 const escapedName = this.escapeHtml(this.capitalizeFirst(food.name));
@@ -3611,11 +3611,11 @@ class CalorieTracker {
         expandText.textContent = 'Hide Details';
 
         const MEAL_LABELS = {
-            breakfast: '🌅 Breakfast',
-            lunch:     '☀️ Lunch',
-            dinner:    '🌙 Dinner',
-            snack:     '🍿 Snack',
-            other:     '📝 Other'
+            breakfast: 'Breakfast',
+            lunch:     'Lunch',
+            dinner:    'Dinner',
+            snack:     'Snack',
+            other:     'Other'
         };
         const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
 
