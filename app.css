@@ -6,100 +6,119 @@
 [hidden] { display: none !important; }
 
 /* =============================================================================
-   Palette: greens and blues, flat, with strong contrast (replaces the old purple gradients).
-   Green = actions and progress, blue = links and information. Applies to the whole app.
-   Text on --bg-card: --text-primary ≈ 16:1, --text-secondary ≥ 7:1 (light) / 8:1 (dark).
+   Palette: pastel pink, apricot and light blue.
+   Pastels are fills (buttons, active chips, the bar) with dark text on them; text and links use deeper shades
+   of the same hues, so contrast stays high: text on cards ≈ 15:1, secondary text ≥ 7:1, accents as text ≥ 4.5:1,
+   dark text on every pastel fill ≥ 8:1.
    ============================================================================= */
 :root {
     --bg-primary: #ffffff;
-    --bg-secondary: #f2f6f5;
-    --bg-gradient: #f2f6f5;
+    --bg-secondary: #fbf6f4;
+    --bg-gradient: #fbf6f4;
     --bg-card: #ffffff;
     --bg-input: #ffffff;
-    --bg-hover: #eaf2ef;
+    --bg-hover: #fbeef0;
 
-    --text-primary: #0f1f1b;
-    --text-secondary: #46594f;
-    --text-muted: #46594f;
-    --text-light: #6c7f78;
+    --text-primary: #2a2230;
+    --text-secondary: #5d5163;
+    --text-muted: #5d5163;
+    --text-light: #85798a;
 
-    --border-primary: #d5e0dc;
-    --border-secondary: #e3ebe8;
-    --border-focus: #0b7a55;
+    --border-primary: #efe2df;
+    --border-secondary: #f4ebe9;
+    --border-focus: #e48aa5;
 
-    --accent-primary: #0b7a55;          /* green: buttons, active, progress */
-    --accent-primary-hover: #086445;
-    --accent-rgb: 11, 122, 85;
-    --on-accent: #ffffff;
-    --accent-secondary: #1c5fb8;        /* blue: links, info */
-    --accent-blue: #1c5fb8;
-    --accent-danger: #c0343e;
-    --accent-success: #11804a;
-    --accent-warning: #a96a06;
-    --accent-info: #1c5fb8;
+    /* fills */
+    --pink: #f7bfd0;
+    --pink-hover: #f3aac0;
+    --apricot: #fcd5b8;
+    --apricot-soft: #fdeadc;
+    --sky: #c6e0f7;
+    --sky-soft: #e4f0fb;
+    --on-pastel: #2a2230;
 
-    --shadow-light: rgba(15, 31, 27, 0.06);
-    --shadow-medium: rgba(15, 31, 27, 0.14);
-    --shadow-heavy: rgba(15, 31, 27, 0.22);
+    /* the same hues, deep enough for text */
+    --accent-primary: #b8456b;          /* rose: accents, active tab */
+    --accent-primary-hover: #9c3558;
+    --accent-rgb: 228, 138, 165;
+    --on-accent: #2a2230;
+    --accent-secondary: #2f6aa3;
+    --accent-blue: #2f6aa3;             /* links, information */
+    --accent-danger: #c03a4a;
+    --accent-success: #2f6aa3;          /* "left" in good shape: blue, no green */
+    --accent-warning: #a85a12;          /* apricot, deep */
+    --accent-info: #2f6aa3;
+
+    --shadow-light: rgba(42, 34, 48, 0.06);
+    --shadow-medium: rgba(42, 34, 48, 0.13);
+    --shadow-heavy: rgba(42, 34, 48, 0.2);
 
     --suggestion-bg: #ffffff;
-    --suggestion-hover: #eaf2ef;
-    --suggestion-selected: #dcefe7;
-    --suggestion-border: #e3ebe8;
+    --suggestion-hover: #fbeef0;
+    --suggestion-selected: #fadbe4;
+    --suggestion-border: #f4ebe9;
 
-    --modal-overlay: rgba(10, 22, 19, 0.55);
+    --modal-overlay: rgba(42, 34, 48, 0.45);
     --modal-bg: #ffffff;
     --modal-header-gradient: #ffffff;
     --modal-calorie-gradient: #ffffff;
 }
 [data-theme="dark"] {
-    --bg-primary: #0b1311;
-    --bg-secondary: #0b1311;
-    --bg-gradient: #0b1311;
-    --bg-card: #121d1a;
-    --bg-input: #0e1715;
-    --bg-hover: #1a2925;
+    --bg-primary: #16131c;
+    --bg-secondary: #16131c;
+    --bg-gradient: #16131c;
+    --bg-card: #201b28;
+    --bg-input: #1a1621;
+    --bg-hover: #2b2434;
 
-    --text-primary: #e9f2ef;
-    --text-secondary: #a5b9b2;
-    --text-muted: #a5b9b2;
-    --text-light: #6f857e;
+    --text-primary: #f5eff6;
+    --text-secondary: #bdb1c4;
+    --text-muted: #bdb1c4;
+    --text-light: #8a7f92;
 
-    --border-primary: #22352f;
-    --border-secondary: #1b2b27;
-    --border-focus: #3ccf96;
+    --border-primary: #352d40;
+    --border-secondary: #2b2434;
+    --border-focus: #f2a7bf;
 
-    --accent-primary: #3ccf96;
-    --accent-primary-hover: #5ddcab;
-    --accent-rgb: 60, 207, 150;
-    --on-accent: #062a1d;               /* dark text on the bright green */
-    --accent-secondary: #6aa9ff;
-    --accent-blue: #6aa9ff;
-    --accent-danger: #f07178;
-    --accent-success: #3ccf96;
-    --accent-warning: #f0b450;
-    --accent-info: #6aa9ff;
+    --pink: #f2a7bf;
+    --pink-hover: #f6bccd;
+    --apricot: #f8c9a6;
+    --apricot-soft: #3a2c2a;
+    --sky: #a9d0f2;
+    --sky-soft: #22303f;
+    --on-pastel: #221a26;
+
+    --accent-primary: #f4a9c0;
+    --accent-primary-hover: #f8c0d1;
+    --accent-rgb: 242, 167, 191;
+    --on-accent: #221a26;
+    --accent-secondary: #9ccaf3;
+    --accent-blue: #9ccaf3;
+    --accent-danger: #f28b97;
+    --accent-success: #9ccaf3;
+    --accent-warning: #f8c9a6;
+    --accent-info: #9ccaf3;
 
     --shadow-light: rgba(0, 0, 0, 0.35);
     --shadow-medium: rgba(0, 0, 0, 0.5);
     --shadow-heavy: rgba(0, 0, 0, 0.65);
 
-    --suggestion-bg: #121d1a;
-    --suggestion-hover: #1a2925;
-    --suggestion-selected: #17362b;
-    --suggestion-border: #22352f;
+    --suggestion-bg: #201b28;
+    --suggestion-hover: #2b2434;
+    --suggestion-selected: #3a2a3a;
+    --suggestion-border: #352d40;
 
-    --modal-overlay: rgba(0, 0, 0, 0.65);
-    --modal-bg: #121d1a;
-    --modal-header-gradient: #121d1a;
-    --modal-calorie-gradient: #121d1a;
+    --modal-overlay: rgba(0, 0, 0, 0.6);
+    --modal-bg: #201b28;
+    --modal-header-gradient: #201b28;
+    --modal-calorie-gradient: #201b28;
 }
 
 /* ── Calm, flat basics everywhere (login, dialogs, admin too) ───────────── */
 body { background: var(--bg-secondary); }
 .btn { border-radius: 8px; }
-.btn-primary { background: var(--accent-primary); color: var(--on-accent); }
-.btn-primary:hover { background: var(--accent-primary-hover); transform: none; }
+.btn-primary { background: var(--pink); color: var(--on-pastel); }
+.btn-primary:hover { background: var(--pink-hover); transform: none; }
 .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-primary); }
 .btn-secondary:hover { background: var(--bg-hover); }
 a { color: var(--accent-blue); }
@@ -111,10 +130,10 @@ a { color: var(--accent-blue); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18); }
 
 /* active chips, tab and Add use the accent; text on it follows the theme */
-.qa-chip.active, #dashboardSection .quick-add .btn-add-food { color: var(--on-accent); }
+.qa-chip.active, #dashboardSection .quick-add .btn-add-food { color: var(--on-pastel); }
 .app-tab.active { color: var(--accent-primary); }
 .btn-link, .meal-add-btn { color: var(--accent-blue); }
-.meal-add-btn:hover { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--on-accent); }
+.meal-add-btn:hover { background: var(--sky); border-color: var(--sky); color: var(--on-pastel); }
 
 .visually-hidden {
     position: absolute !important;
@@ -180,7 +199,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
     cursor: pointer;
 }
 .app-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
-.app-tab.active { background: var(--bg-secondary); color: var(--accent-primary); }
+.app-tab.active { background: var(--bg-hover); color: var(--accent-primary); }
 .app-tab:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 .app-tab-icon { font-size: 1rem; line-height: 1; }
 
@@ -318,7 +337,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .day-summary-left { color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
 #dashboardSection .day-summary-left .stat-value { font-size: 1.15rem; }
 #dashboardSection .today-summary .progress-bar { height: 8px; border-radius: 4px; }
-#dashboardSection .today-summary .progress-fill { background: var(--accent-primary); border-radius: 4px; }
+#dashboardSection .today-summary .progress-fill { background: linear-gradient(90deg, var(--apricot), var(--pink)); border-radius: 4px; }
 
 #dashboardSection .macro-stats {
     display: flex;
@@ -384,7 +403,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
     white-space: nowrap;
 }
 .qa-chip:hover { border-color: var(--accent-primary); color: var(--text-primary); }
-.qa-chip.active { background: var(--accent-primary); border-color: var(--accent-primary); }
+.qa-chip.active { background: var(--pink); border-color: var(--pink); }
+.qa-grams .qa-chip.active { background: var(--sky); border-color: var(--sky); }
 .qa-chip:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 
 .qa-frequent {
@@ -419,7 +439,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .qa-frequent-list::-webkit-scrollbar { display: none; }
 .qa-frequent-list .qa-chip { flex: none; }
 .qa-frequent-list .qa-chip:last-child { margin-right: 24px; }
-.qa-freq { background: var(--bg-secondary); color: var(--text-primary); }
+.qa-freq { background: var(--apricot-soft); border-color: transparent; color: var(--text-primary); }
+.qa-freq:hover { border-color: var(--apricot); }
 .qa-freq-qty { color: var(--text-secondary); font-weight: 500; }
 .qa-freq.active .qa-freq-qty { color: inherit; }
 .qa-frequent-list.busy .qa-freq { pointer-events: none; opacity: 0.6; }
@@ -662,7 +683,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .fb-kinds label { cursor: pointer; position: relative; }
 .fb-kinds input { position: absolute; opacity: 0; pointer-events: none; }
 .fb-kinds span { display: inline-block; padding: 4px 11px; border-radius: 999px; background: var(--bg-secondary); border: 1px solid var(--border-primary); font-size: 0.82rem; font-weight: 600; }
-.fb-kinds input:checked + span { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--on-accent); }
+.fb-kinds input:checked + span { background: var(--pink); border-color: var(--pink); color: var(--on-pastel); }
 .fb-kinds input:focus-visible + span { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 .fb-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
 .fb-field textarea, .fb-field input {
@@ -678,11 +699,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .fb-picked li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 6px; background: var(--bg-secondary); }
 .fb-remove { border: 0; background: none; color: var(--text-secondary); cursor: pointer; font-size: 1rem; }
 .fb-btn {
-    padding: 7px 14px; border: 1px solid var(--accent-primary); border-radius: 8px;
-    background: var(--accent-primary); color: var(--on-accent);
+    padding: 7px 14px; border: 1px solid var(--pink); border-radius: 8px;
+    background: var(--pink); color: var(--on-pastel); border-color: var(--pink);
     font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer;
 }
-.fb-btn:hover { background: var(--accent-primary-hover); }
+.fb-btn:hover { background: var(--pink-hover); }
 .fb-btn:disabled { opacity: 0.6; cursor: default; }
 .fb-ghost { background: none; color: var(--accent-primary); border-color: var(--border-primary); }
 .fb-ghost:hover { background: var(--bg-hover); }
@@ -735,3 +756,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .app-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
 .login-header h1 { font-size: 1.7rem; line-height: 1.2; text-align: left; }
 .login-card p { margin-bottom: 22px; text-align: left; }
+
+/* pastel touches */
+#dashboardSection .points-badge { background: var(--apricot); border-color: var(--apricot); color: var(--on-pastel); }
+#dashboardSection .points-badge .points-unit { color: var(--on-pastel); opacity: 0.75; }
+.app-logo rect { fill: var(--pink); }
+.app-logo path { stroke: var(--on-pastel); }
+.qa-freq.active { background: var(--apricot); }
+#dashboardSection .points-badge #userPoints { color: var(--on-pastel); font-weight: 700; }
