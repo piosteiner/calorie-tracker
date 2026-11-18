@@ -134,8 +134,6 @@ calorie-tracker/
 │   ├── migrations/         # SQL migrations
 │   └── scripts/            # Manual test scripts for the API
 ├── docs/                   # API reference, database schema, deployment, rewards
-├── modules/                # Unfinished split of script.js — not loaded by the site, only by tests/
-├── tests/                  # Jest unit tests for modules/
 └── scripts/                # build-site.sh, save.sh, git hooks (secret scanning)
 ```
 

@@ -1,5 +1,5 @@
 # Publishes the frontend to GitHub Pages (the domain is in CNAME).
-# Only web/ goes out (scripts/build-site.sh); backend/, docs/, tests/ and modules/ do not.
+# Only web/ goes out (scripts/build-site.sh); backend/ and docs/ do not.
 # Requires Settings → Pages → Source: "GitHub Actions".
 # The backend is not deployed here: it runs on the server from backend/ under pm2 (calorie-tracker-api).
 name: Frontend → GitHub Pages

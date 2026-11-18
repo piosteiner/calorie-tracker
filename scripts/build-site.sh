@@ -1,6 +1,6 @@
 #!/bin/bash
 # Copies the published site (web/) into one folder (default: _site) for GitHub Pages.
-# Everything outside web/ (backend/, docs/, tests/, modules/, …) never reaches the site.
+# Everything outside web/ (backend/, docs/, …) never reaches the site.
 # Fails if a page or the service worker asks for a file that is not in web/.
 # Usage: scripts/build-site.sh [output-folder]
 set -euo pipefail
