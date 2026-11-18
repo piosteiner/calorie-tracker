@@ -517,9 +517,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 #foodLog .meal-group-right { flex-direction: row; align-items: baseline; gap: 8px; }
 #foodLog .meal-group-total { font-size: 0.8rem; opacity: 1; color: var(--text-primary); }
 #foodLog .meal-group-macros { text-transform: none; letter-spacing: 0; }
-#foodLog .btn-meal-photo { margin: 0; }
+#foodLog .btn-meal-photo { margin: 0; min-width: 36px; min-height: 36px; display: grid; place-items: center; position: relative; }
+/* small round buttons: the touch area reaches 44px around them, the circle stays the same */
+.meal-add-btn::after,
+#foodLog .btn-meal-photo::after,
+.goal-edit-btn::after { content: ''; position: absolute; inset: -4px; }
 .meal-add-btn {
-    width: 26px; height: 26px;
+    width: 36px; height: 36px;
+    position: relative;
     border: 1px solid var(--ui-border);
     border-radius: 50%;
     background: var(--bg-card);
@@ -558,26 +563,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
     color: var(--text-primary);
     white-space: nowrap;
 }
-#foodLog .food-item-actions { width: auto; margin-left: 0; gap: 2px; }
-#foodLog .edit-btn,
-#foodLog .delete-btn {
-    width: 30px; height: 30px;
-    padding: 0;
-    border-radius: 8px;
-    background: none;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    opacity: 0.55;
-}
-#foodLog .delete-btn { font-size: 1.15rem; }
-#foodLog .food-item:hover .edit-btn,
-#foodLog .food-item:hover .delete-btn { opacity: 1; }
-#foodLog .edit-btn:hover { background: var(--bg-secondary); }
-#foodLog .delete-btn:hover { background: var(--accent-danger); color: #fff; }
-/* on a desktop the row itself opens the editor; the pencil only shows on hover */
-@media (hover: hover) {
-    #foodLog .edit-btn { opacity: 0; }
-}
+/* a food is one tap target: the row opens the editor (Delete is in there, with Undo) */
+#foodLog .food-item { min-height: 48px; }
+.food-item-chevron { flex: none; color: var(--text-light); margin-left: -4px; }
+#foodLog .food-item:focus-visible,
+.food-item-row.editable:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.food-item[hidden], .food-item-row[hidden] { display: none !important; }
+#dashboardSection .food-item-row.editable { cursor: pointer; min-height: 48px; }
+#dashboardSection .food-item-row.editable:hover { transform: none; }
 #foodLog .empty-message { padding: 18px 0 8px; font-size: 0.9rem; }
 
 /* ── Other tabs ──────────────────────────────────────────────────────────── */
@@ -635,7 +628,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
     #foodLog .food-item { flex-direction: row; align-items: center; gap: 8px; }
     #foodLog .food-calories { align-self: center; }
-    #foodLog .edit-btn { display: none; }   /* tap the row to edit */
     #foodLog .meal-group-macros { display: none; }   /* per-item macros stay; the header keeps to one line */
 
     /* the floating Support button would cover the log: on phones it lives in the menu */
@@ -868,3 +860,109 @@ body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-ins
     .pg-badges { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 400px) { .pg-badges { grid-template-columns: 1fr; } }
+
+/* ── Day switcher ────────────────────────────────────────────────────────── */
+.day-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+.day-nav-btn {
+    flex: none;
+    width: 44px; height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.day-nav-btn:hover:not(:disabled) { background: var(--bg-hover); }
+.day-nav-btn:disabled { opacity: 0.35; cursor: default; }
+.day-nav-label {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.day-nav-date { font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
+/* the date field sits invisibly over the day name: tapping the name opens the calendar */
+.day-nav-picker {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+}
+.day-nav-picker::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+.day-nav-today {
+    flex-basis: 100%;
+    margin: 2px auto 0;
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--sky-soft);
+    color: var(--accent-blue);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-grow: 0;
+}
+.day-nav.past + .today-summary { border-color: var(--accent-blue); }
+
+/* ── Goal: a visible pencil ──────────────────────────────────────────────── */
+.goal-edit-btn {
+    position: relative;
+    align-self: center;
+    width: 28px; height: 28px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.goal-edit-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+#dashboardSection .today-summary #calorieGoal { cursor: pointer; }
+
+/* ── Edit dialog: Delete on the left ─────────────────────────────────────── */
+.modal-actions .btn-delete-entry {
+    margin-right: auto;
+    background: none;
+    border: 1px solid color-mix(in srgb, var(--accent-danger) 40%, var(--border-primary));
+    color: var(--accent-danger);
+}
+.modal-actions .btn-delete-entry:hover { background: var(--accent-danger); border-color: var(--accent-danger); color: #fff; }
+
+/* ── Toast with an action (Undo) ─────────────────────────────────────────── */
+.toast .toast-action {
+    align-self: center;
+    flex: none;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--sky-soft);
+    color: var(--accent-blue);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.toast .toast-action:hover { background: var(--sky); }
+
+/* ── Menu: Admin entry, dialogs ──────────────────────────────────────────── */
+.app-menu-item.active { font-weight: 700; color: var(--accent-primary); }
+[role="dialog"]:focus { outline: none; }

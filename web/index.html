@@ -9,6 +9,7 @@
     <meta name="description" content="Track your daily nutrition intake with our easy-to-use calorie tracker">
     <meta name="keywords" content="calorie tracker, nutrition, diet, health, food logging">
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="app.css">
 </head>
@@ -59,7 +60,6 @@
                     <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="history"><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><span>History</span></button>
                     <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="weight"><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 10a3 3 0 0 1 6 0M12 10l1.5-2"/></svg></span><span>Weight</span></button>
                     <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="progress"><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-4M12 16V8M17 16v-7"/></svg></span><span>Progress</span></button>
-                    <button type="button" class="app-tab" role="tab" aria-selected="false" data-tab="admin" id="adminTabBtn" hidden><span class="app-tab-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg></span><span>Admin</span></button>
                 </nav>
                 <div class="user-info">
                     <!-- Rewards: only the points show here; levels live in the Progress tab -->
@@ -74,6 +74,7 @@
                             <div id="welcomeUser" class="app-menu-user">Welcome!</div>
                             <button type="button" id="themeToggle" class="app-menu-item theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">🌙</button>
                             <button type="button" class="app-menu-item" data-action="show-change-password-modal">Account &amp; password</button>
+                            <button type="button" class="app-menu-item" data-tab-link="admin" id="adminTabBtn" hidden>Admin panel</button>
                             <button type="button" class="app-menu-item" data-action="show-data-sources">Food data sources</button>
                             <button type="button" id="logoutBtn" class="app-menu-item app-menu-logout">Log out</button>
                         </div>
@@ -86,13 +87,25 @@
             <div class="container">
                 <!-- ===================== TODAY ===================== -->
                 <section class="tab-panel" data-panel="today" role="tabpanel">
+                <!-- Day switcher: the Today panel can show (and add to) an earlier day -->
+                <div class="day-nav" id="dayNav">
+                    <button type="button" class="day-nav-btn" id="dayPrev" aria-label="Previous day"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <label class="day-nav-label" for="dayNavPicker">
+                        <span id="dayNavTitle">Today</span>
+                        <input type="date" id="dayNavPicker" class="day-nav-picker" aria-label="Pick a day">
+                    </label>
+                    <button type="button" class="day-nav-btn" id="dayNext" aria-label="Next day" disabled><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    <button type="button" class="day-nav-today" id="dayToday" hidden>Back to today</button>
+                </div>
+
                 <!-- Daily Summary -->
                 <div class="summary-card today-summary">
                     <div class="day-summary-row">
                         <div class="day-summary-main">
                             <span class="stat-value" id="totalCalories">0</span>
                             <span class="day-summary-of">/</span>
-                            <span class="stat-value editable-goal" id="calorieGoal" title="Click to edit your daily goal">2000</span>
+                            <span class="stat-value editable-goal" id="calorieGoal" role="button" tabindex="0" aria-label="Daily goal, tap to change" title="Change your daily goal">2000</span>
+                            <button type="button" class="goal-edit-btn" id="goalEditBtn" aria-label="Change daily goal" title="Change daily goal"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                             <input type="number" id="calorieGoalInput" class="goal-input" style="display: none;" min="500" max="10000" step="50" aria-label="Daily goal in kcal">
                             <span class="day-summary-unit">kcal</span>
                         </div>
@@ -195,7 +208,7 @@
                 <!-- Food Log -->
                 <div class="food-log-card">
                     <div class="food-log-header">
-                        <h3>Today</h3>
+                        <h3 id="foodLogTitle">Today</h3>
                         <button class="btn-link" data-action="open-share-modal" title="Share meals">Share</button>
                     </div>
                     <div id="foodLog" class="food-log">
@@ -512,6 +525,7 @@
                         </div>
                             
                             <div class="modal-actions">
+                                <button type="button" class="btn btn-delete-entry" id="editDeleteBtn" data-action="delete-food-log-from-edit" hidden>Delete</button>
                                 <button type="button" class="btn btn-secondary" data-action="close-edit-modal">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Save Changes</button>
                             </div>
@@ -1458,9 +1472,10 @@
     <script src="themeToggle.js"></script>
     <script src="realtimeSync.js"></script>
     <script src="pushManager.js"></script>
-    <script src="script.js?v=20261117-2"></script>
+    <script src="script.js?v=20261118-1"></script>
     <script src="page-extras.js"></script>
     <script src="app-ui.js"></script>
+    <script src="dialogs.js"></script>
     <script src="progress.js"></script>
     <script src="feedback.js"></script>
 </body>

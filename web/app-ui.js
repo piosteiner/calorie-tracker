@@ -20,24 +20,45 @@
 
     // ── Tabs ────────────────────────────────────────────────────────────────
     const opened = new Set();   // tabs whose content was loaded once
+    const TABS = ['today', 'history', 'weight', 'progress', 'admin'];
+    let currentTab = null;
 
-    function showTab(name) {
-        const tab = document.querySelector(`.app-tab[data-tab="${name}"]`);
-        if (!tab || tab.hidden) name = 'today';
+    // The tab is part of the address (#history), so reloading keeps it and the phone's Back button
+    // goes back to Today instead of leaving the app. Today is the root: other tabs replace each
+    // other in the history, so one Back from any of them lands on Today.
+    function showTab(name, { fromHistory = false } = {}) {
+        if (!TABS.includes(name)) name = 'today';
+        if (name === 'admin' && $('adminTabBtn')?.hidden) name = 'today';
+        if (!fromHistory && currentTab && name !== currentTab) {
+            const base = location.pathname + location.search;
+            if (currentTab === 'today') {
+                history.pushState({ tab: name, overToday: true }, '', `#${name}`);
+            } else if (name !== 'today') {
+                history.replaceState({ tab: name, overToday: !!history.state?.overToday }, '', `#${name}`);
+            } else if (history.state?.overToday) {
+                history.back();   // Today is the entry right behind: step back to it (popstate shows it)
+                return;
+            } else {
+                history.replaceState({ tab: 'today' }, '', base);
+            }
+        }
+        const same = name === currentTab;
+        currentTab = name;
         document.querySelectorAll('.app-tab').forEach((t) => {
             const on = t.dataset.tab === name;
             t.classList.toggle('active', on);
             t.setAttribute('aria-selected', on ? 'true' : 'false');
         });
+        $('adminTabBtn')?.classList.toggle('active', name === 'admin');
         document.querySelectorAll('.tab-panel').forEach((p) => { p.hidden = p.dataset.panel !== name; });
-        window.scrollTo({ top: 0 });
+        if (!same) window.scrollTo({ top: 0 });
         loadTab(name);
         if (name === 'progress') window.Progress?.load();   // fresh every time: today's checklist changes as you log
     }
 
     // The sections used to open with a "Show …" button; in a tab they open (and load) on first view.
     function loadTab(name) {
-        if (typeof app === 'undefined' || !app || opened.has(name)) return;
+        if (typeof app === 'undefined' || !app || !app.authToken || opened.has(name)) return;
         opened.add(name);
         try {
             if (name === 'history') {
@@ -52,14 +73,21 @@
         }
     }
 
-    // The Admin tab shows when script.js shows the admin panel
+    function tabFromUrl() {
+        const h = location.hash.replace('#', '');
+        return TABS.includes(h) ? h : 'today';
+    }
+
+    // The Admin entry (in the menu) shows when script.js shows the admin panel
     function watchAdmin() {
         const panel = $('adminPanel'), btn = $('adminTabBtn');
         if (!panel || !btn) return;
         const sync = () => {
             const isAdmin = panel.style.display !== 'none';
             btn.hidden = !isAdmin;
-            if (!isAdmin && btn.classList.contains('active')) showTab('today');
+            if (!isAdmin && currentTab === 'admin') showTab('today');
+            // opened on #admin before the login check finished: go there now
+            if (isAdmin && currentTab !== 'admin' && tabFromUrl() === 'admin') showTab('admin', { fromHistory: true });
         };
         new MutationObserver(sync).observe(panel, { attributes: true, attributeFilter: ['style'] });
         sync();
@@ -89,6 +117,63 @@
         if (!el) return;
         const d = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
         el.innerHTML = `Today <span class="today-date">${esc(d)}</span>`;
+    }
+
+    // ── Day switcher (‹ day ›) on the Today tab ─────────────────────────────
+    const parseDay = (str) => { const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d); };
+    const shiftDay = (str, n) => { const d = parseDay(str); d.setDate(d.getDate() + n); return localDateStr(d); };
+
+    function dayName(str) {
+        const today = localDateStr();
+        if (str === today) return 'Today';
+        if (str === shiftDay(today, -1)) return 'Yesterday';
+        const d = parseDay(str);
+        const opts = { weekday: 'short', day: 'numeric', month: 'short' };
+        if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+        return d.toLocaleDateString('en-GB', opts);
+    }
+
+    function renderDayNav() {
+        if (typeof app === 'undefined' || !app?.viewDate) return;
+        const day = app.viewDate(), today = localDateStr();
+        const isToday = day === today;
+        const full = parseDay(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+        const title = $('dayNavTitle');
+        if (title) title.innerHTML = isToday || dayName(day) === 'Yesterday'
+            ? `${esc(dayName(day))} <span class="day-nav-date">${esc(full)}</span>`
+            : esc(dayName(day));
+        const picker = $('dayNavPicker');
+        if (picker) { picker.value = day; picker.max = today; }
+        if ($('dayNext')) $('dayNext').disabled = isToday;
+        if ($('dayToday')) $('dayToday').hidden = isToday;
+        $('dayNav')?.classList.toggle('past', !isToday);
+        const logTitle = $('foodLogTitle');
+        if (logTitle) logTitle.textContent = isToday ? 'Today' : dayName(day);
+    }
+
+    function setupDayNav() {
+        const go = (str) => app?.setViewDate?.(str);
+        $('dayPrev')?.addEventListener('click', () => go(shiftDay(app.viewDate(), -1)));
+        $('dayNext')?.addEventListener('click', () => go(shiftDay(app.viewDate(), 1)));
+        $('dayToday')?.addEventListener('click', () => go(localDateStr()));
+        $('dayNavPicker')?.addEventListener('change', (e) => { if (e.target.value) go(e.target.value); });
+        // the date field under "Time, date, brand" moves the view as well, so a new entry never vanishes
+        $('logDate')?.addEventListener('change', (e) => {
+            if (e.target.value && e.target.value !== app?.viewDate?.()) go(e.target.value);
+        });
+        document.addEventListener('viewdatechange', renderDayNav);
+        renderDayNav();
+    }
+
+    // ── A new day while the app was open or asleep ──────────────────────────
+    let lastDay = localDateStr();
+    function checkNewDay() {
+        const now = localDateStr();
+        if (now === lastDay) return;
+        lastDay = now;
+        setTodayLabel();
+        app?.onDayChanged?.();
+        renderDayNav();
     }
 
     // ── Quick add: meal and gram chips ──────────────────────────────────────
@@ -143,9 +228,6 @@
                 $('foodName')?.focus({ preventScroll: true });
                 return;
             }
-            // Tap a food to edit it
-            const row = e.target.closest('.food-item');
-            if (row && !e.target.closest('button, a, input, img')) row.querySelector('.edit-btn')?.click();
         });
     }
 
@@ -236,6 +318,14 @@
             q?.select();
         });
         wrap(app, 'addToFavorites', renderFrequent);
+        // reloaded on #history etc.: that tab's content loads once the login is confirmed
+        wrap(app, 'showSection', (section) => {
+            if (section === 'login') { opened.clear(); return; }
+            if (section !== 'dashboard' || !currentTab) return;
+            loadTab(currentTab);
+            if (currentTab === 'progress') window.Progress?.load();
+            renderDayNav();
+        });
         return true;
     }
 
@@ -260,6 +350,19 @@
         placeTabs();
         setTodayLabel();
         setupMenu();
+        // rows that act as buttons (food entries): Enter and Space open them, like a real button
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const row = e.target.closest?.('[role="button"][data-action]');
+            if (row && e.target === row) { e.preventDefault(); row.click(); }
+        });
+        window.addEventListener('popstate', () => {
+            const name = tabFromUrl();
+            if (name !== currentTab) showTab(name, { fromHistory: true });
+        });
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkNewDay(); });
+        window.addEventListener('focus', checkNewDay);
+        setInterval(checkNewDay, 60 * 1000);
         setupQuickAdd();
         setupFrequent();
         watchAdmin();
@@ -277,7 +380,9 @@
             syncMealChips();
             syncGramChips();
             renderFrequent();
-            showTab('today');   // always open on Today: logging is what the app is for
+            setupDayNav();
+            // Opening the app (start_url "/") lands on Today, logging is what it's for; a reload keeps the tab
+            showTab(tabFromUrl(), { fromHistory: true });
         };
         if (typeof app !== 'undefined' && app) ready(); else setTimeout(ready, 0);
     }

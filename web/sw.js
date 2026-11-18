@@ -7,8 +7,8 @@
  *   3. Serve a minimal offline fallback so the install prompt works.
  */
 
-const CACHE_NAME = 'caltracker-v5';
-const OFFLINE_URLS = ['/', '/index.html', '/styles.css', '/script.js', '/config.js', '/logger.js', '/validators.js', '/themeToggle.js', '/realtimeSync.js', '/page-extras.js', '/app.css', '/app-ui.js', '/progress.js', '/feedback.js'];
+const CACHE_NAME = 'caltracker-v6';
+const OFFLINE_URLS = ['/', '/index.html', '/styles.css', '/script.js', '/config.js', '/logger.js', '/validators.js', '/themeToggle.js', '/realtimeSync.js', '/page-extras.js', '/app.css', '/app-ui.js', '/progress.js', '/feedback.js', '/dialogs.js', '/icons/icon-192.png'];
 
 // ── Install: pre-cache shell assets ─────────────────────────────────────────
 self.addEventListener('install', (event) => {
@@ -49,7 +49,7 @@ self.addEventListener('push', (event) => {
     const body    = data.body    || 'You have a new update.';
     const tag     = data.tag     || 'caltracker-default';
     const url     = data.url     || '/';
-    const icon    = data.icon    || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>";
+    const icon    = data.icon    || '/icons/icon-192.png';
     const badge   = data.badge   || icon;
 
     event.waitUntil(

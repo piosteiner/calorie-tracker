@@ -58,9 +58,17 @@ const CONFIG = {
     VAPID_PUBLIC_KEY: ''
 };
 
+// The calendar date (YYYY-MM-DD) on the user's own clock.
+// Not toISOString(): that is the UTC date, which is still yesterday just after midnight in Switzerland.
+function localDateStr(d = new Date()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 // Make available as global variable
 if (typeof window !== 'undefined') {
     window.CONFIG = CONFIG;
+    window.localDateStr = localDateStr;
 }
 
 // CommonJS export (for Node.js compatibility)

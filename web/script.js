@@ -109,9 +109,17 @@ class NotificationSystem {
                 ${config.title ? `<div class="toast-title">${this.escapeHtml(config.title)}</div>` : ''}
                 <div class="toast-message">${this.escapeHtml(message)}</div>
             </div>
-            ${config.closable ? '<button class="toast-close" type="button">&times;</button>' : ''}
+            ${config.action ? `<button class="toast-action" type="button">${this.escapeHtml(config.action.label)}</button>` : ''}
+            ${config.closable ? '<button class="toast-close" type="button" aria-label="Close">&times;</button>' : ''}
             ${config.duration > 0 ? '<div class="toast-progress"></div>' : ''}
         `;
+
+        if (config.action) {
+            toast.querySelector('.toast-action').addEventListener('click', () => {
+                this.hide(id);
+                config.action.onClick();
+            });
+        }
 
         // Add close button listener
         if (config.closable) {
@@ -479,21 +487,59 @@ class CalorieTracker {
         this.initializeFoodForm();
     }
     
+    // The day the Today panel shows and adds to (YYYY-MM-DD). null = today, following the clock.
+    viewDate() {
+        return this._viewDate || localDateStr();
+    }
+
+    isViewingToday() {
+        return this.viewDate() === localDateStr();
+    }
+
+    // Switch the Today panel to another day (from the ‹ › arrows or the date field)
+    async setViewDate(dateStr) {
+        const today = localDateStr();
+        if (!dateStr || dateStr > today) dateStr = today;
+        this._viewDate = dateStr === today ? null : dateStr;
+        const logDateInput = document.getElementById('logDate');
+        if (logDateInput) logDateInput.value = this.viewDate();
+        document.dispatchEvent(new CustomEvent('viewdatechange', { detail: { date: this.viewDate() } }));
+        await this.loadTodaysData();
+    }
+
+    // The clock passed midnight while the app was open (or asleep in the background)
+    async onDayChanged() {
+        const today = localDateStr();
+        ['logDate', 'weightDate'].forEach((id) => {
+            const input = document.getElementById(id);
+            if (input) input.max = today;
+        });
+        const weightDateInput = document.getElementById('weightDate');
+        if (weightDateInput && weightDateInput.value < today) weightDateInput.value = today;
+        if (!this._viewDate) {
+            // Was showing "today", which is now yesterday: move on to the new day
+            const logDateInput = document.getElementById('logDate');
+            if (logDateInput) logDateInput.value = today;
+            document.dispatchEvent(new CustomEvent('viewdatechange', { detail: { date: today } }));
+            if (this.authToken) await this.loadTodaysData();
+        }
+    }
+
     // Initialize food logging form with smart defaults
     initializeFoodForm() {
-        // Set log date to today by default
+        // The date is the day being viewed (today unless the arrows moved it)
         const logDateInput = document.getElementById('logDate');
         if (logDateInput) {
-            logDateInput.value = new Date().toISOString().split('T')[0];
+            logDateInput.value = this.viewDate();
             // Set max date to today (can't log future meals)
-            logDateInput.max = new Date().toISOString().split('T')[0];
+            logDateInput.max = localDateStr();
         }
         
         // Set weight date to today by default
         const weightDateInput = document.getElementById('weightDate');
         if (weightDateInput) {
-            weightDateInput.value = new Date().toISOString().split('T')[0];
-            weightDateInput.max = new Date().toISOString().split('T')[0];
+            weightDateInput.value = localDateStr();
+            weightDateInput.max = localDateStr();
         }
         
         // Auto-suggest meal category based on current time
@@ -801,8 +847,18 @@ class CalorieTracker {
                 
                 case 'delete-food-log':
                     e.preventDefault();
-                    this.openDeleteConfirmModal(target.dataset.logId, target.dataset.foodName, target.dataset.date);
+                    this.deleteFoodLogWithUndo(target.dataset.logId, target.dataset.foodName, target.dataset.date);
                     break;
+
+                case 'delete-food-log-from-edit': {
+                    e.preventDefault();
+                    const ctx = this.currentEditContext;
+                    if (!ctx || ctx.isNew) break;
+                    const name = document.getElementById('editFoodName')?.value || 'Entry';
+                    this.closeEditFoodLogModal();
+                    this.deleteFoodLogWithUndo(ctx.logId, name, ctx.date);
+                    break;
+                }
 
                 case 'add-day-comment':
                 case 'edit-day-comment': {
@@ -834,7 +890,7 @@ class CalorieTracker {
                 case 'delete-day-comment': {
                     e.preventDefault();
                     const delDate = target.dataset.date;
-                    if (confirm('Delete this note?')) {
+                    if (await this.showConfirmation('Delete note', 'Delete the note for this day?', 'Delete', 'danger')) {
                         try {
                             await this.saveDayComment(delDate, '');
                             this.swapCommentSection(delDate, this.renderDayCommentHtml(delDate));
@@ -1318,21 +1374,29 @@ class CalorieTracker {
         const goalDisplay = document.getElementById('calorieGoal');
         const goalInput = document.getElementById('calorieGoalInput');
         
-        // Click to edit goal
+        // Tap the number or the pencil to edit the goal
         goalDisplay.addEventListener('click', () => {
             this.startGoalEditing();
         });
+        goalDisplay.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.startGoalEditing(); }
+        });
+        document.getElementById('goalEditBtn')?.addEventListener('click', () => this.startGoalEditing());
         
         // Save on Enter or blur
         goalInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 this.saveGoalEdit();
             } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this._goalEditCancelled = true;
                 this.cancelGoalEdit();
             }
         });
         
         goalInput.addEventListener('blur', () => {
+            if (this._goalEditCancelled) { this._goalEditCancelled = false; return; }
+            if (goalInput.style.display === 'none') return;   // already saved with Enter
             this.saveGoalEdit();
         });
     }
@@ -1343,6 +1407,7 @@ class CalorieTracker {
         
         goalInput.value = this.calorieGoal;
         goalDisplay.style.display = 'none';
+        document.getElementById('goalEditBtn')?.setAttribute('hidden', '');
         goalInput.style.display = 'block';
         goalInput.focus();
         goalInput.select();
@@ -1352,8 +1417,9 @@ class CalorieTracker {
         const goalDisplay = document.getElementById('calorieGoal');
         const goalInput = document.getElementById('calorieGoalInput');
         
-        goalDisplay.style.display = 'block';
+        goalDisplay.style.display = '';
         goalInput.style.display = 'none';
+        document.getElementById('goalEditBtn')?.removeAttribute('hidden');
     }
 
     async saveGoalEdit() {
@@ -1371,9 +1437,9 @@ class CalorieTracker {
         this.calorieGoal = newGoal;
         goalDisplay.textContent = newGoal;
         
-        // Save to backend for current date
+        // Save to backend for the day on screen
         try {
-            const today = new Date().toISOString().split('T')[0];
+            const today = this.viewDate();
             await this.apiCall('/user/daily-goal', 'POST', {
                 date: today,
                 goal: newGoal
@@ -2108,7 +2174,7 @@ class CalorieTracker {
             
             // Get new meal category, date, and time fields
             const mealCategory = document.getElementById('mealCategory')?.value || 'other';
-            const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
+            const logDate = document.getElementById('logDate')?.value || localDateStr();
             const mealTimeInput = document.getElementById('mealTime')?.value || null;
             // Convert HH:MM to HH:MM:SS format for backend
             const mealTime = mealTimeInput ? `${mealTimeInput}:00` : null;
@@ -2248,7 +2314,7 @@ class CalorieTracker {
             
             // Get meal category, date, and time from form
             const mealCategory = document.getElementById('mealCategory')?.value || 'other';
-            const logDate = document.getElementById('logDate')?.value || new Date().toISOString().split('T')[0];
+            const logDate = document.getElementById('logDate')?.value || localDateStr();
             const mealTimeInput = document.getElementById('mealTime')?.value || null;
             logger.debug('🕐 Raw mealTimeInput from form:', mealTimeInput);
             // Convert HH:MM to HH:MM:SS format for backend
@@ -2337,7 +2403,7 @@ class CalorieTracker {
     async loadTodaysData() {
         if (this.isOnline) {
             try {
-                const today = new Date().toISOString().split('T')[0];
+                const today = this.viewDate();
                 
                 logger.info('=== LOADING TODAY\'S DATA ===');
                 logger.info('Loading data for date:', today);
@@ -2733,10 +2799,10 @@ class CalorieTracker {
 
     updateFoodLog() {
         const foodLogDiv = document.getElementById('foodLog');
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.viewDate();
         
         if (this.foodLog.length === 0) {
-            foodLogDiv.innerHTML = '<p class="empty-message">Nothing logged yet today.</p>';
+            foodLogDiv.innerHTML = `<p class="empty-message">${this.isViewingToday() ? 'Nothing logged yet today.' : 'Nothing logged on this day.'}</p>`;
             this.updateTodayComment();
             return;
         }
@@ -2808,16 +2874,13 @@ class CalorieTracker {
                     })()
                     : '';
                 html += `
-                <div class="food-item" data-log-id="${food.id}">
+                <div class="food-item" data-log-id="${food.id}" data-action="edit-food-log" data-date="${today}" role="button" tabindex="0" aria-label="Edit ${escapedName}, ${Math.round(parseFloat(food.calories))} kcal">
                     <div class="food-info">
                         <div class="food-name">${escapedName} <span class="food-qty">${Math.round(parseFloat(food.quantity))} ${food.unit}</span>${food.offline ? ' <span class="badge-offline">(Offline)</span>' : ''}</div>
                         <div class="food-details">${brandText}${distText}${macroHtml}</div>
                     </div>
                     <div class="food-calories">${Math.round(parseFloat(food.calories))} kcal</div>
-                    <div class="food-item-actions">
-                        <button class="edit-btn" data-action="edit-food-log" data-log-id="${food.id}" data-date="${today}" title="Edit">✏️</button>
-                        <button class="delete-btn" data-action="delete-food-log" data-log-id="${food.id}" data-food-name="${this.escapeHtml(food.name)}" data-date="${today}">×</button>
-                    </div>
+                    <svg class="food-item-chevron" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>`;
             });
             // Render group photos below all items
@@ -2915,7 +2978,7 @@ class CalorieTracker {
     }
 
     async updateTodayComment() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.viewDate();
         const container = document.getElementById('todayComment');
         if (!container) return;
         const existing = container.querySelector('.day-comment-section');
@@ -3017,7 +3080,7 @@ class CalorieTracker {
                         quantity: food.quantity,
                         unit: food.unit,
                         calories: food.calories,
-                        logDate: new Date().toISOString().split('T')[0]
+                        logDate: localDateStr()
                     });
                     
                     // Remove offline flag
@@ -3042,7 +3105,7 @@ class CalorieTracker {
         if (typeof realtimeSync === 'undefined' || !this.authToken) return;
         const self = this;
         realtimeSync.start(this.authToken, async function () {
-            const today = new Date().toISOString().split('T')[0];
+            const today = self.viewDate();
             try {
                 const data = await self.apiCall(`/logs?date=${today}`);
                 return JSON.stringify(data);
@@ -3489,17 +3552,14 @@ class CalorieTracker {
                 macrosHtml = `<span class="food-macros">${[p,c,f].filter(Boolean).join(' · ')}</span>`;
             }
             return `
-                <div class="food-item-row editable" data-log-id="${log.id}">
+                <div class="food-item-row editable" data-log-id="${log.id}" data-action="edit-food-log" data-date="${date}" role="button" tabindex="0" aria-label="Edit ${this.escapeHtml(log.food_name)}">
                     <div class="food-item-content">
                         <span class="food-item-name">${this.escapeHtml(log.food_name)}${brandText}${distributorText}</span>
                         <span class="food-item-details">${Math.round(parseFloat(log.quantity))} ${log.unit}${timeText}</span>
                         <span class="food-item-calories">${Math.round(parseFloat(log.calories)).toLocaleString()} kcal</span>
                         ${macrosHtml}
                     </div>
-                    <div class="food-item-actions">
-                        <button class="btn-icon btn-edit" data-action="edit-food-log" data-log-id="${log.id}" data-date="${date}" title="Edit">✏️</button>
-                        <button class="btn-icon btn-delete" data-action="delete-food-log" data-log-id="${log.id}" data-food-name="${this.escapeHtml(log.food_name)}" data-date="${date}" title="Delete">🗑️</button>
-                    </div>
+                    <svg class="food-item-chevron" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>`;
         };
 
@@ -3698,7 +3758,7 @@ class CalorieTracker {
                 this.notifications.success(`Weight logged: ${weightKg} kg`);
                 form.reset();
                 // Reset date to today
-                document.getElementById('weightDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('weightDate').value = localDateStr();
                 
                 // Reload weight history to show new entry
                 await this.loadWeightHistory();
@@ -3924,7 +3984,7 @@ class CalorieTracker {
      * Delete weight entry
      */
     async deleteWeightEntry(weightId) {
-        if (!confirm('Are you sure you want to delete this weight entry?')) {
+        if (!(await this.showConfirmation('Delete weight entry', 'Delete this weight entry?', 'Delete', 'danger'))) {
             return;
         }
         
@@ -3958,7 +4018,7 @@ class CalorieTracker {
             startDate.setDate(startDate.getDate() - 27); // 28 days including today
             
             const response = await this.apiCall(
-                `/logs/range?start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}`,
+                `/logs/range?start_date=${localDateStr(startDate)}&end_date=${localDateStr(endDate)}`,
                 'GET',
                 null,
                 { silent: true }
@@ -4009,7 +4069,7 @@ class CalorieTracker {
         for (let i = 27; i >= 0; i--) {
             const date = new Date();
             date.setDate(endDate.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = localDateStr(date);
             
             // Get data for this day from the normalized response
             const dayData = normalizedData[dateStr];
@@ -4150,6 +4210,8 @@ class CalorieTracker {
         
         // Update modal title
         document.getElementById('editModalTitle').textContent = 'Add Food Log Entry';
+        const deleteBtn = document.getElementById('editDeleteBtn');
+        if (deleteBtn) deleteBtn.hidden = true;
         
         // Show modal
         const modal = document.getElementById('editFoodLogModal');
@@ -4219,12 +4281,13 @@ class CalorieTracker {
                 if (editBtnLabel) editBtnLabel.textContent = 'Add Photo';
             }
             
+            document.getElementById('editModalTitle').textContent = 'Edit entry';
+            const deleteBtn = document.getElementById('editDeleteBtn');
+            if (deleteBtn) deleteBtn.hidden = false;
+
             // Show modal
             const modal = document.getElementById('editFoodLogModal');
             modal.style.display = 'flex';
-            
-            // Focus on first input
-            setTimeout(() => document.getElementById('editFoodName').focus(), 100);
             
         } catch (error) {
             logger.error('Failed to open edit modal:', error);
@@ -4283,7 +4346,7 @@ class CalorieTracker {
                 await this.updateFoodLogEntry(logId, foodData);
 
                 // Optimistically update local state so the dashboard refreshes immediately
-                const todayDate = new Date().toISOString().split('T')[0];
+                const todayDate = this.viewDate();
                 const localIdx = this.foodLog.findIndex(f => f.id == logId);
                 if (localIdx !== -1) {
                     if (foodData.logDate !== todayDate) {
@@ -4319,8 +4382,8 @@ class CalorieTracker {
             // Close modal
             this.closeEditFoodLogModal();
 
-            // Refresh today's dashboard food log immediately
-            const today = new Date().toISOString().split('T')[0];
+            // Refresh the Today panel if it shows either day
+            const today = this.viewDate();
             if (foodData.logDate === today || date === today) {
                 await this.loadTodaysData();
             }
@@ -4362,6 +4425,84 @@ class CalorieTracker {
         // Show modal
         const modal = document.getElementById('deleteFoodLogModal');
         modal.style.display = 'flex';
+    }
+
+    /**
+     * Delete an entry straight away, with "Undo" for a few seconds.
+     * The entry disappears at once; the server delete runs when the Undo window closes
+     * (or right away if the app goes to the background), so Undo needs no re-creating.
+     */
+    deleteFoodLogWithUndo(logId, foodName, date) {
+        const UNDO_MS = 6000;
+        this._pendingDeletes = this._pendingDeletes || new Map();
+        if (this._pendingDeletes.has(String(logId))) return;
+
+        const rows = [...document.querySelectorAll(`.food-item[data-log-id="${logId}"], .food-item-row[data-log-id="${logId}"]`)];
+        rows.forEach((row) => { row.hidden = true; });
+        const historyRow = rows.find((r) => r.classList.contains('food-item-row'));
+        if (historyRow) this.updateDayTotalAfterDeletion(date, historyRow);
+
+        // Take it off the Today totals straight away
+        const idx = this.foodLog.findIndex((f) => f.id == logId);
+        let removed = null;
+        if (idx !== -1 && date === this.viewDate()) {
+            removed = this.foodLog.splice(idx, 1)[0];
+            this.dailyCalories = this.foodLog.reduce((sum, f) => sum + parseFloat(f.calories), 0);
+            this.updateDashboard();
+            this.updateFoodLog();   // meal totals too
+        }
+
+        const refresh = async () => {
+            if (date === this.viewDate()) await this.loadTodaysData();
+            if (this.historyData?.expandedDays?.has(date)) await this.refreshDayDetails(date);
+        };
+
+        let toastId = null;
+        const commit = async () => {
+            const pending = this._pendingDeletes.get(String(logId));
+            if (!pending) return;
+            clearTimeout(pending.timer);
+            this._pendingDeletes.delete(String(logId));
+            if (toastId) this.notifications.hide(toastId);
+            try {
+                await this.deleteFoodLogEntry(logId);
+            } catch (error) {
+                logger.error('Failed to delete food log:', error);
+                this.showMessage(error.message || 'Could not delete the entry', 'error');
+            }
+            await refresh();
+        };
+        const undo = async () => {
+            const pending = this._pendingDeletes.get(String(logId));
+            if (!pending) return;
+            clearTimeout(pending.timer);
+            this._pendingDeletes.delete(String(logId));
+            rows.forEach((row) => { row.hidden = false; });
+            if (removed) {
+                this.foodLog.splice(Math.min(idx, this.foodLog.length), 0, removed);
+                this.dailyCalories = this.foodLog.reduce((sum, f) => sum + parseFloat(f.calories), 0);
+                this.updateDashboard();
+                this.updateFoodLog();
+            }
+            await refresh();
+        };
+
+        this._pendingDeletes.set(String(logId), { commit, timer: setTimeout(commit, UNDO_MS) });
+        toastId = this.notifications.show(`Deleted "${this.capitalizeFirst(foodName || 'entry')}"`, 'info', {
+            title: '',
+            duration: UNDO_MS,
+            action: { label: 'Undo', onClick: undo }
+        });
+
+        // Don't lose the delete if the app is closed during the Undo window
+        if (!this._flushDeletesBound) {
+            this._flushDeletesBound = true;
+            const flush = () => {
+                if (document.visibilityState !== 'hidden' || !this._pendingDeletes) return;
+                [...this._pendingDeletes.values()].forEach((p) => p.commit());
+            };
+            document.addEventListener('visibilitychange', flush);
+        }
     }
 
     /**
@@ -4409,7 +4550,7 @@ class CalorieTracker {
             this.closeDeleteConfirmModal();
             
             // Sync in-memory model if the deleted entry was today
-            const today = new Date().toISOString().split('T')[0];
+            const today = localDateStr();
             if (date === today) {
                 await this.loadTodaysData();
             }
@@ -4448,7 +4589,7 @@ class CalorieTracker {
             const calories = parseInt(caloriesText.replace(/[^\d]/g, '')) || 0;
             
             // Find the day card and update totals
-            const dayCard = document.querySelector(`[data-date="${date}"]`);
+            const dayCard = document.querySelector(`.history-day-card[data-date="${date}"]`);
             if (dayCard) {
                 // Update day stats in overview
                 const caloriesSpan = dayCard.querySelector('.day-stats .calories');
@@ -4478,7 +4619,7 @@ class CalorieTracker {
             const response = await this.apiCall(`/logs?date=${date}`);
             
             if (response.success && response.logs) {
-                const dayCard = document.querySelector(`[data-date="${date}"]`)?.closest('.history-day-card');
+                const dayCard = document.querySelector(`.history-day-card[data-date="${date}"]`)?.closest('.history-day-card');
                 if (dayCard) {
                     this.renderDayDetails(dayCard, response.logs, response.totalCalories);
                     
@@ -4987,7 +5128,7 @@ class CalorieTracker {
                 quantity: foodData.quantity,
                 unit: foodData.unit,
                 calories: foodData.calories,
-                logDate: new Date().toISOString().split('T')[0]
+                logDate: localDateStr()
             });
         }
     }
@@ -5058,7 +5199,7 @@ class CalorieTracker {
 
     // Load server data and merge with local data
     async loadAndMergeServerData() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.viewDate();
         const serverData = await this.apiCall(`/logs?date=${today}`);
         
         // Handle new backend response format
@@ -7327,7 +7468,7 @@ class CalorieTracker {
      * Delete user food
      */
     async deleteUserFood(foodId, foodName) {
-        if (!confirm(`Are you sure you want to permanently delete "${foodName}"?\n\nThis action cannot be undone.`)) {
+        if (!(await this.showConfirmation('Delete food', `Permanently delete "${foodName}"? This can't be undone.`, 'Delete', 'danger'))) {
             return;
         }
 
@@ -8137,7 +8278,7 @@ class CalorieTracker {
         });
 
         const daysInMonth = new Date(year, month, 0).getDate();
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateStr();
         const dayCells = [];
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -8435,8 +8576,8 @@ class CalorieTracker {
     // ══════════════════════════════════════════════════════════════════════════
 
     openShareModal() {
-        const today = new Date().toISOString().split('T')[0];
-        const thirtyDaysAgo = new Date(Date.now() - 29 * 86400000).toISOString().split('T')[0];
+        const today = localDateStr();
+        const thirtyDaysAgo = localDateStr(new Date(Date.now() - 29 * 86400000));
         const start = document.getElementById('shareStartDate');
         const end   = document.getElementById('shareEndDate');
         if (start) start.value = thirtyDaysAgo;

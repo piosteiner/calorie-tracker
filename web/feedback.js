@@ -223,7 +223,7 @@
             el('span', { class: 'fb-item-meta', text: [f.username || 'not logged in', when, f.viewport].filter(Boolean).join(' · ') }),
             el('span', { class: 'fb-item-actions' },
               el('button', { class: 'fb-btn fb-ghost', type: 'button', onclick: async () => { await adminCall(`/${f.id}`, 'PATCH', { done: !f.done }); loadAdminFeedback(); } }, f.done ? 'Reopen' : 'Done'),
-              el('button', { class: 'fb-btn fb-ghost fb-danger', type: 'button', onclick: async () => { if (confirm('Delete this feedback?')) { await adminCall(`/${f.id}`, 'DELETE'); loadAdminFeedback(); } } }, 'Delete'))),
+              el('button', { class: 'fb-btn fb-ghost fb-danger', type: 'button', onclick: async () => { const ok = typeof app !== 'undefined' && app?.showConfirmation ? await app.showConfirmation('Delete feedback', 'Delete this feedback?', 'Delete', 'danger') : confirm('Delete this feedback?'); if (ok) { await adminCall(`/${f.id}`, 'DELETE'); loadAdminFeedback(); } } }, 'Delete'))),
           el('p', { class: 'fb-item-text', text: f.message }),
           (f.elements || []).length ? el('ul', { class: 'fb-item-elements' }, f.elements.map((x) => el('li', { text: `${x.what}${x.title ? ` · ${x.title}` : ''}${x.text ? ` — “${x.text.slice(0, 80)}”` : ''}` }))) : null,
           el('div', { class: 'fb-item-foot' },
